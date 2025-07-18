@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  ai:
+    build: ./nexus-ai
+    ports:
+      - "8000:8000"
+  backend:
+    build: ./nexus-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - AI_BASE_URL=http://ai:8000
+      - DATABASE_URL=postgres://user:password@db:5432/nexusdb
+    depends_on:
+      - ai
+      - db
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: nexusdb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+volumes:
+  db_data: 
