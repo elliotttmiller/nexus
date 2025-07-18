@@ -30,4 +30,14 @@ docs/
 
 # Git
 .git/
-.gitignore 
+.gitignore
+
+# Docker (use Railway instead)
+Dockerfile
+.dockerignore
+
+# Other build tools
+*.gradle
+*.mvn
+pom.xml
+build.gradle 
