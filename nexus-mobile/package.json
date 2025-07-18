@@ -1,0 +1,20 @@
+{
+  "name": "nexus-mobile",
+  "version": "1.0.0",
+  "main": "App.js",
+  "private": true,
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "^53.0.0",
+    "react": "19.0.0",
+    "react-native": "0.79.5",
+    "react-native-plaid-link-sdk": "^10.4.0",
+    "@react-navigation/native": "^6.1.6",
+    "@react-navigation/stack": "^6.3.16"
+  }
+}
