@@ -1,5 +1,19 @@
 {
-  "dependencies": {
-    "speakeasy": "^2.0.0"
+  "name": "nexus",
+  "version": "1.0.0",
+  "description": "Nexus Financial Intelligence Platform",
+  "private": true,
+  "workspaces": [
+    "nexus-backend",
+    "nexus-mobile"
+  ],
+  "scripts": {
+    "start": "cd nexus-backend && npm start",
+    "dev": "cd nexus-backend && npm run dev",
+    "build": "cd nexus-backend && npm run build",
+    "test": "cd nexus-backend && npm test"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
