@@ -5,10 +5,12 @@ export default function TransactionsScreen({ navigation }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
+
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/plaid/transactions?userId=1');
+      const res = await fetch(`${API_BASE_URL}/api/plaid/transactions?userId=1`);
       const data = await res.json();
       if (res.ok) {
         setTransactions(data);

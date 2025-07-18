@@ -5,10 +5,12 @@ export default function DataAccessScreen({ navigation }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
+
   const fetchAccounts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/users/data-access?userId=1');
+      const res = await fetch(`${API_BASE_URL}/api/users/data-access?userId=1`);
       const data = await res.json();
       if (res.ok) {
         setAccounts(data);
@@ -25,7 +27,7 @@ export default function DataAccessScreen({ navigation }) {
   const revokeAccess = async (accountId) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/users/data-access/${accountId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/users/data-access/${accountId}`, {
         method: 'DELETE'
       });
       const data = await res.json();

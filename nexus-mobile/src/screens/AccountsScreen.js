@@ -8,10 +8,12 @@ export default function AccountsScreen({ navigation }) {
   const [linkToken, setLinkToken] = useState(null);
   const [linkLoading, setLinkLoading] = useState(false);
 
+  const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
+
   const fetchAccounts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/plaid/accounts?userId=1');
+      const res = await fetch(`${API_BASE_URL}/api/plaid/accounts?userId=1`);
       const data = await res.json();
       if (res.ok) {
         setAccounts(data);
@@ -28,7 +30,7 @@ export default function AccountsScreen({ navigation }) {
   const fetchLinkToken = async () => {
     setLinkLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/plaid/create_link_token', {
+      const res = await fetch(`${API_BASE_URL}/api/plaid/create_link_token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 1 })
@@ -74,7 +76,7 @@ export default function AccountsScreen({ navigation }) {
           tokenConfig={{ token: linkToken, noLoadingState: false }}
           onSuccess={async (success) => {
             try {
-              const res = await fetch('http://localhost:5000/api/plaid/exchange_public_token', {
+              const res = await fetch(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ public_token: success.publicToken, userId: 1 })

@@ -7,11 +7,13 @@ export default function CardRankScreen({ navigation }) {
   const [recommendation, setRecommendation] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
+
   const handleRecommend = async () => {
     setLoading(true);
     setRecommendation('');
     try {
-      const res = await fetch('http://localhost:5000/api/cardrank/recommend', {
+      const res = await fetch(`${API_BASE_URL}/api/cardrank/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 1, merchant, category })

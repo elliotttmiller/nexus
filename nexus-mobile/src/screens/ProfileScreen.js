@@ -5,10 +5,12 @@ export default function ProfileScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
+
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/users/profile?userId=1');
+      const res = await fetch(`${API_BASE_URL}/api/users/profile?userId=1`);
       const data = await res.json();
       if (res.ok) {
         setEmail(data.email);
@@ -25,7 +27,7 @@ export default function ProfileScreen({ navigation }) {
   const updateProfile = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/users/profile', {
+      const res = await fetch(`${API_BASE_URL}/api/users/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 1, email })

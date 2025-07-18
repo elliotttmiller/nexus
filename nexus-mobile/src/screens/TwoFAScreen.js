@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 
+const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
+
 export default function TwoFAScreen({ route, navigation }) {
   const { userId } = route.params;
   const [code, setCode] = useState('');
@@ -9,7 +11,7 @@ export default function TwoFAScreen({ route, navigation }) {
   const handleVerify = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/auth/2fa/verify', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/2fa/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, token: code })

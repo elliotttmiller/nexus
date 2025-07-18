@@ -6,11 +6,13 @@ export default function InterestKillerScreen({ navigation }) {
   const [suggestion, setSuggestion] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
+
   const handleSuggest = async () => {
     setLoading(true);
     setSuggestion('');
     try {
-      const res = await fetch('http://localhost:5000/api/interestkiller/suggest', {
+      const res = await fetch(`${API_BASE_URL}/api/interestkiller/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 1, amount })
