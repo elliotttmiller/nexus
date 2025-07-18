@@ -1,0 +1,9 @@
+{
+  "name": "nexus-monorepo",
+  "private": true,
+  "description": "Monorepo for Nexus platform (backend, AI, mobile)",
+  "scripts": {
+    "backend": "cd nexus-backend && npm start",
+    "ai": "cd nexus-ai && python app.py"
+  }
+} 

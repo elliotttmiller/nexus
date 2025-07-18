@@ -11,7 +11,27 @@ const authenticateToken = require('./middleware/authenticateToken');
 const Sentry = require('./utils/sentry');
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = [
+  process.env.CORS_ORIGIN, // for production, set in Railway env vars
+  'http://localhost:3000', // local web frontend
+  'http://192.168.0.50:5000', // local backend (for mobile dev)
+  'http://localhost:19006', // Expo Go (React Native dev)
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use(Sentry.Handlers.requestHandler());
 
