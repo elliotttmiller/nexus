@@ -22,6 +22,7 @@
         "jsonwebtoken": "^9.0.0",
         "pg": "^8.11.1",
         "plaid": "^12.4.0",
+        "qrcode": "^1.5.4",
         "sequelize": "^6.32.1",
         "speakeasy": "^2.0.0",
         "winston": "^3.10.0"
