@@ -20,6 +20,7 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token });
   } catch (err) {
+    console.error('Error in /register:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -40,6 +41,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token });
   } catch (err) {
+    console.error('Error in /login:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -57,6 +59,7 @@ router.post('/2fa/setup', async (req, res) => {
     const qr = await qrcode.toDataURL(otpauth);
     res.json({ qr, secret: secret.base32 });
   } catch (err) {
+    console.error('Error in /2fa/setup:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -78,6 +81,7 @@ router.post('/2fa/verify', async (req, res) => {
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token });
   } catch (err) {
+    console.error('Error in /2fa/verify:', err);
     res.status(500).json({ error: err.message });
   }
 });

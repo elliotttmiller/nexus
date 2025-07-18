@@ -26,6 +26,7 @@ router.post('/create_link_token', async (req, res) => {
     });
     res.json(response.data);
   } catch (err) {
+    console.error('Error in /create_link_token:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -40,6 +41,7 @@ router.post('/exchange_public_token', async (req, res) => {
     await Account.create({ user_id: userId, plaid_access_token: access_token });
     res.json(response.data);
   } catch (err) {
+    console.error('Error in /exchange_public_token:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -76,6 +78,7 @@ router.get('/transactions', async (req, res) => {
     });
     res.json(response.data.transactions);
   } catch (err) {
+    console.error('Error in /transactions:', err);
     res.status(500).json({ error: err.message });
   }
 });

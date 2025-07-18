@@ -25,6 +25,7 @@ router.post('/suggest', async (req, res) => {
     });
     res.json({ suggestion: result });
   } catch (err) {
+    console.error('Error in /suggest:', err);
     res.status(500).json({ error: err.message });
   }
 });

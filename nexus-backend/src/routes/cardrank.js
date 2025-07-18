@@ -19,6 +19,7 @@ router.post('/recommend', async (req, res) => {
     });
     res.json({ recommendation });
   } catch (err) {
+    console.error('Error in /recommend:', err);
     res.status(500).json({ error: err.message });
   }
 });

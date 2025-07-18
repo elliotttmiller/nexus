@@ -12,6 +12,7 @@ router.get('/profile', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ id: user.id, email: user.email });
   } catch (err) {
+    console.error('Error in /profile (GET):', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -26,6 +27,7 @@ router.put('/profile', async (req, res) => {
     await user.update({ email });
     res.json({ message: 'Profile updated' });
   } catch (err) {
+    console.error('Error in /profile (PUT):', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -40,6 +42,7 @@ router.post('/2fa/enable', async (req, res) => {
     await user.update({ twofa_secret: secret });
     res.json({ message: '2FA enabled' });
   } catch (err) {
+    console.error('Error in /2fa/enable:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -79,6 +82,7 @@ router.delete('/data-access/:accountId', async (req, res) => {
     await account.destroy();
     res.json({ message: 'Account access revoked' });
   } catch (err) {
+    console.error('Error in /data-access/:accountId (DELETE):', err);
     res.status(500).json({ error: err.message });
   }
 });
