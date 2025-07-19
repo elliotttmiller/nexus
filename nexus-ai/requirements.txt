@@ -3,4 +3,5 @@ uvicorn
 scikit-learn
 scipy
 pydantic
-python-dotenv 
+python-dotenv
+requests 

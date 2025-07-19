@@ -1,4 +1,4 @@
-from services import enrich_transaction_with_vertex_ai, generate_text_with_vertex_ai
+from services import enrich_transaction_with_vertex_ai, generate_text_with_gemini
 from typing import List, Dict
 
 def advanced_card_recommendation(user_cards: List[Dict], transaction_context: Dict, user_context: Dict) -> Dict:
@@ -48,7 +48,7 @@ def advanced_card_recommendation(user_cards: List[Dict], transaction_context: Di
     The raw reward value for this purchase is ${best_scored_card['base_reward_value']:.2f}.
     Briefly and clearly explain why this is the best card for them in one or two sentences, tailored to their goal.
     """
-    explanation = generate_text_with_vertex_ai(prompt)
+    explanation = generate_text_with_gemini(prompt)
     return {
         "recommended_card": best_card,
         "reason": explanation,
