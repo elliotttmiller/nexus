@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
+from typing import List, Dict, Any
 from cardrank import advanced_card_recommendation
 from interestkiller import advanced_payment_split
 from nextsmartmove import dynamic_next_smart_move
@@ -14,54 +14,43 @@ if os.environ.get("GOOGLE_CREDENTIALS_JSON"):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
 
 app = FastAPI(
-    title="Nexus Cortex AI v2",
-    description="Advanced, API-driven financial optimization microservice.",
-    version="2.0.0"
+    title="Nexus AI Service",
+    description="AI-powered financial optimization endpoints.",
+    version="1.0.0"
 )
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+# --- CardRank Endpoint ---
 class Card(BaseModel):
-    id: str
+    id: int
     name: str
     balance: float
     creditLimit: float
     apr: float
-    utilization: float = Field(..., description="Calculated as balance / creditLimit")
-    rewards: Dict[str, float] = Field(default_factory=dict, description="e.g., {'Dining': 4.0, 'default': 1.0}")
-    point_value_cents: float = Field(default=1.0, description="Value of one point in cents")
-    signup_bonus_progress: Optional[Dict[str, Any]] = None
+    utilization: float
+    rewards: Dict[str, float] = {}
+    point_value_cents: float = 1.0
+    signup_bonus_progress: Any = None
 
 class TransactionContext(BaseModel):
     merchantName: str
     amount: float
-    location: Optional[str] = None
+    location: str = None
 
 class UserContext(BaseModel):
-    primaryGoal: str = Field(..., description="e.g., MAXIMIZE_CREDIT_SCORE")
-    creditScoreInfo: Optional[Dict[str, Any]] = None
+    primaryGoal: str
+    creditScoreInfo: Dict[str, Any] = None
 
-class V2CardRankRequest(BaseModel):
+class CardRankRequest(BaseModel):
     user_cards: List[Card]
     transaction_context: TransactionContext
     user_context: UserContext
 
-class Account(BaseModel):
-    id: str
-    balance: float
-    apr: float
-    creditLimit: float
-    promoAPR: Optional[float] = None
-    promoEndDate: Optional[str] = None
-
-class V2InterestKillerRequest(BaseModel):
-    accounts: List[Account]
-    payment_amount: float
-    optimization_goal: str
-
-class V2NextSmartMoveRequest(BaseModel):
-    user_state: Dict[str, Any]
-
-@app.post('/v2/cardrank', summary="Advanced Card Recommendation")
-def cardrank_v2(req: V2CardRankRequest):
+@app.post("/v2/cardrank")
+def cardrank_v2(req: CardRankRequest):
     try:
         result = advanced_card_recommendation(
             [c.dict() for c in req.user_cards],
@@ -70,10 +59,24 @@ def cardrank_v2(req: V2CardRankRequest):
         )
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An internal error occurred: {e}")
+        raise HTTPException(status_code=500, detail=f"CardRank error: {e}")
 
-@app.post('/v2/interestkiller', summary="Goal-Oriented Payment Optimization")
-def interestkiller_v2(req: V2InterestKillerRequest):
+# --- InterestKiller Endpoint ---
+class Account(BaseModel):
+    id: int
+    balance: float
+    apr: float
+    creditLimit: float
+    promoAPR: float = None
+    promoEndDate: str = None
+
+class InterestKillerRequest(BaseModel):
+    accounts: List[Account]
+    payment_amount: float
+    optimization_goal: str
+
+@app.post("/v2/interestkiller")
+def interestkiller_v2(req: InterestKillerRequest):
     try:
         split = advanced_payment_split(
             [acc.dict() for acc in req.accounts],
@@ -82,20 +85,16 @@ def interestkiller_v2(req: V2InterestKillerRequest):
         )
         return {"split": split}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An internal error occurred: {e}")
+        raise HTTPException(status_code=500, detail=f"InterestKiller error: {e}")
 
-@app.post('/v2/nextsmartmove', summary="Dynamic, AI-Generated User Guidance")
-def nextsmartmove_v2(req: V2NextSmartMoveRequest):
+# --- NextSmartMove Endpoint ---
+class NextSmartMoveRequest(BaseModel):
+    user_state: Dict[str, Any]
+
+@app.post("/v2/nextsmartmove")
+def nextsmartmove_v2(req: NextSmartMoveRequest):
     try:
         move = dynamic_next_smart_move(req.user_state)
         return {"move": move}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An internal error occurred: {e}")
-
-@app.get("/", summary="Health Check")
-def read_root():
-    return {"status": "Nexus Cortex AI v2 is operational"}
-
-@app.get("/health")
-def health():
-    return {"status": "ok"} 
+        raise HTTPException(status_code=500, detail=f"NextSmartMove error: {e}") 
