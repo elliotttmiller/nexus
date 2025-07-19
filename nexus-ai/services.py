@@ -9,12 +9,14 @@ def generate_text_with_gemini(prompt: str) -> str:
         "Content-Type": "application/json; charset=utf-8"
     }
     data = {
-        "contents": {
-            "role": "user",
-            "parts": {
-                "text": prompt
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": prompt}
+                ]
             }
-        }
+        ]
     }
     params = {"key": GEMINI_API_KEY}
     response = requests.post(url, headers=headers, params=params, json=data)
