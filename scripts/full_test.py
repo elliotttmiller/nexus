@@ -2,47 +2,30 @@ import os
 import sys
 import time
 import requests
-import subprocess
 import json
+import uuid
 
-BACKEND_URL = "http://localhost:5000"
-AI_URL = "http://localhost:8000"
-DB_URL = os.environ.get("DATABASE_URL", "postgres://user:password@localhost:5432/nexusdb")
-
-def run_docker_compose():
-    print("Starting all services with Docker Compose...")
-    subprocess.run(["docker-compose", "up", "--build", "-d"], check=True)
-    time.sleep(10)
-
-def check_health():
-    print("Checking backend health...")
-    try:
-        r = requests.get(f"{BACKEND_URL}/")
-        r.raise_for_status()
-    except Exception as e:
-        print("Backend not healthy!", e)
-        sys.exit(1)
-    print("Checking AI microservice health...")
-    try:
-        r = requests.get(f"{AI_URL}/docs")
-        r.raise_for_status()
-    except Exception as e:
-        print("AI microservice not healthy!", e)
-        sys.exit(1)
-    print("All services are healthy.")
+# Update these to your Railway deployment URLs
+BACKEND_URL = "https://nexus-production-2e34.up.railway.app"
+AI_URL = "https://nexus-ai-production.up.railway.app"  # Update if you have a separate AI service URL
 
 def api_tests():
-    print("Registering user...")
-    requests.post(f"{BACKEND_URL}/api/auth/register", json={
-        "email": "testuser@example.com",
-        "password": "test123"
+    # Use a unique email for each test run
+    test_email = f"testuser_{uuid.uuid4().hex[:8]}@example.com"
+    test_password = "test123"
+    print(f"Registering user {test_email}...")
+    reg_resp = requests.post(f"{BACKEND_URL}/api/auth/register", json={
+        "email": test_email,
+        "password": test_password
     })
+    print("Registration response:", reg_resp.status_code, reg_resp.text)
     print("Logging in...")
-    r = requests.post(f"{BACKEND_URL}/api/auth/login", json={
-        "email": "testuser@example.com",
-        "password": "test123"
+    login_resp = requests.post(f"{BACKEND_URL}/api/auth/login", json={
+        "email": test_email,
+        "password": test_password
     })
-    data = r.json()
+    print("Login response:", login_resp.status_code, login_resp.text)
+    data = login_resp.json()
     token = data.get("token")
     if not token:
         print("Login failed!")
@@ -61,35 +44,9 @@ def trigger_sentry_error():
         pass
     print("Check your Sentry dashboard for the error event.")
 
-def check_user_events():
-    print("Checking user_events table...")
-    try:
-        import psycopg2
-        import urllib.parse as urlparse
-        url = urlparse.urlparse(DB_URL)
-        conn = psycopg2.connect(
-            dbname=url.path[1:],
-            user=url.username,
-            password=url.password,
-            host=url.hostname,
-            port=url.port
-        )
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM user_events ORDER BY created_at DESC LIMIT 5;")
-        rows = cur.fetchall()
-        for row in rows:
-            print(row)
-        cur.close()
-        conn.close()
-    except Exception as e:
-        print("Could not check user_events table:", e)
-
 def main():
-    run_docker_compose()
-    check_health()
     api_tests()
     trigger_sentry_error()
-    check_user_events()
     print("All automated tests complete. Check Sentry dashboard for error event.")
 
 if __name__ == "__main__":

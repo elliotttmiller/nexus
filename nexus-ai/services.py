@@ -4,9 +4,14 @@ from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Value
 
 # --- Configuration ---
-GOOGLE_PROJECT_ID = os.environ.get("GOOGLE_PROJECT_ID")
-GOOGLE_LOCATION = os.environ.get("GOOGLE_LOCATION") # e.g., "us-central1"
+GOOGLE_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
+GOOGLE_LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION") # e.g., "us-central1"
 VERTEX_AI_ENDPOINT_ID = os.environ.get("VERTEX_AI_ENDPOINT_ID") # For credit score prediction
+
+# Debug print for environment values
+print("GOOGLE_CLOUD_PROJECT:", GOOGLE_PROJECT_ID)
+print("GOOGLE_CLOUD_LOCATION:", GOOGLE_LOCATION)
+print("VERTEX_AI_ENDPOINT_ID:", VERTEX_AI_ENDPOINT_ID)
 
 aiplatform.init(project=GOOGLE_PROJECT_ID, location=GOOGLE_LOCATION)
 

@@ -18,8 +18,11 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "extra": {
+      "iosClientId": "477212096848-5ojo4p71qv85cc23q8lfjkr9q4nc6ljt.apps.googleusercontent.com"
+    },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "app.nexus.ai"
     },
     "web": {
       "favicon": "./assets/favicon.png"
