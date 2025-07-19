@@ -11,10 +11,19 @@ const Recommendation = sequelize.define('Recommendation', {
   },
   data: {
     type: DataTypes.JSONB
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    field: 'created_at'
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    field: 'updated_at'
   }
 }, {
   tableName: 'recommendations',
-  freezeTableName: true
+  freezeTableName: true,
+  timestamps: true
 });
 
 module.exports = Recommendation; 

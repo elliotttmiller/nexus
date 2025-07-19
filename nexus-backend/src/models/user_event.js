@@ -11,10 +11,19 @@ const UserEvent = sequelize.define('UserEvent', {
   },
   data: {
     type: DataTypes.JSONB
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    field: 'created_at'
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    field: 'updated_at'
   }
 }, {
   tableName: 'user_events',
-  freezeTableName: true
+  freezeTableName: true,
+  timestamps: true
 });
 
 module.exports = UserEvent; 

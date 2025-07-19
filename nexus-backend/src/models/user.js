@@ -14,10 +14,19 @@ const User = sequelize.define('User', {
   },
   twofa_secret: {
     type: DataTypes.STRING
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    field: 'created_at'
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    field: 'updated_at'
   }
 }, {
   tableName: 'users',
-  freezeTableName: true
+  freezeTableName: true,
+  timestamps: true
 });
 
 module.exports = User; 
