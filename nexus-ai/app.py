@@ -1,10 +1,17 @@
 import os
+import sys
+import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any
 from cardrank import advanced_card_recommendation
 from interestkiller import advanced_payment_split
 from nextsmartmove import dynamic_next_smart_move
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logger = logging.getLogger("nexus-ai-debug")
+
+logger.debug("Starting Nexus AI FastAPI app...")
 
 # Railway/production: Write GOOGLE_CREDENTIALS_JSON to a file and set GOOGLE_APPLICATION_CREDENTIALS
 if os.environ.get("GOOGLE_CREDENTIALS_JSON"):
@@ -19,9 +26,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+@app.on_event("startup")
+def on_startup():
+    logger.debug("FastAPI app startup complete. ENV: %s", os.environ)
 
 # --- CardRank Endpoint ---
 class Card(BaseModel):
