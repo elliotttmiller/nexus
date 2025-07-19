@@ -1,4 +1,4 @@
-from services import generate_text_with_vertex_ai
+from services import generate_text_with_gemini
 import json
 
 def dynamic_next_smart_move(user_state: dict) -> dict:
@@ -43,7 +43,7 @@ def dynamic_next_smart_move(user_state: dict) -> dict:
       }}
     }}
     """
-    response_str = generate_text_with_vertex_ai(prompt, max_tokens=500)
+    response_str = generate_text_with_gemini(prompt)
     try:
         return json.loads(response_str)
     except (json.JSONDecodeError, TypeError):
