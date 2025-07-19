@@ -1,7 +1,7 @@
 // ENHANCED aiService.js
 
 const axios = require('axios');
-const AI_BASE_URL = process.env.AI_BASE_URL || 'http://localhost:8000'; // Your Python microservice
+const AI_BASE_URL = process.env.AI_BASE_URL || 'https://aiservice-production-acab.up.railway.app'; // Railway AI service
 
 /**
  * Retrieves the optimal card recommendation based on a rich context.
