@@ -1,19 +1,76 @@
+// ENHANCED aiService.js
+
 const axios = require('axios');
-const AI_BASE_URL = process.env.AI_BASE_URL || 'http://localhost:8000';
+const AI_BASE_URL = process.env.AI_BASE_URL || 'http://localhost:8000'; // Your Python microservice
 
-async function getCardRank(cards, merchant, category, user_features = {}) {
-  const res = await axios.post(`${AI_BASE_URL}/cardrank`, { cards, merchant, category, user_features });
-  return res.data.recommendation;
+/**
+ * Retrieves the optimal card recommendation based on a rich context.
+ * This function now sends a much more detailed user and transaction context.
+ *
+ * @param {Array} userCards - The user's full card portfolio from the database.
+ * @param {Object} transactionContext - Context about the current transaction.
+ * @param {string} transactionContext.merchantName - e.g., "Starbucks"
+ * @param {number} transactionContext.amount - e.g., 7.50
+ * @param {string} transactionContext.location - e.g., "New York, NY"
+ * @param {Object} userContext - The user's broader financial and goal-oriented state.
+ * @param {string} userContext.primaryGoal - e.g., "MAXIMIZE_CASHBACK", "PAY_DOWN_DEBT", "EARN_TRAVEL_POINTS"
+ * @param {Object} userContext.creditScoreInfo - { score: 750, utilization: 0.25 }
+ * @returns {Promise<Object>} A detailed recommendation object.
+ */
+async function getCardRank(userCards, transactionContext, userContext) {
+  try {
+    const res = await axios.post(`${AI_BASE_URL}/v2/cardrank`, {
+      user_cards: userCards,
+      transaction_context: transactionContext,
+      user_context: userContext
+    });
+    // The new endpoint will return a much richer object
+    return res.data;
+  } catch (error) {
+    console.error("CardRank AI Service Error:", error.response ? error.response.data : error.message);
+    // Return a sensible default on failure
+    return { recommended_card: userCards[0], reason: "Default card (AI service unavailable).", warning: "AI service connection failed." };
+  }
 }
 
-async function getInterestKillerSplit(balances, aprs, paymentAmount) {
-  const res = await axios.post(`${AI_BASE_URL}/interestkiller`, { balances, aprs, payment_amount: paymentAmount });
-  return res.data.split;
+/**
+ * Calculates the optimal, multi-objective payment split.
+ * It now considers not just APR, but also things like utilization impact and promotional periods.
+ *
+ * @param {Array} accounts - Array of account objects, each with balance, apr, creditLimit, promoAPR, promoEndDate.
+ * @param {number} paymentAmount - The total amount to be paid.
+ * @param {string} optimizationGoal - "MINIMIZE_INTEREST_COST", "MAXIMIZE_CREDIT_SCORE"
+ * @returns {Promise<Array>} The calculated payment split.
+ */
+async function getInterestKillerSplit(accounts, paymentAmount, optimizationGoal) {
+  try {
+    const res = await axios.post(`${AI_BASE_URL}/v2/interestkiller`, {
+      accounts,
+      payment_amount: paymentAmount,
+      optimization_goal: optimizationGoal,
+    });
+    return res.data.split;
+  } catch (error) {
+    console.error("InterestKiller AI Service Error:", error.response ? error.response.data : error.message);
+    return []; // Return empty array on failure
+  }
 }
 
-async function getNextSmartMove(user_state) {
-  const res = await axios.post(`${AI_BASE_URL}/nextsmartmove`, { user_state });
-  return res.data.move;
+/**
+ * Determines the single most impactful financial action a user can take right now.
+ * This is now powered by a full analysis of the user's state and a generative AI.
+ *
+ * @param {Object} userState - A comprehensive snapshot of the user's financial life (linked accounts, goals, recent transactions).
+ * @returns {Promise<Object>} An object containing the suggested move, its rationale, and required actions.
+ */
+async function getNextSmartMove(userState) {
+  try {
+    const res = await axios.post(`${AI_BASE_URL}/v2/nextsmartmove`, { user_state: userState });
+    return res.data.move;
+  } catch (error) {
+    console.error("NextSmartMove AI Service Error:", error.response ? error.response.data : error.message);
+    return { title: "Review Your Accounts", reason: "AI service is currently unavailable. Please review your finances manually." };
+  }
 }
 
 module.exports = { getCardRank, getInterestKillerSplit, getNextSmartMove }; 

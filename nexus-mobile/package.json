@@ -16,5 +16,9 @@
     "react-native-plaid-link-sdk": "^10.4.0",
     "@react-navigation/native": "^6.1.6",
     "@react-navigation/stack": "^6.3.16"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3",
+    "@types/react": "~19.0.10"
   }
 }
