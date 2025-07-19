@@ -94,4 +94,8 @@ def nextsmartmove_v2(req: V2NextSmartMoveRequest):
 
 @app.get("/", summary="Health Check")
 def read_root():
-    return {"status": "Nexus Cortex AI v2 is operational"} 
+    return {"status": "Nexus Cortex AI v2 is operational"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"} 
