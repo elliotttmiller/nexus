@@ -1,7 +1,8 @@
 // ENHANCED aiService.js
 
 const axios = require('axios');
-const AI_BASE_URL = process.env.AI_BASE_URL || 'https://aiservice-production-acab.up.railway.app'; // Railway AI service
+// Use the public URL for the AI service
+const AI_BASE_URL = process.env.AI_BASE_URL || 'https://aiservice-production-acab.up.railway.app'; // Public AI service URL
 
 /**
  * Retrieves the optimal card recommendation based on a rich context.

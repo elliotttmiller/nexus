@@ -33,6 +33,7 @@ def root():
         return {"status": "ok", "ai_model_status": "initialization_failed"}
 
 @app.get("/health", summary="Health Check (platform)")
+@app.get("/health/", include_in_schema=False)
 def health():
     if app.state.gemini_model:
         return {"status": "ok", "ai_model_status": "loaded"}
