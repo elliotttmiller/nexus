@@ -1,140 +1,80 @@
 import os
-import sys
+import json
+import vertexai
 import logging
-from fastapi import FastAPI, HTTPException, Body
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
-from cardrank import advanced_card_recommendation
-from interestkiller import advanced_payment_split
-from nextsmartmove import dynamic_next_smart_move
-from services import categorize_transactions_ai, detect_anomalies_ai
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List
+from google.oauth2 import service_account
+
+# --- 1. Load Environment ---
 load_dotenv()
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-logger = logging.getLogger("nexus-ai-debug")
+# --- 2. Lifespan Event Handler ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("INFO: FastAPI startup event triggered.")
+    credentials = None
+    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GOOGLE_PROJECT_ID")
+    gcp_creds_json_str = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    if gcp_creds_json_str:
+        print("INFO: Found GOOGLE_APPLICATION_CREDENTIALS_JSON.")
+        try:
+            credentials_info = json.loads(gcp_creds_json_str)
+            credentials = service_account.Credentials.from_service_account_info(credentials_info)
+        except Exception as e:
+            print(f"CRITICAL: Failed to parse credentials from JSON string: {e}")
+    else:
+        gcp_creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        if gcp_creds_path and os.path.exists(gcp_creds_path):
+            print(f"INFO: Found GOOGLE_APPLICATION_CREDENTIALS path: {gcp_creds_path}")
+            try:
+                credentials = service_account.Credentials.from_service_account_file(gcp_creds_path)
+            except Exception as e:
+                print(f"CRITICAL: Failed to load credentials from file path: {e}")
+    if project_id and credentials:
+        try:
+            vertexai.init(project=project_id, location="us-central1", credentials=credentials)
+            from services import initialize_model
+            app.state.gemini_model = initialize_model()
+            print("INFO: Vertex AI and Gemini model initialized successfully and attached to app state.")
+        except Exception as e:
+            print(f"CRITICAL: Failed to initialize Vertex AI during startup: {e}")
+            app.state.gemini_model = None
+    else:
+        print("WARNING: Vertex AI could not be initialized. AI features will be disabled.")
+        app.state.gemini_model = None
+    yield
+    print("INFO: FastAPI shutdown event triggered.")
 
-logger.debug("Starting Nexus AI FastAPI app...")
+app = FastAPI(title="Nexus Cortex AI", version="6.0.0-lifespan", lifespan=lifespan)
 
-# Railway/production: Write GOOGLE_CREDENTIALS_JSON to a file and set GOOGLE_APPLICATION_CREDENTIALS
-if os.environ.get("GOOGLE_CREDENTIALS_JSON"):
-    creds_path = "/tmp/google_creds.json"
-    with open(creds_path, "w") as f:
-        f.write(os.environ["GOOGLE_CREDENTIALS_JSON"])
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+from services import call_gemini_vertex
 
-app = FastAPI()
-
-# Add CORS middleware for development
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # For development, allow all. For production, restrict this.
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-@app.get("/")
-def root():
-    return {"status": "ok"}
-
-# --- Pydantic Models ---
-class CardModel(BaseModel):
-    id: str
-    name: str
-    balance: float
-    creditLimit: float
-    apr: float
-    utilization: float
-    rewards: Dict[str, float]
-    point_value_cents: float
-    signup_bonus_progress: Optional[Dict[str, float]] = None
-
-class CardRankRequest(BaseModel):
-    user_cards: List[CardModel]
-    transaction_context: Dict
-    user_context: Dict
-
-class AccountModel(BaseModel):
-    id: str
-    balance: float
-    apr: float
-    creditLimit: float
-    promoAPR: Optional[float] = None
-    promoEndDate: Optional[str] = None
-
-class InterestKillerRequest(BaseModel):
-    accounts: List[AccountModel]
-    payment_amount: float
-    optimization_goal: str
-
-class NextSmartMoveRequest(BaseModel):
-    user_state: Dict
-
-class TransactionModel(BaseModel):
+class Transaction(BaseModel):
     id: str
     amount: float
     merchant: str
     date: str
-    # Add other fields as needed
 
-# --- Endpoints ---
-@app.post("/v2/cardrank")
-def cardrank_v2(req: CardRankRequest):
-    try:
-        result = advanced_card_recommendation(
-            [card.model_dump() for card in req.user_cards],
-            req.transaction_context,
-            req.user_context
-        )
-        return result
-    except Exception as e:
-        logger.exception("Error in /v2/cardrank")
-        raise HTTPException(status_code=500, detail=str(e))
+class TransactionRequest(BaseModel):
+    transactions: List[Transaction]
 
-@app.post("/v2/interestkiller")
-def interestkiller_v2(req: InterestKillerRequest):
-    try:
-        split = advanced_payment_split(
-            [acc.model_dump() for acc in req.accounts],
-            req.payment_amount,
-            req.optimization_goal
-        )
-        return {"split": split}
-    except Exception as e:
-        logger.exception("Error in /v2/interestkiller")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/v2/nextsmartmove")
-def nextsmartmove_v2(req: NextSmartMoveRequest):
-    try:
-        move = dynamic_next_smart_move(req.user_state)
-        return {"move": move}
-    except Exception as e:
-        logger.exception("Error in /v2/nextsmartmove")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/", summary="Health Check")
+def root():
+    if app.state.gemini_model:
+        return {"status": "ok", "ai_model_status": "loaded"}
+    else:
+        return {"status": "ok", "ai_model_status": "not_loaded"}
 
 @app.post("/v2/categorize")
-def categorize_v2(transactions: List[TransactionModel] = Body(...)):
-    try:
-        tx_dicts = [tx.model_dump() for tx in transactions]
-        result = categorize_transactions_ai(tx_dicts)
-        return result
-    except Exception as e:
-        logger.exception("Error in /v2/categorize")
-        raise HTTPException(status_code=500, detail=str(e))
+def categorize_v2(req: TransactionRequest):
+    result = call_gemini_vertex(app.state.gemini_model, f"Categorize: {req.model_dump()}")
+    return {"result": result}
 
 @app.post("/v2/anomalies")
-def anomalies_v2(transactions: List[TransactionModel] = Body(...)):
-    try:
-        tx_dicts = [tx.model_dump() for tx in transactions]
-        result = detect_anomalies_ai(tx_dicts)
-        return result
-    except Exception as e:
-        logger.exception("Error in /v2/anomalies")
-        raise HTTPException(status_code=500, detail=str(e)) 
+def anomalies_v2(req: TransactionRequest):
+    result = call_gemini_vertex(app.state.gemini_model, f"Anomalies: {req.model_dump()}")
+    return {"result": result} 

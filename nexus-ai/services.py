@@ -1,30 +1,35 @@
 import os
+import json
+import tempfile
 import vertexai
+from google.oauth2 import service_account
 from vertexai.generative_models import GenerativeModel
+from typing import Dict, Any
+import logging
 
-GOOGLE_PROJECT_ID = os.environ.get("GOOGLE_PROJECT_ID")
-GOOGLE_LOCATION = os.environ.get("GOOGLE_LOCATION", "us-central1")
+logger = logging.getLogger("nexus-ai")
 
-gemini_model = None
-if GOOGLE_PROJECT_ID and os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+def initialize_model():
+    """Called once at startup by app.py to create the model object."""
     try:
-        vertexai.init(project=GOOGLE_PROJECT_ID, location=GOOGLE_LOCATION)
-        gemini_model = GenerativeModel("gemini-1.5-flash-001")
-        print(f"INFO: services.py - Vertex AI initialized successfully.")
+        return GenerativeModel("gemini-1.0-pro-002")
     except Exception as e:
-        print(f"CRITICAL: services.py - Failed to initialize Vertex AI: {e}")
-else:
-    print("WARNING: services.py - Vertex AI not initialized. Check GCP env vars.")
+        logger.critical(f"services.py - Failed to create Gemini model object: {e}")
+        return None
 
-def call_gemini_vertex(prompt: str) -> str:
-    if not gemini_model:
-        return "<answer>{\"error\": \"AI model is not initialized. Check server logs.\"}</answer>"
+def call_gemini_vertex(model: GenerativeModel, prompt: str) -> str:
+    """
+    Generates content using the provided, pre-initialized Gemini model.
+    """
+    if not model:
+        logger.warning("call_gemini_vertex called but model is not available.")
+        return "{\"error\": \"AI model is not available. Check server startup logs for initialization errors.\"}"
     try:
-        response = gemini_model.generate_content(prompt)
+        response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        print(f"ERROR: Gemini content generation via Vertex AI failed: {e}")
-        return f"<answer>{{\"error\": \"AI generation failed. Details: {e}\"}}</answer>"
+        logger.error(f"Gemini API call failed: {e}", exc_info=True)
+        return f"{{\"error\": \"AI generation failed. Please check server logs.\"}}"
 
 def categorize_transactions_ai(transactions: list) -> dict:
     prompt = f"You are an expert financial AI. Categorize these transactions: {transactions}"
