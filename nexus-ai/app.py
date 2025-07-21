@@ -48,6 +48,42 @@ class CashFlowPredictionRequest(BaseModel):
     upcoming_bills: List[Dict[str, Any]]
     transactions: List[Dict[str, Any]]
 
+class Card(BaseModel):
+    id: str
+    name: str
+    balance: float
+    creditLimit: float
+    apr: float
+    utilization: float
+    rewards: Dict[str, float]
+    point_value_cents: float
+    signup_bonus_progress: Optional[Dict[str, Any]] = None
+
+class TransactionContext(BaseModel):
+    merchantName: str
+    amount: float
+    category: Optional[str] = None
+    location: Optional[str] = None
+
+class UserContext(BaseModel):
+    primaryGoal: str
+
+class V2CardRankRequest(BaseModel):
+    user_cards: List[Card]
+    transaction_context: TransactionContext
+    user_context: UserContext
+
+class Account(BaseModel):
+    id: str
+    balance: float
+    apr: float
+    creditLimit: float
+
+class V2InterestKillerRequest(BaseModel):
+    accounts: List[Account]
+    payment_amount: float
+    optimization_goal: str
+
 @app.get("/", summary="Health Check")
 def root():
     return {"status": "ok", "ai_model_status": "loaded" if app.state.gemini_model else "initialization_failed"}
@@ -100,4 +136,33 @@ def cash_flow_prediction_v2(req: CashFlowPredictionRequest):
         return {"result": json.loads(result)}
     except Exception as e:
         logger.error(f"Error in /v2/cash-flow-prediction: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error") 
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.post('/v2/cardrank')
+def cardrank_v2(req: V2CardRankRequest):
+    try:
+        from cardrank import advanced_card_recommendation
+        result = advanced_card_recommendation(
+            app.state.gemini_model,
+            [c.model_dump() for c in req.user_cards],
+            req.transaction_context.model_dump(),
+            req.user_context.model_dump()
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error in /v2/cardrank: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post('/v2/interestkiller')
+def interestkiller_v2(req: V2InterestKillerRequest):
+    try:
+        from interestkiller import advanced_payment_split
+        split = advanced_payment_split(
+            [acc.model_dump() for acc in req.accounts],
+            req.payment_amount,
+            req.optimization_goal
+        )
+        return {"split": split}
+    except Exception as e:
+        logger.error(f"Error in /v2/interestkiller: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)) 
