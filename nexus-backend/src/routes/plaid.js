@@ -70,10 +70,11 @@ router.get('/accounts', async (req, res) => {
   try {
     const accounts = await Account.findAll({ where: { user_id: userId } });
     if (!accounts || accounts.length === 0) {
-      // Return mock data for development/testing
+      // Return mock data for development/testing, including a mock credit card
       return res.json([
         { id: 1, institution: 'Test Bank', balance: 1000, type: 'checking' },
-        { id: 2, institution: 'Mock Credit Union', balance: 2500, type: 'savings' }
+        { id: 2, institution: 'Mock Credit Union', balance: 2500, type: 'savings' },
+        { id: 'mock_credit_1', institution: 'Mock Bank', balance: 2500, type: 'credit', apr: 19.99, creditLimit: 8000 }
       ]);
     }
     let allAccounts = [];
@@ -140,6 +141,19 @@ router.get('/accounts', async (req, res) => {
       } catch (e) {
         console.warn('Error fetching accounts for access_token:', e.message);
       }
+    }
+    // If no liability accounts found, add a mock credit card for demo/testing
+    const hasLiability = allAccounts.some(acc => acc.type === 'credit' && acc.apr !== undefined && acc.creditLimit !== undefined);
+    if (!hasLiability) {
+      console.warn('No real liability accounts found, adding mock credit card for demo/testing.');
+      allAccounts.push({
+        id: 'mock_credit_1',
+        institution: 'Mock Bank',
+        balance: 2500,
+        type: 'credit',
+        apr: 19.99,
+        creditLimit: 8000
+      });
     }
     console.log('Returning accounts:', allAccounts);
     res.json(allAccounts);

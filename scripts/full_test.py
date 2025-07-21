@@ -1,7 +1,8 @@
 import requests
 import json
 
-BASE_URL = 'http://localhost:8080/api'
+API_BASE_URL = 'https://nexus-production-2e34.up.railway.app'  # Use Railway production backend
+BASE_URL = f'{API_BASE_URL}/api'
 EMAIL = 'elliotttmiller@hotmail.com'  # Use a real or test user
 PASSWORD = 'elliott'            # Use the correct password for the test user
 
@@ -74,8 +75,57 @@ def test_get_accounts():
     except Exception as e:
         print(f'Error testing /plaid/accounts:', str(e))
 
+def get_accounts():
+    print('\nGetting linked accounts for userId=1...')
+    headers = {'Content-Type': 'application/json'}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    try:
+        res = requests.get(f'{BASE_URL}/users/data-access?userId=1', headers=headers)
+        if res.status_code == 401 and refresh_token:
+            print('401 Unauthorized, attempting token refresh...')
+            refresh_jwt()
+            headers['Authorization'] = f'Bearer {token}'
+            res = requests.get(f'{BASE_URL}/users/data-access?userId=1', headers=headers)
+        print('Status:', res.status_code)
+        try:
+            data = res.json()
+            print('Accounts:', json.dumps(data, indent=2))
+            return data
+        except Exception:
+            print('Raw Response:', res.text)
+            return []
+    except Exception as e:
+        print(f'Error getting accounts:', str(e))
+        return []
+
+def unlink_all_accounts():
+    accounts = get_accounts()
+    if not accounts or not isinstance(accounts, list):
+        print('No accounts to unlink.')
+        return
+    for acc in accounts:
+        acc_id = acc.get('id')
+        if not acc_id:
+            continue
+        print(f'Unlinking account {acc_id}...')
+        headers = {'Content-Type': 'application/json'}
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
+        try:
+            res = requests.delete(f'{BASE_URL}/users/data-access/{acc_id}', headers=headers)
+            if res.status_code == 401 and refresh_token:
+                print('401 Unauthorized on delete, attempting token refresh...')
+                refresh_jwt()
+                headers['Authorization'] = f'Bearer {token}'
+                res = requests.delete(f'{BASE_URL}/users/data-access/{acc_id}', headers=headers)
+            print(f'Account {acc_id} unlink status:', res.status_code)
+        except Exception as e:
+            print(f'Error unlinking account {acc_id}:', str(e))
+
 if __name__ == '__main__':
     login()
+    unlink_all_accounts()
     test_get_accounts()
 
     test_endpoint('/cardrank/recommend', {
