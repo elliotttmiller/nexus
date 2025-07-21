@@ -1,0 +1,184 @@
+name: Plaid Sandbox User Flow Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'nexus-backend/**'
+      - 'nexus-ai/**'
+      - '.github/workflows/plaid-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'nexus-backend/**'
+      - 'nexus-ai/**'
+      - '.github/workflows/plaid-tests.yml'
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test against'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  plaid-integration-tests:
+    name: Plaid Integration Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('nexus-backend/tests/plaid/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+          
+    - name: Install dependencies
+      working-directory: nexus-backend/tests/plaid
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Set up environment variables
+      run: |
+        echo "PLAID_CLIENT_ID=${{ secrets.PLAID_CLIENT_ID }}" >> $GITHUB_ENV
+        echo "PLAID_SECRET=${{ secrets.PLAID_SECRET }}" >> $GITHUB_ENV
+        echo "BACKEND_URL=${{ secrets.BACKEND_URL }}" >> $GITHUB_ENV
+        echo "AI_URL=${{ secrets.AI_URL }}" >> $GITHUB_ENV
+        
+    - name: Run Plaid integration tests
+      working-directory: nexus-backend/tests/plaid
+      run: |
+        python run_plaid_tests.py \
+          --env ${{ github.event.inputs.environment || 'staging' }} \
+          --verbose \
+          --report test-report.txt \
+          --json test-results.json
+          
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: plaid-test-results-${{ matrix.python-version }}
+        path: |
+          nexus-backend/tests/plaid/test-report.txt
+          nexus-backend/tests/plaid/test-results.json
+        retention-days: 30
+        
+    - name: Comment on PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const reportPath = 'nexus-backend/tests/plaid/test-report.txt';
+          
+          if (fs.existsSync(reportPath)) {
+            const report = fs.readFileSync(reportPath, 'utf8');
+            const summary = report.split('\n').slice(0, 10).join('\n');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Plaid Integration Test Results\n\n\`\`\`\n${summary}\n\`\`\`\n\n[View full report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            });
+          }
+          
+    - name: Send notification on failure
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const resultsPath = 'nexus-backend/tests/plaid/test-results.json';
+          
+          if (fs.existsSync(resultsPath)) {
+            const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+            const failedTests = results.results.filter(r => !r.success);
+            
+            const message = `🚨 Plaid Integration Tests Failed\n\n` +
+              `Environment: ${{ github.event.inputs.environment || 'staging' }}\n` +
+              `Failed Tests: ${failedTests.length}/${results.tests_run}\n` +
+              `Success Rate: ${results.success_rate.toFixed(1)}%\n\n` +
+              `Failed Tests:\n${failedTests.map(t => `- ${t.test_name}: ${t.error}`).join('\n')}\n\n` +
+              `[View Details](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+              
+            console.log('Notification message:', message);
+          }
+
+  ai-feature-validation:
+    name: AI Feature Validation
+    runs-on: ubuntu-latest
+    needs: plaid-integration-tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.10
+        
+    - name: Install dependencies
+      working-directory: nexus-backend/tests/plaid
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Download test results
+      uses: actions/download-artifact@v3
+      with:
+        name: plaid-test-results-3.10
+        
+    - name: Validate AI features
+      working-directory: nexus-backend/tests/plaid
+      run: |
+        python -c "
+        import json
+        with open('test-results.json', 'r') as f:
+            results = json.load(f)
+        
+        ai_tests = [r for r in results['results'] if r.get('ai_features_tested')]
+        successful_ai_tests = [r for r in ai_tests if r['success']]
+        
+        print(f'AI Features Tested: {len(ai_tests)}')
+        print(f'AI Features Successful: {len(successful_ai_tests)}')
+        
+        if len(ai_tests) == 0:
+            print('❌ No AI features were tested!')
+            exit(1)
+        elif len(successful_ai_tests) < len(ai_tests):
+            print('⚠️ Some AI features failed')
+            exit(1)
+        else:
+            print('✅ All AI features working correctly')
+        "
+        
+    - name: Upload AI validation report
+      uses: actions/upload-artifact@v3
+      with:
+        name: ai-validation-report
+        path: nexus-backend/tests/plaid/ai-validation-report.txt
+        retention-days: 30 

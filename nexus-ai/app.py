@@ -1,13 +1,16 @@
 import os
 import sys
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 from cardrank import advanced_card_recommendation
 from interestkiller import advanced_payment_split
 from nextsmartmove import dynamic_next_smart_move
+from services import categorize_transactions_ai, detect_anomalies_ai
+from dotenv import load_dotenv
+load_dotenv()
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger("nexus-ai-debug")
@@ -73,6 +76,13 @@ class InterestKillerRequest(BaseModel):
 class NextSmartMoveRequest(BaseModel):
     user_state: Dict
 
+class TransactionModel(BaseModel):
+    id: str
+    amount: float
+    merchant: str
+    date: str
+    # Add other fields as needed
+
 # --- Endpoints ---
 @app.post("/v2/cardrank")
 def cardrank_v2(req: CardRankRequest):
@@ -107,4 +117,24 @@ def nextsmartmove_v2(req: NextSmartMoveRequest):
         return {"move": move}
     except Exception as e:
         logger.exception("Error in /v2/nextsmartmove")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v2/categorize")
+def categorize_v2(transactions: List[TransactionModel] = Body(...)):
+    try:
+        tx_dicts = [tx.model_dump() for tx in transactions]
+        result = categorize_transactions_ai(tx_dicts)
+        return result
+    except Exception as e:
+        logger.exception("Error in /v2/categorize")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v2/anomalies")
+def anomalies_v2(transactions: List[TransactionModel] = Body(...)):
+    try:
+        tx_dicts = [tx.model_dump() for tx in transactions]
+        result = detect_anomalies_ai(tx_dicts)
+        return result
+    except Exception as e:
+        logger.exception("Error in /v2/anomalies")
         raise HTTPException(status_code=500, detail=str(e)) 

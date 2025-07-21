@@ -22,12 +22,6 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "extra": {
-      "iosClientId": "477212096848-5ojo4p71qv85cc23q8lfjkr9q4nc6ljt.apps.googleusercontent.com",
-      "eas": {
-        "projectId": "38693fc2-8ecf-4cda-b4c6-45023a7720b7"
-      }
-    },
     "ios": {
       "bundleIdentifier": "app.nexus.ai",
       "infoPlist": {
@@ -36,6 +30,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "iosClientId": "477212096848-5ojo4p71qv85cc23q8lfjkr9q4nc6ljt.apps.googleusercontent.com",
+      "router": {},
+      "eas": {
+        "projectId": "0ac76880-39e8-4245-a75b-6ac4e9602414"
+      }
+    },
+    "owner": "timberpuppies"
   }
 }

@@ -5,3 +5,4 @@ scipy
 pydantic
 python-dotenv
 requests 
+google-cloud-aiplatform 
