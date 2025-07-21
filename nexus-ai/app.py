@@ -157,12 +157,12 @@ def cardrank_v2(req: V2CardRankRequest):
 def interestkiller_v2(req: V2InterestKillerRequest):
     try:
         from interestkiller import advanced_payment_split
-        split = advanced_payment_split(
+        result = advanced_payment_split(
             [acc.model_dump() for acc in req.accounts],
             req.payment_amount,
             req.optimization_goal
         )
-        return {"split": split}
+        return result
     except Exception as e:
         logger.error(f"Error in /v2/interestkiller: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) 

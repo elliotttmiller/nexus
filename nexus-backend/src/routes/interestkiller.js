@@ -43,4 +43,42 @@ router.post('/suggest', async (req, res) => {
   }
 });
 
+router.post('/pay', async (req, res) => {
+  const { userId, accounts, payment_amount, optimization_goal } = req.body;
+  if (!userId || !accounts || !Array.isArray(accounts) || accounts.length === 0) {
+    return res.status(400).json({ error: 'Please select at least one card to pay.' });
+  }
+  if (!payment_amount || payment_amount <= 0) {
+    return res.status(400).json({ error: 'Please enter a valid payment amount.' });
+  }
+  try {
+    const result = await getInterestKillerSplit(accounts, payment_amount, optimization_goal || 'MINIMIZE_INTEREST_COST');
+    // Optionally log the payment attempt here
+    res.json(result);
+  } catch (error) {
+    console.error('Error in /pay:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/pay/execute', async (req, res) => {
+  const { userId, funding_account_id, split } = req.body;
+  if (!userId || !funding_account_id || !split || !Array.isArray(split) || split.length === 0) {
+    return res.status(400).json({ error: 'Missing required payment info.' });
+  }
+  // Simulate Plaid payment initiation for each payment in the split
+  const results = [];
+  for (const payment of split) {
+    // In production, call Plaid's payment initiation API here
+    results.push({
+      card_id: payment.card_id,
+      amount: payment.amount,
+      status: 'success',
+      message: 'Sandbox payment simulated'
+    });
+  }
+  // Optionally log/store the payment attempt here
+  res.json({ payments: results });
+});
+
 module.exports = router; 
