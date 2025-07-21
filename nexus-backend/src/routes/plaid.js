@@ -88,6 +88,9 @@ router.get('/accounts', async (req, res) => {
             return { data: { liabilities: {} } };
           })
         ]);
+        // Debug logging for Plaid responses
+        console.log('Plaid accountsResp:', JSON.stringify(accountsResp.data, null, 2));
+        console.log('Plaid liabilitiesResp:', JSON.stringify(liabilitiesResp.data, null, 2));
         const liabilities = liabilitiesResp.data.liabilities || {};
         const creditLiabilities = (liabilities.credit || []);
         // Map Plaid accounts to app format
