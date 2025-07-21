@@ -7,6 +7,7 @@ const plaidRoutes = require('./routes/plaid');
 const cardRankRoutes = require('./routes/cardrank');
 const interestKillerRoutes = require('./routes/interestkiller');
 const testRoutes = require('./routes/test');
+const insightsRoutes = require('./routes/insights');
 const authenticateToken = require('./middleware/authenticateToken');
 const Sentry = require('./utils/sentry');
 
@@ -47,6 +48,7 @@ app.use('/api/plaid', authenticateToken, plaidRoutes);
 app.use('/api/cardrank', authenticateToken, cardRankRoutes);
 app.use('/api/interestkiller', authenticateToken, interestKillerRoutes);
 app.use('/api/test', testRoutes);
+app.use('/api/insights', insightsRoutes);
 
 app.get('/', (req, res) => res.send('Nexus API Running'));
 
