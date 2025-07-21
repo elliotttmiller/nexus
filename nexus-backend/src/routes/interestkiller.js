@@ -102,15 +102,18 @@ router.post('/pay/ai-recommendation', async (req, res) => {
     return res.status(400).json({ error: 'No credit cards found for this user.' });
   }
   try {
+    console.log('AI Recommendation payload:', JSON.stringify({ cards, payment_amount }, null, 2));
     const [minInterest, maxScore] = await Promise.all([
       getInterestKillerSplit(cards, payment_amount, 'MINIMIZE_INTEREST_COST'),
       getInterestKillerSplit(cards, payment_amount, 'MAXIMIZE_CREDIT_SCORE')
     ]);
+    console.log('AI Recommendation response:', JSON.stringify({ minimize_interest: minInterest, maximize_score: maxScore }, null, 2));
     res.json({
       minimize_interest: minInterest,
       maximize_score: maxScore
     });
   } catch (error) {
+    console.error('AI Recommendation error:', error);
     res.status(500).json({ error: error.message });
   }
 });
