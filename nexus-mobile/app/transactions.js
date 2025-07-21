@@ -23,7 +23,6 @@ export default function TransactionsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container} style={{ backgroundColor: BACKGROUND }}>
       <Text style={styles.title}>Recent Transactions</Text>
-      <PrimaryButton title="Pay Credit Cards" onPress={() => router.push('/pay')} />
       {loading ? (
         <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 24 }} />
       ) : (

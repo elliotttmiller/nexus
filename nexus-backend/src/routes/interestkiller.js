@@ -10,6 +10,28 @@ function calcUtilization(balance, creditLimit) {
   return parseFloat(balance) / parseFloat(creditLimit);
 }
 
+// Helper to calculate interest savings
+function calculateInterestSavings(split, cards) {
+  let totalSaved = 0;
+  split.forEach(s => {
+    const card = cards.find(c => c.id === s.card_id || c.id === s.id);
+    if (card && card.apr) {
+      // Simple monthly interest saved: (payment * apr) / 12 / 100
+      totalSaved += (s.amount * card.apr) / 12 / 100;
+    }
+  });
+  return totalSaved.toFixed(2);
+}
+// Helper to calculate utilization improvement
+function calculateUtilizationImprovement(split, cards) {
+  const totalLimit = cards.reduce((sum, c) => sum + (c.creditLimit || 0), 0);
+  const totalBalance = cards.reduce((sum, c) => sum + (c.balance || 0), 0);
+  const totalPayment = split.reduce((sum, s) => sum + s.amount, 0);
+  const before = totalLimit > 0 ? totalBalance / totalLimit : 0;
+  const after = totalLimit > 0 ? (totalBalance - totalPayment) / totalLimit : 0;
+  return { before: (before * 100).toFixed(1), after: (after * 100).toFixed(1) };
+}
+
 router.post('/suggest', async (req, res) => {
   const { userId, amount, optimizationGoal } = req.body;
   if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required' });
@@ -111,6 +133,10 @@ router.post('/pay/ai-recommendation', async (req, res) => {
     const wrapResult = (res) => Array.isArray(res) ? { split: res, explanation: '' } : res;
     const minInterestObj = wrapResult(minInterest);
     const maxScoreObj = wrapResult(maxScore);
+    // Add explanations
+    minInterestObj.explanation = `By following this split, you will save approximately $${calculateInterestSavings(minInterestObj.split, cards)} in interest this month.`;
+    const util = calculateUtilizationImprovement(maxScoreObj.split, cards);
+    maxScoreObj.explanation = `Your credit utilization will drop from ${util.before}% to ${util.after}%, which can help improve your credit score.`;
     console.log('AI Recommendation response:', JSON.stringify({ minimize_interest: minInterestObj, maximize_score: maxScoreObj }, null, 2));
     res.json({
       minimize_interest: minInterestObj,

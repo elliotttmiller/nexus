@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { PlaidLink } from 'react-native-plaid-link-sdk';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import PrimaryButton from '../src/components/PrimaryButton';
 import { BACKGROUND, TEXT, PRIMARY, SUBTLE, BORDER } from '../src/constants/colors';
+import { AntDesign, Feather } from '@expo/vector-icons';
 
 export default function AccountsScreen() {
   const [accounts, setAccounts] = useState([]);
@@ -63,9 +64,17 @@ export default function AccountsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Accounts</Text>
-      <PrimaryButton title="Refresh Accounts" onPress={fetchAccounts} disabled={loading} />
-      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
+      {/* Top bar with back and refresh icons */}
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => router.push('/dashboard')} style={styles.iconButton}>
+          <AntDesign name="arrowleft" size={24} color={PRIMARY} />
+        </TouchableOpacity>
+        <Text style={styles.title}>Accounts</Text>
+        <TouchableOpacity onPress={fetchAccounts} style={styles.iconButton}>
+          <Feather name="refresh-cw" size={22} color={PRIMARY} />
+        </TouchableOpacity>
+      </View>
+      <PrimaryButton title="Pay Credit Cards" onPress={() => router.push('/pay')} style={{ marginBottom: 12 }} />
       <FlatList
         data={accounts}
         keyExtractor={item => item.id.toString()}
@@ -112,7 +121,9 @@ export default function AccountsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: BACKGROUND },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: TEXT },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, justifyContent: 'space-between' },
+  iconButton: { padding: 4 },
+  title: { fontSize: 24, fontWeight: 'bold', color: TEXT, flex: 1, textAlign: 'center' },
   accountItem: { backgroundColor: SUBTLE, padding: 12, borderRadius: 8, marginBottom: 12 },
   accountName: { fontWeight: 'bold', fontSize: 16, color: TEXT },
   text: { color: TEXT },
