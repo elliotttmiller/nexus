@@ -70,11 +70,14 @@ router.get('/accounts', async (req, res) => {
   try {
     const accounts = await Account.findAll({ where: { user_id: userId } });
     if (!accounts || accounts.length === 0) {
-      // Return mock data for development/testing, including a mock credit card
+      // Return mock data for development/testing, including four mock credit cards
       return res.json([
         { id: 1, institution: 'Test Bank', balance: 1000, type: 'checking' },
         { id: 2, institution: 'Mock Credit Union', balance: 2500, type: 'savings' },
-        { id: 'mock_credit_1', institution: 'Mock Bank', balance: 2500, type: 'credit', apr: 19.99, creditLimit: 8000 }
+        { id: 'mock_credit_1', institution: 'Mock Bank', balance: 2500, type: 'credit', apr: 19.99, creditLimit: 8000 },
+        { id: 'mock_credit_2', institution: 'Mock Bank', balance: 1500, type: 'credit', apr: 24.99, creditLimit: 5000 },
+        { id: 'mock_credit_3', institution: 'Mock Bank', balance: 500, type: 'credit', apr: 16.49, creditLimit: 3000 },
+        { id: 'mock_credit_4', institution: 'Mock Bank', balance: 4200, type: 'credit', apr: 29.99, creditLimit: 12000 }
       ]);
     }
     let allAccounts = [];
