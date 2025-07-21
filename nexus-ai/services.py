@@ -12,7 +12,7 @@ def initialize_model():
         logger.critical("GOOGLE_API_KEY environment variable not found.")
         return None
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-pro")  # or "gemini-1.5-pro-latest"
+    model = genai.GenerativeModel("gemini-1.5-pro-latest")
     logger.info("Google AI Gemini model initialized successfully.")
     return model
 
