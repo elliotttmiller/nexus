@@ -244,8 +244,8 @@ export default function PayScreen() {
                         <Text style={styles.resultText}>${s.amount}</Text>
                       </View>
                     ))}
-                    {aiRecommendations.minimize_interest?.explanation && aiRecommendations.minimize_interest.explanation.trim() !== '' && (
-                      <Text style={styles.resultExplanation}>{aiRecommendations.minimize_interest.explanation}</Text>
+                    {aiRecommendations.minimize_interest?.explanation && (
+                      <Text style={styles.explanationHighlight}>{aiRecommendations.minimize_interest.explanation}</Text>
                     )}
                     <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.minimize_interest, 'MINIMIZE_INTEREST_COST')}>
                       <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
@@ -260,8 +260,8 @@ export default function PayScreen() {
                         <Text style={styles.resultText}>${s.amount}</Text>
                       </View>
                     ))}
-                    {aiRecommendations.maximize_score?.explanation && aiRecommendations.maximize_score.explanation.trim() !== '' && (
-                      <Text style={styles.resultExplanation}>{aiRecommendations.maximize_score.explanation}</Text>
+                    {aiRecommendations.maximize_score?.explanation && (
+                      <Text style={styles.explanationHighlight}>{aiRecommendations.maximize_score.explanation}</Text>
                     )}
                     <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.maximize_score, 'MAXIMIZE_CREDIT_SCORE')}>
                       <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
@@ -335,4 +335,12 @@ const styles = StyleSheet.create({
   },
   closeButtonText: { color: TEXT, fontWeight: 'bold', fontSize: 16 },
   splitRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  explanationHighlight: {
+    marginTop: 10,
+    marginBottom: 10,
+    color: PRIMARY,
+    fontSize: 15,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
 }); 
