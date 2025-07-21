@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, StyleSheet, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { PlaidLink } from 'react-native-plaid-link-sdk';
+import { API_BASE_URL } from '../constants/api';
 
 export default function AccountsScreen({ navigation }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [linkToken, setLinkToken] = useState(null);
   const [linkLoading, setLinkLoading] = useState(false);
-
-  const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
 
   const fetchAccounts = async () => {
     setLoading(true);

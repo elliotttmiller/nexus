@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 from cardrank import advanced_card_recommendation
@@ -21,6 +22,15 @@ if os.environ.get("GOOGLE_CREDENTIALS_JSON"):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
 
 app = FastAPI()
+
+# Add CORS middleware for development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development, allow all. For production, restrict this.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 def health():
@@ -68,7 +78,7 @@ class NextSmartMoveRequest(BaseModel):
 def cardrank_v2(req: CardRankRequest):
     try:
         result = advanced_card_recommendation(
-            [card.dict() for card in req.user_cards],
+            [card.model_dump() for card in req.user_cards],
             req.transaction_context,
             req.user_context
         )
@@ -81,7 +91,7 @@ def cardrank_v2(req: CardRankRequest):
 def interestkiller_v2(req: InterestKillerRequest):
     try:
         split = advanced_payment_split(
-            [acc.dict() for acc in req.accounts],
+            [acc.model_dump() for acc in req.accounts],
             req.payment_amount,
             req.optimization_goal
         )

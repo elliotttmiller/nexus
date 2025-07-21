@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { API_BASE_URL } from '../constants/api';
 
 export default function CardRankScreen({ navigation }) {
   const [merchant, setMerchant] = useState('');
   const [category, setCategory] = useState('');
   const [recommendation, setRecommendation] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
 
   const handleRecommend = async () => {
     setLoading(true);

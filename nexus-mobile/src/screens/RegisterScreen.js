@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
-
-const API_BASE_URL = 'https://nexus-production-2e34.up.railway.app';
+import { API_BASE_URL } from '../constants/api';
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
