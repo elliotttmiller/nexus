@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
+import PrimaryButton from '../src/components/PrimaryButton';
+import { BACKGROUND, TEXT, PRIMARY, BORDER } from '../src/constants/colors';
 
 export default function ProfileScreen() {
   const [email, setEmail] = useState('');
@@ -71,14 +73,14 @@ export default function ProfileScreen() {
         autoCapitalize="none"
         keyboardType="email-address"
       />
-      <Button title={loading ? 'Saving...' : 'Save'} onPress={updateProfile} disabled={loading} />
-      <Button title="Back to Settings" onPress={() => router.push('/settings')} />
+      <PrimaryButton title={loading ? 'Saving...' : 'Save'} onPress={updateProfile} disabled={loading} />
+      <PrimaryButton title="Back to Settings" onPress={() => router.push('/settings')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 24 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, width: '100%', marginBottom: 16 },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: BACKGROUND },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 24, color: TEXT },
+  input: { borderWidth: 1, borderColor: BORDER, borderRadius: 8, padding: 12, width: '100%', marginBottom: 16, backgroundColor: '#fff', color: TEXT },
 });

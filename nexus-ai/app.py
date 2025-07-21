@@ -7,14 +7,14 @@ from typing import List
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("INFO: FastAPI startup event triggered.")
-    from services import initialize_model
+    from .services import initialize_model
     app.state.gemini_model = initialize_model()
     yield
     print("INFO: FastAPI shutdown event triggered.")
 
 app = FastAPI(title="Nexus Cortex AI", version="7.0.0-final", lifespan=lifespan)
 
-from services import call_gemini
+from .services import call_gemini
 
 class Transaction(BaseModel):
     id: str

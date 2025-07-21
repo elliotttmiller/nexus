@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { PlaidLink } from 'react-native-plaid-link-sdk';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
+import PrimaryButton from '../src/components/PrimaryButton';
+import { BACKGROUND, TEXT, PRIMARY, SUBTLE, BORDER } from '../src/constants/colors';
 
 export default function AccountsScreen() {
   const [accounts, setAccounts] = useState([]);
@@ -43,7 +45,6 @@ export default function AccountsScreen() {
         return;
       }
       const data = await res.json();
-      console.log('Link token response:', data);
       if (res.ok && data.link_token) {
         setLinkToken(data.link_token);
       } else {
@@ -63,19 +64,19 @@ export default function AccountsScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Accounts</Text>
-      <Button title="Refresh Accounts" onPress={fetchAccounts} disabled={loading} />
-      <Button title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
+      <PrimaryButton title="Refresh Accounts" onPress={fetchAccounts} disabled={loading} />
+      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
       <FlatList
         data={accounts}
         keyExtractor={item => item.id.toString()}
         renderItem={({ item }) => (
           <View style={styles.accountItem}>
             <Text style={styles.accountName}>{item.institution || 'Account'}</Text>
-            <Text>Balance: ${item.balance}</Text>
-            <Text>Type: {item.type}</Text>
+            <Text style={styles.text}>Balance: ${item.balance}</Text>
+            <Text style={styles.text}>Type: {item.type}</Text>
           </View>
         )}
-        ListEmptyComponent={<Text>No linked accounts.</Text>}
+        ListEmptyComponent={<Text style={styles.text}>No linked accounts.</Text>}
       />
       {linkToken && (
         <PlaidLink
@@ -87,7 +88,6 @@ export default function AccountsScreen() {
                 body: JSON.stringify({ public_token: publicToken, userId: 1, institution: metadata.institution?.name })
               });
               const data = await res.json();
-              console.log('Exchange public_token response:', data);
               if (res.ok) {
                 Alert.alert('Success', 'Account linked!');
                 fetchAccounts();
@@ -100,19 +100,20 @@ export default function AccountsScreen() {
           }}
           onExit={() => setLinkToken(null)}
         >
-          <Text style={{ color: 'white', backgroundColor: '#007AFF', padding: 12, borderRadius: 8, textAlign: 'center', marginBottom: 8 }}>
+          <Text style={{ color: '#fff', backgroundColor: PRIMARY, padding: 12, borderRadius: 8, textAlign: 'center', marginBottom: 8 }}>
             Open Plaid Link
           </Text>
         </PlaidLink>
       )}
-      <Button title={linkLoading ? 'Getting Link Token...' : 'Link New Account'} onPress={fetchLinkToken} disabled={linkLoading} />
+      <PrimaryButton title={linkLoading ? 'Getting Link Token...' : 'Link New Account'} onPress={fetchLinkToken} disabled={linkLoading} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
-  accountItem: { backgroundColor: '#f0f0f0', padding: 12, borderRadius: 8, marginBottom: 12 },
-  accountName: { fontWeight: 'bold', fontSize: 16 },
+  container: { flex: 1, padding: 16, backgroundColor: BACKGROUND },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: TEXT },
+  accountItem: { backgroundColor: SUBTLE, padding: 12, borderRadius: 8, marginBottom: 12 },
+  accountName: { fontWeight: 'bold', fontSize: 16, color: TEXT },
+  text: { color: TEXT },
 }); 

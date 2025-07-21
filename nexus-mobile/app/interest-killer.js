@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
+import PrimaryButton from '../src/components/PrimaryButton';
+import { BACKGROUND, TEXT, PRIMARY, BORDER } from '../src/constants/colors';
 
 export default function InterestKillerScreen() {
   const [amount, setAmount] = useState('');
@@ -47,18 +49,19 @@ export default function InterestKillerScreen() {
         value={amount}
         onChangeText={setAmount}
         keyboardType="numeric"
+        placeholderTextColor="#888"
       />
-      <Button title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} />
-      {loading && <ActivityIndicator size="large" color="#007AFF" />}
+      <PrimaryButton title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} />
+      {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {suggestion ? <Text style={styles.suggestion}>{suggestion}</Text> : null}
-      <Button title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
+      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, width: '100%', marginBottom: 16 },
-  suggestion: { marginTop: 16, fontSize: 18, color: '#007AFF' },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: BACKGROUND },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, color: TEXT },
+  input: { borderWidth: 1, borderColor: BORDER, borderRadius: 8, padding: 12, width: '100%', marginBottom: 16, backgroundColor: '#fff', color: TEXT },
+  suggestion: { marginTop: 16, fontSize: 18, color: PRIMARY },
 }); 

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
+import PrimaryButton from '../src/components/PrimaryButton';
+import { BACKGROUND, TEXT, PRIMARY, SUBTLE } from '../src/constants/colors';
 
 export default function DataAccessScreen() {
   const [accounts, setAccounts] = useState([]);
@@ -65,19 +67,20 @@ export default function DataAccessScreen() {
         renderItem={({ item }) => (
           <View style={styles.accountItem}>
             <Text style={styles.accountName}>{item.institution || 'Account'}</Text>
-            <Button title="Revoke Access" onPress={() => revokeAccess(item.id)} />
+            <PrimaryButton title="Revoke Access" onPress={() => revokeAccess(item.id)} />
           </View>
         )}
-        ListEmptyComponent={<Text>No linked accounts.</Text>}
+        ListEmptyComponent={<Text style={styles.text}>No linked accounts.</Text>}
       />
-      <Button title="Back to Settings" onPress={() => router.push('/settings')} />
+      <PrimaryButton title="Back to Settings" onPress={() => router.push('/settings')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
-  accountItem: { backgroundColor: '#f0f0f0', padding: 12, borderRadius: 8, marginBottom: 12 },
-  accountName: { fontWeight: 'bold', fontSize: 16 },
+  container: { flex: 1, padding: 16, backgroundColor: BACKGROUND },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: TEXT },
+  accountItem: { backgroundColor: SUBTLE, padding: 12, borderRadius: 8, marginBottom: 12 },
+  accountName: { fontWeight: 'bold', fontSize: 16, color: TEXT },
+  text: { color: TEXT },
 });

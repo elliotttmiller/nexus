@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { saveToken, saveRefreshToken, removeToken, removeRefreshToken } from '../src/constants/token';
+import PrimaryButton from '../src/components/PrimaryButton';
+import { BACKGROUND, TEXT, PRIMARY, BORDER } from '../src/constants/colors';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -60,14 +62,14 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         secureTextEntry
       />
-      <Button title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} />
-      <Button title="Register" onPress={() => router.replace('/register')} />
+      <PrimaryButton title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} />
+      <PrimaryButton title="Register" onPress={() => router.replace('/register')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 24 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, width: '100%', marginBottom: 16 },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: BACKGROUND },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 24, color: TEXT },
+  input: { borderWidth: 1, borderColor: BORDER, borderRadius: 8, padding: 12, width: '100%', marginBottom: 16, backgroundColor: '#fff', color: TEXT },
 }); 

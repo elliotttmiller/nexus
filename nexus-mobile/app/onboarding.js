@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import PrimaryButton from '../src/components/PrimaryButton';
+import { BACKGROUND, TEXT } from '../src/constants/colors';
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -8,13 +10,13 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to Nexus</Text>
       <Text style={styles.subtitle}>Your Credit Autopilot</Text>
-      <Button title="Get Started" onPress={() => router.replace('/dashboard')} />
+      <PrimaryButton title="Get Started" onPress={() => router.replace('/dashboard')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 16 },
-  subtitle: { fontSize: 18, marginBottom: 32 },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: BACKGROUND },
+  title: { fontSize: 32, fontWeight: 'bold', marginBottom: 16, color: TEXT },
+  subtitle: { fontSize: 18, marginBottom: 32, color: TEXT },
 }); 

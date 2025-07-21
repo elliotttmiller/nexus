@@ -1,6 +1,9 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet, ProgressBarAndroid } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import PrimaryButton from '../src/components/PrimaryButton';
+import { BACKGROUND, TEXT, PRIMARY, SUBTLE } from '../src/constants/colors';
+import { ProgressBarAndroid } from 'react-native';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -15,32 +18,33 @@ export default function DashboardScreen() {
       <Text style={styles.title}>Dashboard</Text>
       <View style={styles.widget}>
         <Text style={styles.widgetTitle}>Autopilot Health Score</Text>
-        <ProgressBarAndroid styleAttr="Horizontal" indeterminate={false} progress={autopilotHealth / 100} color="#4caf50" />
+        <ProgressBarAndroid styleAttr="Horizontal" indeterminate={false} progress={autopilotHealth / 100} color={PRIMARY} />
         <Text style={styles.healthScore}>{autopilotHealth} / 100</Text>
       </View>
       <View style={styles.widget}>
         <Text style={styles.widgetTitle}>Rewards Snapshot</Text>
-        <Text>Earned: ${rewardsEarned} this month</Text>
-        <Text>Missed: ${rewardsMissed} potential</Text>
+        <Text style={styles.text}>Earned: ${rewardsEarned} this month</Text>
+        <Text style={styles.text}>Missed: ${rewardsMissed} potential</Text>
       </View>
       <View style={styles.widget}>
         <Text style={styles.widgetTitle}>Debt Freedom</Text>
-        <Text>{debtFreedomMonths} months to debt freedom</Text>
+        <Text style={styles.text}>{debtFreedomMonths} months to debt freedom</Text>
       </View>
-      <Button title="Go to CardRank" onPress={() => router.push('/card-rank')} />
-      <Button title="Go to InterestKiller" onPress={() => router.push('/interest-killer')} />
-      <Button title="Go to Accounts" onPress={() => router.push('/accounts')} />
-      <Button title="Go to Transactions" onPress={() => router.push('/transactions')} />
-      <Button title="Go to Profile" onPress={() => router.push('/profile')} />
-      <Button title="Go to Settings" onPress={() => router.push('/settings')} />
+      <PrimaryButton title="Go to CardRank" onPress={() => router.push('/card-rank')} />
+      <PrimaryButton title="Go to InterestKiller" onPress={() => router.push('/interest-killer')} />
+      <PrimaryButton title="Go to Accounts" onPress={() => router.push('/accounts')} />
+      <PrimaryButton title="Go to Transactions" onPress={() => router.push('/transactions')} />
+      <PrimaryButton title="Go to Profile" onPress={() => router.push('/profile')} />
+      <PrimaryButton title="Go to Settings" onPress={() => router.push('/settings')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
-  widget: { backgroundColor: '#f0f0f0', padding: 16, borderRadius: 8, marginBottom: 16 },
-  widgetTitle: { fontWeight: 'bold', fontSize: 18, marginBottom: 8 },
-  healthScore: { fontSize: 16, color: '#4caf50', marginTop: 4 },
+  container: { flex: 1, padding: 16, backgroundColor: BACKGROUND },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: TEXT },
+  widget: { backgroundColor: SUBTLE, padding: 16, borderRadius: 12, marginBottom: 16 },
+  widgetTitle: { fontWeight: 'bold', fontSize: 18, marginBottom: 8, color: TEXT },
+  healthScore: { fontSize: 16, color: PRIMARY, marginTop: 4 },
+  text: { color: TEXT },
 }); 

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
+import PrimaryButton from '../src/components/PrimaryButton';
+import { BACKGROUND, TEXT, PRIMARY, SUBTLE } from '../src/constants/colors';
 
 export default function TransactionsScreen() {
   const [transactions, setTransactions] = useState([]);
@@ -34,28 +36,29 @@ export default function TransactionsScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Recent Transactions</Text>
-      <Button title={loading ? 'Refreshing...' : 'Refresh'} onPress={fetchTransactions} disabled={loading} />
+      <PrimaryButton title={loading ? 'Refreshing...' : 'Refresh'} onPress={fetchTransactions} disabled={loading} />
       <FlatList
         data={transactions}
         keyExtractor={item => item.transaction_id}
         renderItem={({ item }) => (
           <View style={styles.txItem}>
             <Text style={styles.txName}>{item.name}</Text>
-            <Text>Amount: ${item.amount}</Text>
-            <Text>Category: {item.category?.join(', ')}</Text>
-            <Text>Date: {item.date}</Text>
+            <Text style={styles.text}>Amount: ${item.amount}</Text>
+            <Text style={styles.text}>Category: {item.category?.join(', ')}</Text>
+            <Text style={styles.text}>Date: {item.date}</Text>
           </View>
         )}
-        ListEmptyComponent={<Text>No transactions found.</Text>}
+        ListEmptyComponent={<Text style={styles.text}>No transactions found.</Text>}
       />
-      <Button title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
+      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
-  txItem: { backgroundColor: '#f0f0f0', padding: 12, borderRadius: 8, marginBottom: 12 },
-  txName: { fontWeight: 'bold', fontSize: 16 },
+  container: { flex: 1, padding: 16, backgroundColor: BACKGROUND },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: TEXT },
+  txItem: { backgroundColor: SUBTLE, padding: 12, borderRadius: 8, marginBottom: 12 },
+  txName: { fontWeight: 'bold', fontSize: 16, color: TEXT },
+  text: { color: TEXT },
 });
