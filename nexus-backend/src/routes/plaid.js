@@ -79,24 +79,61 @@ router.get('/accounts', async (req, res) => {
     let allAccounts = [];
     for (const acc of accounts) {
       try {
-        const response = await plaidClient.accountsGet({ access_token: acc.plaid_access_token });
+        // Fetch accounts and liabilities in parallel
+        const [accountsResp, liabilitiesResp] = await Promise.all([
+          plaidClient.accountsGet({ access_token: acc.plaid_access_token }),
+          plaidClient.liabilitiesGet({ access_token: acc.plaid_access_token }).catch(e => {
+            // Liabilities may not exist for all items
+            console.warn('No liabilities for access_token:', e.message);
+            return { data: { liabilities: {} } };
+          })
+        ]);
+        const liabilities = liabilitiesResp.data.liabilities || {};
+        const creditLiabilities = (liabilities.credit || []);
         // Map Plaid accounts to app format
-        const mapped = await Promise.all(response.data.accounts.map(async (plaidAcc) => {
+        const mapped = await Promise.all(accountsResp.data.accounts.map(async (plaidAcc) => {
           let apr = undefined;
+          let creditLimit = plaidAcc.credit_limit || plaidAcc.balances.limit || undefined;
+          let include = true;
           if (plaidAcc.type === 'credit') {
-            // Try to find a matching card for this account and get its APR
-            const card = await Card.findOne({ where: { account_id: acc.id } });
-            apr = card ? parseFloat(card.apr) : undefined;
+            // Find matching liability by account_id
+            const liability = creditLiabilities.find(l => l.account_id === plaidAcc.account_id);
+            if (liability && Array.isArray(liability.aprs) && liability.aprs.length > 0) {
+              // Use the first APR (usually purchase_apr)
+              apr = parseFloat(liability.aprs[0].apr_percentage);
+            }
+            // Try to find a matching card for this account and update its APR/creditLimit if needed
+            let card = await Card.findOne({ where: { account_id: acc.id } });
+            if (!card && plaidAcc.mask) {
+              card = await Card.findOne({
+                where: {
+                  account_id: acc.id,
+                  card_name: { [require('sequelize').Op.like]: `%${plaidAcc.mask}` }
+                }
+              });
+            }
+            if (card) {
+              // Update card APR and creditLimit if changed
+              let updateFields = {};
+              if (apr !== undefined && card.apr !== apr) updateFields.apr = apr;
+              if (creditLimit !== undefined && card.creditLimit !== creditLimit) updateFields.creditLimit = creditLimit;
+              if (Object.keys(updateFields).length > 0) await card.update(updateFields);
+            } else {
+              include = false;
+              console.warn(`No card record found for account_id ${acc.id} and Plaid account ${plaidAcc.account_id}, skipping credit card.`);
+            }
           }
+          if (!include) return null;
           return {
             id: plaidAcc.account_id,
             institution: acc.institution || 'Unknown',
             balance: plaidAcc.balances.current ?? plaidAcc.balances.available ?? 0,
             type: plaidAcc.type,
             apr,
+            creditLimit,
           };
         }));
-        allAccounts = allAccounts.concat(mapped);
+        allAccounts = allAccounts.concat(mapped.filter(Boolean));
       } catch (e) {
         console.warn('Error fetching accounts for access_token:', e.message);
       }

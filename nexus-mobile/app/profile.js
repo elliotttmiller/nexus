@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
@@ -63,19 +63,25 @@ export default function ProfileScreen() {
   }, []);
 
   return (
-    <ScrollView contentContainerStyle={styles.container} style={{ backgroundColor: BACKGROUND }}>
-      <Text style={styles.title}>Profile</Text>
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <PrimaryButton title={loading ? 'Saving...' : 'Save'} onPress={updateProfile} disabled={loading} />
-      <PrimaryButton title="Back to Settings" onPress={() => router.push('/settings')} />
-    </ScrollView>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={80}
+    >
+      <ScrollView contentContainerStyle={styles.container} style={{ backgroundColor: BACKGROUND }}>
+        <Text style={styles.title}>Profile</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <PrimaryButton title={loading ? 'Saving...' : 'Save'} onPress={updateProfile} disabled={loading} />
+        <PrimaryButton title="Back to Settings" onPress={() => router.push('/settings')} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
