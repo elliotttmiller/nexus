@@ -4,8 +4,8 @@ BASE_URL = "http://127.0.0.1:8000/v2"
 
 payload = {
     "transactions": [
-        {"id": "t1", "amount": 7.50, "merchant": "STARBUCKS 123", "date": "2025-07-21"},
-        {"id": "t2", "amount": 149.99, "merchant": "AMAZON.COM*AX2BC", "date": "2025-07-21"}
+        {"id": "t1", "amount": 7.50, "merchantName": "STARBUCKS 123", "date": "2025-07-21"},
+        {"id": "t2", "amount": 149.99, "merchantName": "AMAZON.COM*AX2BC", "date": "2025-07-21"}
     ]
 }
 

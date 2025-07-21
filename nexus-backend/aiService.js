@@ -74,4 +74,41 @@ async function getNextSmartMove(userState) {
   }
 }
 
-module.exports = { getCardRank, getInterestKillerSplit, getNextSmartMove }; 
+async function getSpendingInsights(transactions) {
+  try {
+    const res = await axios.post(`${AI_BASE_URL}/v2/spending-insights`, { transactions });
+    return res.data.result;
+  } catch (error) {
+    console.error("SpendingInsights AI Service Error:", error.response ? error.response.data : error.message);
+    return { error: "AI service unavailable" };
+  }
+}
+
+async function getBudgetHealth(userBudget, transactions) {
+  try {
+    const res = await axios.post(`${AI_BASE_URL}/v2/budget-health`, { user_budget: userBudget, transactions });
+    return res.data.result;
+  } catch (error) {
+    console.error("BudgetHealth AI Service Error:", error.response ? error.response.data : error.message);
+    return { error: "AI service unavailable" };
+  }
+}
+
+async function getCashFlowPrediction(accounts, upcomingBills, transactions) {
+  try {
+    const res = await axios.post(`${AI_BASE_URL}/v2/cash-flow-prediction`, { accounts, upcoming_bills: upcomingBills, transactions });
+    return res.data.result;
+  } catch (error) {
+    console.error("CashFlowPrediction AI Service Error:", error.response ? error.response.data : error.message);
+    return { error: "AI service unavailable" };
+  }
+}
+
+module.exports = {
+  getCardRank,
+  getInterestKillerSplit,
+  getNextSmartMove,
+  getSpendingInsights,
+  getBudgetHealth,
+  getCashFlowPrediction
+}; 
