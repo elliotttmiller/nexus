@@ -32,6 +32,13 @@ def root():
     else:
         return {"status": "ok", "ai_model_status": "initialization_failed"}
 
+@app.get("/health", summary="Health Check (platform)")
+def health():
+    if app.state.gemini_model:
+        return {"status": "ok", "ai_model_status": "loaded"}
+    else:
+        return {"status": "ok", "ai_model_status": "initialization_failed"}
+
 @app.post("/v2/categorize")
 def categorize_v2(req: TransactionRequest):
     result = call_gemini(app.state.gemini_model, f"Categorize: {req.model_dump()}")
