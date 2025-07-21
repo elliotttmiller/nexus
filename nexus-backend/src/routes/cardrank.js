@@ -16,6 +16,9 @@ router.post('/recommend', async (req, res) => {
   try {
     // Fetch all cards for the user
     const cards = await Card.findAll({ where: { user_id: userId } });
+    if (!cards || cards.length === 0) {
+      return res.status(400).json({ error: 'No cards found for this user.' });
+    }
     // You may need to fetch credit limits and other fields from another model if not present
     const userCards = cards.map(card => {
       const rewards = card.rewards || {};
@@ -27,32 +30,18 @@ router.post('/recommend', async (req, res) => {
         balance: parseFloat(card.balance),
         creditLimit,
         apr: parseFloat(card.apr),
-        utilization: calcUtilization(card.balance, creditLimit),
+        utilization: (parseFloat(card.balance) / creditLimit),
         rewards,
-        point_value_cents: 1.0, // TODO: Replace with real value if available
-        signup_bonus_progress: null // TODO: Add if available
+        point_value_cents: 1,
+        signup_bonus_progress: null
       };
     });
-    const transactionContext = {
-      merchantName: merchant,
-      amount: amount || 1.0,
-      location: location || ''
-    };
-    const userContext = {
-      primaryGoal: primaryGoal || 'MAXIMIZE_CASHBACK',
-      creditScoreInfo: creditScoreInfo || { score: 700, utilization: 0.2 }
-    };
-    const recommendation = await getCardRank(userCards, transactionContext, userContext);
-    // Log event
-    await UserEvent.create({
-      user_id: userId,
-      event_type: 'card_recommendation',
-      event_data: { request: { merchant, category, amount, location, primaryGoal, creditScoreInfo }, recommendation }
-    });
-    res.json(recommendation);
-  } catch (err) {
-    console.error('Error in /recommend:', err);
-    res.status(500).json({ error: err.message });
+    // Call the AI service only if userCards is not empty
+    const result = await getCardRank(userCards, { merchantName: merchant, amount, category, location }, { primaryGoal });
+    res.json(result);
+  } catch (error) {
+    console.error('Error in /cardrank/recommend:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
