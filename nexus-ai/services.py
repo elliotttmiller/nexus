@@ -12,7 +12,7 @@ logger = logging.getLogger("nexus-ai")
 def initialize_model():
     """Called once at startup by app.py to create the model object."""
     try:
-        return GenerativeModel("gemini-1.0-pro-002")
+        return GenerativeModel("gemini-1.0-pro")
     except Exception as e:
         logger.critical(f"services.py - Failed to create Gemini model object: {e}")
         return None

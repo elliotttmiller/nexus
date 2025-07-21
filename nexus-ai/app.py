@@ -18,12 +18,9 @@ async def lifespan(app: FastAPI):
     print("INFO: FastAPI startup event triggered.")
     credentials = None
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GOOGLE_PROJECT_ID")
-    # Robust region selection
-    location = (
-        os.environ.get("GOOGLE_LOCATION")
-        or os.environ.get("GOOGLE_CLOUD_LOCATION")
-        or "us-central1"
-    )
+    # THE FIX: Force region to us-central1 for Gemini model availability
+    location = "us-central1"
+    print(f"INFO: Forcing Vertex AI initialization in region: {location}")
     gcp_creds_json_str = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
     if gcp_creds_json_str:
         print("INFO: Found GOOGLE_APPLICATION_CREDENTIALS_JSON.")
