@@ -1,2 +1,3 @@
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.0.50:8080";
+import { AppConfig } from '../config';
+export const API_BASE_URL = AppConfig.API_BASE_URL;
 // Node.js backend for authentication and user management 

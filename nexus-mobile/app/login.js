@@ -12,6 +12,9 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // TEMP: Log API_BASE_URL for debugging
+  console.log('API_BASE_URL at runtime:', API_BASE_URL);
+
   const handleLogin = async () => {
     setLoading(true);
     try {
@@ -45,6 +48,8 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
+      {/* TEMP: Show API_BASE_URL on screen for debugging */}
+      <Text style={{ color: 'red', marginBottom: 8, fontSize: 12 }}>API: {API_BASE_URL}</Text>
       <TextInput
         style={styles.input}
         placeholder="Enter your email address"
