@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TextInput, Button, Alert, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Button, Alert, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Modal, Pressable } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import { BACKGROUND, TEXT, PRIMARY, BORDER, SUBTLE } from '../src/constants/colors';
@@ -17,6 +17,9 @@ export default function PayScreen() {
   const [selectedFunding, setSelectedFunding] = useState('');
   const [executing, setExecuting] = useState(false);
   const [paymentResults, setPaymentResults] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiRecommendations, setAiRecommendations] = useState(null);
+  const [aiModalVisible, setAiModalVisible] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -90,99 +93,183 @@ export default function PayScreen() {
     }
   };
 
+  const handleAIRecommendation = async () => {
+    setAiLoading(true);
+    setAiRecommendations(null);
+    setError('');
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+      setError('Enter a valid amount first.');
+      setAiLoading(false);
+      return;
+    }
+    // If no cards selected, send empty array; backend will fetch all cards
+    const accounts = selected.length > 0 ? cards.filter(c => selected.includes(c.id)) : [];
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/pay/ai-recommendation`, {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: 1,
+          accounts,
+          payment_amount: Number(amount)
+        })
+      });
+      const data = await res.json();
+      setAiRecommendations(data);
+      setAiModalVisible(true);
+    } catch (err) {
+      setError('Failed to get AI recommendations.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const applyRecommendation = (recommendation, newGoal) => {
+    setResult(null); // Clear previous results
+    setPaymentResults(null);
+    setSelected([]);
+    setAmount('');
+    setSelectedFunding('');
+    setGoal(newGoal);
+    setResult(recommendation);
+    setPaymentResults(recommendation.payments);
+    setAiModalVisible(false);
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Pay Credit Cards</Text>
-      <Text style={styles.subtitle}>Select one or more cards to pay and enter a total payment amount.</Text>
-      <FlatList
-        data={cards}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => toggleSelect(item.id)}
-            style={[styles.cardItem, selected.includes(item.id) && styles.cardItemSelected]}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.cardName}>{item.institution || 'Card'} •••• {item.id.slice(-4)}</Text>
-            <Text style={styles.cardDetails}>Balance: ${item.balance}   APR: {item.apr || 'N/A'}%</Text>
-          </TouchableOpacity>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={80}
+    >
+      <ScrollView style={{ flex: 1, backgroundColor: BACKGROUND }} contentContainerStyle={{ padding: 20 }}>
+        <Text style={styles.title}>Pay Credit Cards</Text>
+        <Text style={styles.subtitle}>Select one or more cards to pay and enter a total payment amount.</Text>
+        {/* AI Recommendation Button */}
+        <TouchableOpacity style={styles.aiButton} onPress={handleAIRecommendation} disabled={aiLoading}>
+          <Text style={styles.aiButtonText}>{aiLoading ? 'Loading...' : 'AI Recommendation'}</Text>
+        </TouchableOpacity>
+        {cards.length === 0 ? (
+          <Text style={styles.text}>No credit cards found.</Text>
+        ) : (
+          cards.map(item => (
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => toggleSelect(item.id)}
+              style={[styles.cardItem, selected.includes(item.id) && styles.cardItemSelected]}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.cardName}>{item.institution || 'Card'} •••• {item.id.slice(-4)}</Text>
+              <Text style={styles.cardDetails}>Balance: ${item.balance}   APR: {item.apr || 'N/A'}%</Text>
+            </TouchableOpacity>
+          ))
         )}
-        ListEmptyComponent={<Text style={styles.text}>No credit cards found.</Text>}
-        style={{ marginBottom: 16 }}
-      />
-      <TextInput
-        placeholder="Total payment amount"
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="numeric"
-        style={styles.input}
-        placeholderTextColor="#888"
-      />
-      <Text style={styles.label}>Optimization Goal:</Text>
-      <View style={styles.goalRow}>
-        <TouchableOpacity
-          style={[styles.goalButton, goal === 'MINIMIZE_INTEREST_COST' && styles.goalButtonActive]}
-          onPress={() => setGoal('MINIMIZE_INTEREST_COST')}
-        >
-          <Text style={[styles.goalButtonText, goal === 'MINIMIZE_INTEREST_COST' && styles.goalButtonTextActive]}>Minimize Interest</Text>
+        <TextInput
+          placeholder="Total payment amount"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="numeric"
+          style={styles.input}
+          placeholderTextColor="#888"
+        />
+        <Text style={styles.label}>Optimization Goal:</Text>
+        <View style={styles.goalRow}>
+          <TouchableOpacity
+            style={[styles.goalButton, goal === 'MINIMIZE_INTEREST_COST' && styles.goalButtonActive]}
+            onPress={() => setGoal('MINIMIZE_INTEREST_COST')}
+          >
+            <Text style={[styles.goalButtonText, goal === 'MINIMIZE_INTEREST_COST' && styles.goalButtonTextActive]}>Minimize Interest</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.goalButton, goal === 'MAXIMIZE_CREDIT_SCORE' && styles.goalButtonActive]}
+            onPress={() => setGoal('MAXIMIZE_CREDIT_SCORE')}
+          >
+            <Text style={[styles.goalButtonText, goal === 'MAXIMIZE_CREDIT_SCORE' && styles.goalButtonTextActive]}>Maximize Score</Text>
+          </TouchableOpacity>
+        </View>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <TouchableOpacity style={styles.payButton} onPress={handlePay} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.payButtonText}>Pay</Text>}
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.goalButton, goal === 'MAXIMIZE_CREDIT_SCORE' && styles.goalButtonActive]}
-          onPress={() => setGoal('MAXIMIZE_CREDIT_SCORE')}
-        >
-          <Text style={[styles.goalButtonText, goal === 'MAXIMIZE_CREDIT_SCORE' && styles.goalButtonTextActive]}>Maximize Score</Text>
-        </TouchableOpacity>
-      </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TouchableOpacity style={styles.payButton} onPress={handlePay} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.payButtonText}>Pay</Text>}
-      </TouchableOpacity>
-      {result && !paymentResults && (
-        <View style={styles.resultBox}>
-          <Text style={styles.resultTitle}>Payment Split</Text>
-          {result.split && result.split.map((s, i) => (
-            <Text key={i} style={styles.resultText}>Card {s.card_id}: ${s.amount}</Text>
-          ))}
-          {result.explanation && <Text style={styles.resultExplanation}>{result.explanation}</Text>}
-          <Text style={[styles.label, { marginTop: 16 }]}>Select Funding Account:</Text>
-          <FlatList
-            data={fundingAccounts}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => setSelectedFunding(item.id)}
-                style={[styles.cardItem, selectedFunding === item.id && styles.cardItemSelected]}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.cardName}>{item.institution || 'Account'} •••• {item.id.slice(-4)}</Text>
-                <Text style={styles.cardDetails}>Balance: ${item.balance}   Type: {item.type}</Text>
-              </TouchableOpacity>
+        {result && !paymentResults && (
+          <View style={styles.resultBox}>
+            <Text style={styles.resultTitle}>Payment Split</Text>
+            {result.split && result.split.map((s, i) => (
+              <Text key={i} style={styles.resultText}>Card {s.card_id}: ${s.amount}</Text>
+            ))}
+            {result.explanation && <Text style={styles.resultExplanation}>{result.explanation}</Text>}
+            <Text style={[styles.label, { marginTop: 16 }]}>Select Funding Account:</Text>
+            {fundingAccounts.length === 0 ? (
+              <Text style={styles.text}>No funding accounts found.</Text>
+            ) : (
+              fundingAccounts.map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => setSelectedFunding(item.id)}
+                  style={[styles.cardItem, selectedFunding === item.id && styles.cardItemSelected]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.cardName}>{item.institution || 'Account'} •••• {item.id.slice(-4)}</Text>
+                  <Text style={styles.cardDetails}>Balance: ${item.balance}   Type: {item.type}</Text>
+                </TouchableOpacity>
+              ))
             )}
-            ListEmptyComponent={<Text style={styles.text}>No funding accounts found.</Text>}
-            style={{ marginBottom: 16, marginTop: 8 }}
-          />
-          <TouchableOpacity style={styles.payButton} onPress={handleExecute} disabled={executing}>
-            {executing ? <ActivityIndicator color="#fff" /> : <Text style={styles.payButtonText}>Execute Payment</Text>}
-          </TouchableOpacity>
-        </View>
-      )}
-      {paymentResults && (
-        <View style={styles.resultBox}>
-          <Text style={styles.resultTitle}>Payment Results</Text>
-          {paymentResults.map((p, i) => (
-            <Text key={i} style={styles.resultText}>Card {p.card_id}: ${p.amount} - {p.status} ({p.message})</Text>
-          ))}
-          <TouchableOpacity style={[styles.payButton, { marginTop: 16 }]} onPress={() => { setResult(null); setPaymentResults(null); setSelected([]); setAmount(''); setSelectedFunding(''); }}>
-            <Text style={styles.payButtonText}>Make Another Payment</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+            <TouchableOpacity style={styles.payButton} onPress={handleExecute} disabled={executing}>
+              {executing ? <ActivityIndicator color="#fff" /> : <Text style={styles.payButtonText}>Execute Payment</Text>}
+            </TouchableOpacity>
+          </View>
+        )}
+        {paymentResults && (
+          <View style={styles.resultBox}>
+            <Text style={styles.resultTitle}>Payment Results</Text>
+            {paymentResults.map((p, i) => (
+              <Text key={i} style={styles.resultText}>Card {p.card_id}: ${p.amount} - {p.status} ({p.message})</Text>
+            ))}
+            <TouchableOpacity style={[styles.payButton, { marginTop: 16 }]} onPress={() => { setResult(null); setPaymentResults(null); setSelected([]); setAmount(''); setSelectedFunding(''); }}>
+              <Text style={styles.payButtonText}>Make Another Payment</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {/* AI Recommendation Modal (already present) */}
+        <Modal visible={aiModalVisible} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.resultTitle}>AI Recommendations</Text>
+              {aiRecommendations ? (
+                <>
+                  <Text style={styles.label}>Minimize Interest</Text>
+                  {aiRecommendations.minimize_interest.split.map((s, i) => (
+                    <Text key={i} style={styles.resultText}>Card {s.card_id}: ${s.amount}</Text>
+                  ))}
+                  <Text style={styles.resultExplanation}>{aiRecommendations.minimize_interest.explanation}</Text>
+                  <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.minimize_interest, 'MINIMIZE_INTEREST_COST')}>
+                    <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
+                  </Pressable>
+                  <View style={{ height: 16 }} />
+                  <Text style={styles.label}>Maximize Score</Text>
+                  {aiRecommendations.maximize_score.split.map((s, i) => (
+                    <Text key={i} style={styles.resultText}>Card {s.card_id}: ${s.amount}</Text>
+                  ))}
+                  <Text style={styles.resultExplanation}>{aiRecommendations.maximize_score.explanation}</Text>
+                  <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.maximize_score, 'MAXIMIZE_CREDIT_SCORE')}>
+                    <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <ActivityIndicator color={PRIMARY} />
+              )}
+              <Pressable style={styles.closeButton} onPress={() => setAiModalVisible(false)}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: BACKGROUND },
+  container: { /* remove flexGrow, remove alignItems */ },
   title: { fontSize: 28, fontWeight: 'bold', color: PRIMARY, marginBottom: 8 },
   subtitle: { fontSize: 16, color: TEXT, marginBottom: 16 },
   cardItem: { backgroundColor: SUBTLE, padding: 16, borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: BORDER },
@@ -204,4 +291,35 @@ const styles = StyleSheet.create({
   resultText: { fontSize: 16, color: TEXT },
   resultExplanation: { marginTop: 12, color: TEXT, fontStyle: 'italic' },
   text: { color: TEXT },
+  aiButton: { backgroundColor: PRIMARY + '11', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 16 },
+  aiButtonText: { color: PRIMARY, fontWeight: 'bold', fontSize: 16 },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
+  applyButton: {
+    backgroundColor: PRIMARY,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+    width: '100%',
+  },
+  applyButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  closeButton: {
+    marginTop: 16,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+  },
+  closeButtonText: { color: TEXT, fontWeight: 'bold', fontSize: 16 },
 }); 

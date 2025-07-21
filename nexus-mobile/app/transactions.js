@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import { BACKGROUND, TEXT, PRIMARY, SUBTLE } from '../src/constants/colors';
@@ -21,7 +21,7 @@ export default function TransactionsScreen() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} style={{ backgroundColor: BACKGROUND }}>
       <Text style={styles.title}>Recent Transactions</Text>
       <PrimaryButton title="Pay Credit Cards" onPress={() => router.push('/pay')} />
       {loading ? (
@@ -41,12 +41,12 @@ export default function TransactionsScreen() {
           ListEmptyComponent={<Text style={styles.text}>No transactions found.</Text>}
         />
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: BACKGROUND },
+  container: { flexGrow: 1, padding: 16, backgroundColor: BACKGROUND },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: TEXT },
   txItem: { backgroundColor: SUBTLE, padding: 12, borderRadius: 8, marginBottom: 12 },
   txName: { fontWeight: 'bold', fontSize: 16, color: TEXT },

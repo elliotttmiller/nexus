@@ -81,4 +81,38 @@ router.post('/pay/execute', async (req, res) => {
   res.json({ payments: results });
 });
 
+router.post('/pay/ai-recommendation', async (req, res) => {
+  const { userId, accounts, payment_amount } = req.body;
+  if (!userId || !payment_amount) {
+    return res.status(400).json({ error: 'Missing required info.' });
+  }
+  let cards = accounts;
+  if (!cards || !Array.isArray(cards) || cards.length === 0) {
+    // Fetch all user's credit cards from the DB
+    const userCards = await Card.findAll({ where: { user_id: userId } });
+    cards = userCards.map(card => ({
+      id: card.id,
+      institution: card.institution || 'Unknown',
+      balance: parseFloat(card.balance),
+      apr: parseFloat(card.apr),
+      creditLimit: card.creditLimit || 5000, // or fetch from DB
+    }));
+  }
+  if (!cards || cards.length === 0) {
+    return res.status(400).json({ error: 'No credit cards found for this user.' });
+  }
+  try {
+    const [minInterest, maxScore] = await Promise.all([
+      getInterestKillerSplit(cards, payment_amount, 'MINIMIZE_INTEREST_COST'),
+      getInterestKillerSplit(cards, payment_amount, 'MAXIMIZE_CREDIT_SCORE')
+    ]);
+    res.json({
+      minimize_interest: minInterest,
+      maximize_score: maxScore
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router; 
