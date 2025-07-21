@@ -52,6 +52,10 @@ class CashFlowPredictionRequest(BaseModel):
 def root():
     return {"status": "ok", "ai_model_status": "loaded" if app.state.gemini_model else "initialization_failed"}
 
+@app.get("/health", summary="Health Check (platform)")
+def health():
+    return {"status": "ok"}
+
 @app.post("/v2/categorize")
 def categorize_v2(req: TransactionRequest):
     try:
