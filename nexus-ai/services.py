@@ -1,28 +1,24 @@
 import os
-import json
-import tempfile
-import vertexai
-from google.oauth2 import service_account
-from vertexai.generative_models import GenerativeModel
-from typing import Dict, Any
+from dotenv import load_dotenv
+import google.generativeai as genai
 import logging
 
 logger = logging.getLogger("nexus-ai")
+load_dotenv()
 
 def initialize_model():
-    """Called once at startup by app.py to create the model object."""
-    try:
-        return GenerativeModel("gemini-1.0-pro")
-    except Exception as e:
-        logger.critical(f"services.py - Failed to create Gemini model object: {e}")
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        logger.critical("GOOGLE_API_KEY environment variable not found.")
         return None
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-pro")  # or "gemini-1.5-pro-latest"
+    logger.info("Google AI Gemini model initialized successfully.")
+    return model
 
-def call_gemini_vertex(model: GenerativeModel, prompt: str) -> str:
-    """
-    Generates content using the provided, pre-initialized Gemini model.
-    """
+def call_gemini(model, prompt: str) -> str:
     if not model:
-        logger.warning("call_gemini_vertex called but model is not available.")
+        logger.warning("call_gemini called but model is not available.")
         return "{\"error\": \"AI model is not available. Check server startup logs for initialization errors.\"}"
     try:
         response = model.generate_content(prompt)
@@ -33,8 +29,8 @@ def call_gemini_vertex(model: GenerativeModel, prompt: str) -> str:
 
 def categorize_transactions_ai(transactions: list) -> dict:
     prompt = f"You are an expert financial AI. Categorize these transactions: {transactions}"
-    return call_gemini_vertex(prompt)
+    return call_gemini(prompt)
 
 def detect_anomalies_ai(transactions: list) -> dict:
     prompt = f"You are an expert financial AI. Detect anomalies in these transactions: {transactions}"
-    return call_gemini_vertex(prompt) 
+    return call_gemini(prompt) 

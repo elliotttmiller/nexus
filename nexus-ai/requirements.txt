@@ -1,9 +1,5 @@
 fastapi
 uvicorn
-scikit-learn
-scipy
 pydantic
 python-dotenv
-requests 
-google-cloud-aiplatform 
 google-generativeai 
