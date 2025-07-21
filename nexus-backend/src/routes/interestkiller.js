@@ -107,10 +107,14 @@ router.post('/pay/ai-recommendation', async (req, res) => {
       getInterestKillerSplit(cards, payment_amount, 'MINIMIZE_INTEREST_COST'),
       getInterestKillerSplit(cards, payment_amount, 'MAXIMIZE_CREDIT_SCORE')
     ]);
-    console.log('AI Recommendation response:', JSON.stringify({ minimize_interest: minInterest, maximize_score: maxScore }, null, 2));
+    // If the result is an array, wrap it in an object with split and explanation
+    const wrapResult = (res) => Array.isArray(res) ? { split: res, explanation: '' } : res;
+    const minInterestObj = wrapResult(minInterest);
+    const maxScoreObj = wrapResult(maxScore);
+    console.log('AI Recommendation response:', JSON.stringify({ minimize_interest: minInterestObj, maximize_score: maxScoreObj }, null, 2));
     res.json({
-      minimize_interest: minInterest,
-      maximize_score: maxScore
+      minimize_interest: minInterestObj,
+      maximize_score: maxScoreObj
     });
   } catch (error) {
     console.error('AI Recommendation error:', error);

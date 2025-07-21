@@ -123,10 +123,37 @@ def unlink_all_accounts():
         except Exception as e:
             print(f'Error unlinking account {acc_id}:', str(e))
 
+def test_ai_recommendation():
+    print('\nTesting AI Recommendation...')
+    headers = {'Content-Type': 'application/json'}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    payload = {
+        "userId": 1,
+        "accounts": [
+            {"id": "mock_credit_1", "institution": "Mock Bank", "balance": 2500, "type": "credit", "apr": 19.99, "creditLimit": 8000},
+            {"id": "mock_credit_2", "institution": "Mock Bank", "balance": 1500, "type": "credit", "apr": 24.99, "creditLimit": 5000},
+            {"id": "mock_credit_3", "institution": "Mock Bank", "balance": 500, "type": "credit", "apr": 16.49, "creditLimit": 3000},
+            {"id": "mock_credit_4", "institution": "Mock Bank", "balance": 4200, "type": "credit", "apr": 29.99, "creditLimit": 12000}
+        ],
+        "payment_amount": 1000
+    }
+    try:
+        res = requests.post(f'{BASE_URL}/interestkiller/pay/ai-recommendation', json=payload, headers=headers)
+        print('Status:', res.status_code)
+        try:
+            data = res.json()
+            print('Response:', json.dumps(data, indent=2))
+        except Exception:
+            print('Raw Response:', res.text)
+    except Exception as e:
+        print(f'Error testing AI Recommendation:', str(e))
+
 if __name__ == '__main__':
     login()
     unlink_all_accounts()
     test_get_accounts()
+    test_ai_recommendation()
 
     test_endpoint('/cardrank/recommend', {
         'userId': 1,

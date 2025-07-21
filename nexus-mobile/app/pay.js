@@ -102,10 +102,10 @@ export default function PayScreen() {
       setAiLoading(false);
       return;
     }
-    // If no cards selected, send empty array; backend will fetch all cards
-    const accounts = selected.length > 0 ? cards.filter(c => selected.includes(c.id)) : [];
+    // If no cards selected, send all cards; backend will use them for AI
+    const accounts = selected.length > 0 ? cards.filter(c => selected.includes(c.id)) : cards;
     try {
-      const res = await fetchWithAuth(`${API_BASE_URL}/api/pay/ai-recommendation`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/pay/ai-recommendation`, {
         method: 'POST',
         body: JSON.stringify({
           userId: 1,
@@ -130,8 +130,7 @@ export default function PayScreen() {
     setAmount('');
     setSelectedFunding('');
     setGoal(newGoal);
-    setResult(recommendation);
-    setPaymentResults(recommendation.payments);
+    setResult(recommendation); // recommendation is { split, explanation }
     setAiModalVisible(false);
   };
 
@@ -151,14 +150,14 @@ export default function PayScreen() {
         {cards.length === 0 ? (
           <Text style={styles.text}>No credit cards found.</Text>
         ) : (
-          cards.map(item => (
+          (cards || []).map(item => (
             <TouchableOpacity
               key={item.id}
               onPress={() => toggleSelect(item.id)}
               style={[styles.cardItem, selected.includes(item.id) && styles.cardItemSelected]}
               activeOpacity={0.8}
             >
-              <Text style={styles.cardName}>{item.institution || 'Card'} •••• {item.id.slice(-4)}</Text>
+              <Text style={styles.cardName}>{item.institution || 'Card'} •••• {item.id ? String(item.id).slice(-4) : '----'}</Text>
               <Text style={styles.cardDetails}>Balance: ${item.balance}   APR: {item.apr || 'N/A'}%</Text>
             </TouchableOpacity>
           ))
@@ -193,7 +192,7 @@ export default function PayScreen() {
         {result && !paymentResults && (
           <View style={styles.resultBox}>
             <Text style={styles.resultTitle}>Payment Split</Text>
-            {result.split && result.split.map((s, i) => (
+            {result.split && Array.isArray(result.split) && result.split.map((s, i) => (
               <Text key={i} style={styles.resultText}>Card {s.card_id}: ${s.amount}</Text>
             ))}
             {result.explanation && <Text style={styles.resultExplanation}>{result.explanation}</Text>}
@@ -201,14 +200,14 @@ export default function PayScreen() {
             {fundingAccounts.length === 0 ? (
               <Text style={styles.text}>No funding accounts found.</Text>
             ) : (
-              fundingAccounts.map(item => (
+              (fundingAccounts || []).map(item => (
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => setSelectedFunding(item.id)}
                   style={[styles.cardItem, selectedFunding === item.id && styles.cardItemSelected]}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.cardName}>{item.institution || 'Account'} •••• {item.id.slice(-4)}</Text>
+                  <Text style={styles.cardName}>{item.institution || 'Account'} •••• {item.id ? String(item.id).slice(-4) : '----'}</Text>
                   <Text style={styles.cardDetails}>Balance: ${item.balance}   Type: {item.type}</Text>
                 </TouchableOpacity>
               ))
@@ -221,7 +220,7 @@ export default function PayScreen() {
         {paymentResults && (
           <View style={styles.resultBox}>
             <Text style={styles.resultTitle}>Payment Results</Text>
-            {paymentResults.map((p, i) => (
+            {Array.isArray(paymentResults) && paymentResults.map((p, i) => (
               <Text key={i} style={styles.resultText}>Card {p.card_id}: ${p.amount} - {p.status} ({p.message})</Text>
             ))}
             <TouchableOpacity style={[styles.payButton, { marginTop: 16 }]} onPress={() => { setResult(null); setPaymentResults(null); setSelected([]); setAmount(''); setSelectedFunding(''); }}>
@@ -234,28 +233,41 @@ export default function PayScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <Text style={styles.resultTitle}>AI Recommendations</Text>
-              {aiRecommendations ? (
-                <>
-                  <Text style={styles.label}>Minimize Interest</Text>
-                  {aiRecommendations.minimize_interest.split.map((s, i) => (
-                    <Text key={i} style={styles.resultText}>Card {s.card_id}: ${s.amount}</Text>
-                  ))}
-                  <Text style={styles.resultExplanation}>{aiRecommendations.minimize_interest.explanation}</Text>
-                  <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.minimize_interest, 'MINIMIZE_INTEREST_COST')}>
-                    <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
-                  </Pressable>
-                  <View style={{ height: 16 }} />
-                  <Text style={styles.label}>Maximize Score</Text>
-                  {aiRecommendations.maximize_score.split.map((s, i) => (
-                    <Text key={i} style={styles.resultText}>Card {s.card_id}: ${s.amount}</Text>
-                  ))}
-                  <Text style={styles.resultExplanation}>{aiRecommendations.maximize_score.explanation}</Text>
-                  <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.maximize_score, 'MAXIMIZE_CREDIT_SCORE')}>
-                    <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
-                  </Pressable>
-                </>
-              ) : (
-                <ActivityIndicator color={PRIMARY} />
+              {aiRecommendations && (
+                <ScrollView>
+                  {/* Minimize Interest */}
+                  <View style={{ marginBottom: 24 }}>
+                    <Text style={styles.label}>Minimize Interest</Text>
+                    {Array.isArray(aiRecommendations.minimize_interest?.split) && aiRecommendations.minimize_interest.split.map((s, i) => (
+                      <View key={i} style={styles.splitRow}>
+                        <Text style={styles.resultText}>Card {s.card_id}:</Text>
+                        <Text style={styles.resultText}>${s.amount}</Text>
+                      </View>
+                    ))}
+                    {aiRecommendations.minimize_interest?.explanation && aiRecommendations.minimize_interest.explanation.trim() !== '' && (
+                      <Text style={styles.resultExplanation}>{aiRecommendations.minimize_interest.explanation}</Text>
+                    )}
+                    <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.minimize_interest, 'MINIMIZE_INTEREST_COST')}>
+                      <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
+                    </Pressable>
+                  </View>
+                  {/* Maximize Score */}
+                  <View>
+                    <Text style={styles.label}>Maximize Score</Text>
+                    {Array.isArray(aiRecommendations.maximize_score?.split) && aiRecommendations.maximize_score.split.map((s, i) => (
+                      <View key={i} style={styles.splitRow}>
+                        <Text style={styles.resultText}>Card {s.card_id}:</Text>
+                        <Text style={styles.resultText}>${s.amount}</Text>
+                      </View>
+                    ))}
+                    {aiRecommendations.maximize_score?.explanation && aiRecommendations.maximize_score.explanation.trim() !== '' && (
+                      <Text style={styles.resultExplanation}>{aiRecommendations.maximize_score.explanation}</Text>
+                    )}
+                    <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.maximize_score, 'MAXIMIZE_CREDIT_SCORE')}>
+                      <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
+                    </Pressable>
+                  </View>
+                </ScrollView>
               )}
               <Pressable style={styles.closeButton} onPress={() => setAiModalVisible(false)}>
                 <Text style={styles.closeButtonText}>Close</Text>
@@ -322,4 +334,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#eee',
   },
   closeButtonText: { color: TEXT, fontWeight: 'bold', fontSize: 16 },
+  splitRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
 }); 
