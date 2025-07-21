@@ -12,6 +12,12 @@ const Sentry = require('./utils/sentry');
 
 const app = express();
 
+// Log every request
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
 const allowedOrigins = [
   process.env.CORS_ORIGIN, // for production, set in Railway env vars
   'http://localhost:3000', // local web frontend

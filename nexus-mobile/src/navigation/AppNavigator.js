@@ -1,14 +1,14 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import OnboardingScreen from '../screens/OnboardingScreen';
-import DashboardScreen from '../screens/DashboardScreen';
-import CardRankScreen from '../screens/CardRankScreen';
-import InterestKillerScreen from '../screens/InterestKillerScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import AccountsScreen from '../screens/AccountsScreen';
-import TransactionsScreen from '../screens/TransactionsScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import DataAccessScreen from '../screens/DataAccessScreen';
+import OnboardingScreen from '../../app/OnboardingScreen';
+import DashboardScreen from '../../app/DashboardScreen';
+import CardRankScreen from '../../app/CardRankScreen';
+import InterestKillerScreen from '../../app/InterestKillerScreen';
+import SettingsScreen from '../../app/SettingsScreen';
+import AccountsScreen from '../../app/AccountsScreen';
+import TransactionsScreen from '../../app/TransactionsScreen';
+import ProfileScreen from '../../app/ProfileScreen';
+import DataAccessScreen from '../../app/DataAccessScreen';
 
 const Stack = createStackNavigator();
 

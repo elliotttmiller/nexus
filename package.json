@@ -1,12 +1,28 @@
 {
-  "name": "nexus-monorepo",
+  "name": "nexus-mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
   "private": true,
-  "description": "Monorepo for Nexus platform (backend, AI, mobile)",
   "scripts": {
-    "backend": "cd nexus-backend && npm start",
-    "ai": "cd nexus-ai && python app.py"
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
   },
   "dependencies": {
-    "expo": "^53.0.19"
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "expo": "^53.0.0",
+    "expo-linking": "^7.1.7",
+    "expo-router": "^5.1.4",
+    "react": "19.0.0",
+    "react-native": "0.79.5",
+    "react-native-plaid-link-sdk": "^10.4.0",
+    "react-native-safe-area-context": "^5.4.0",
+    "react-native-screens": "^4.11.1",
+    "expo-dev-client": "~5.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
   }
 }

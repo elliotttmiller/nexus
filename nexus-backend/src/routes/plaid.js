@@ -18,11 +18,12 @@ const plaidClient = new PlaidApi(config);
 router.post('/create_link_token', async (req, res) => {
   try {
     const response = await plaidClient.linkTokenCreate({
-      user: { client_user_id: req.body.userId || 'test-user' },
+      user: { client_user_id: req.body.userId ? String(req.body.userId) : 'test-user' },
       client_name: 'Nexus',
       products: ['auth', 'transactions'],
       country_codes: ['US'],
       language: 'en',
+      // institution_id removed to allow user selection in UI
     });
     res.json(response.data);
   } catch (err) {
@@ -34,11 +35,26 @@ router.post('/create_link_token', async (req, res) => {
 // Exchange Public Token
 router.post('/exchange_public_token', async (req, res) => {
   try {
-    const { public_token, userId } = req.body;
+    const { public_token, userId, institution } = req.body;
     const response = await plaidClient.itemPublicTokenExchange({ public_token });
-    // Save access_token to DB for user
     const access_token = response.data.access_token;
-    await Account.create({ user_id: userId, plaid_access_token: access_token });
+
+    // Fetch institution info from Plaid if not provided
+    let institutionName = institution;
+    let institutionId = null;
+    try {
+      const itemResp = await plaidClient.itemGet({ access_token });
+      institutionId = itemResp.data.item.institution_id;
+      if (!institutionName && institutionId) {
+        const instResp = await plaidClient.institutionsGetById({ institution_id: institutionId, country_codes: ['US'] });
+        institutionName = instResp.data.institution.name;
+      }
+    } catch (e) {
+      console.warn('Could not fetch institution info:', e.message);
+    }
+
+    await Account.create({ user_id: userId, plaid_access_token: access_token, institution: institutionName || 'Unknown' });
+    console.log('Account created:', { user_id: userId, plaid_access_token: access_token, institution: institutionName || 'Unknown' });
     res.json(response.data);
   } catch (err) {
     console.error('Error in /exchange_public_token:', err);
@@ -51,11 +67,34 @@ router.get('/accounts', async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.status(400).json({ error: 'userId required' });
   try {
-    const account = await Account.findOne({ where: { user_id: userId } });
-    if (!account) return res.status(404).json({ error: 'No account found' });
-    const response = await plaidClient.accountsGet({ access_token: account.plaid_access_token });
-    res.json(response.data.accounts);
+    const accounts = await Account.findAll({ where: { user_id: userId } });
+    if (!accounts || accounts.length === 0) {
+      // Return mock data for development/testing
+      return res.json([
+        { id: 1, institution: 'Test Bank', balance: 1000, type: 'checking' },
+        { id: 2, institution: 'Mock Credit Union', balance: 2500, type: 'savings' }
+      ]);
+    }
+    let allAccounts = [];
+    for (const acc of accounts) {
+      try {
+        const response = await plaidClient.accountsGet({ access_token: acc.plaid_access_token });
+        // Map Plaid accounts to app format
+        const mapped = response.data.accounts.map((plaidAcc) => ({
+          id: plaidAcc.account_id,
+          institution: acc.institution || 'Unknown',
+          balance: plaidAcc.balances.current ?? plaidAcc.balances.available ?? 0,
+          type: plaidAcc.type
+        }));
+        allAccounts = allAccounts.concat(mapped);
+      } catch (e) {
+        console.warn('Error fetching accounts for access_token:', e.message);
+      }
+    }
+    console.log('Returning accounts:', allAccounts);
+    res.json(allAccounts);
   } catch (err) {
+    console.error('Error in /accounts:', err);
     res.status(500).json({ error: err.message });
   }
 });

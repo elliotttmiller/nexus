@@ -7,6 +7,11 @@ const qrcode = require('qrcode');
 const User = require('../models/user');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const REFRESH_SECRET = process.env.REFRESH_SECRET || 'refresh_secret';
+
+function generateRefreshToken(user) {
+  return jwt.sign({ id: user.id, email: user.email }, REFRESH_SECRET, { expiresIn: '30d' });
+}
 
 // Register
 router.post('/register', async (req, res) => {
@@ -18,7 +23,9 @@ router.post('/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
     const user = await User.create({ email, password_hash });
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token });
+    const refreshToken = generateRefreshToken(user);
+    await user.update({ refresh_token: refreshToken });
+    res.json({ token, refreshToken });
   } catch (err) {
     console.error('Error in /register:', err);
     res.status(500).json({ error: err.message });
@@ -39,10 +46,33 @@ router.post('/login', async (req, res) => {
       return res.json({ twofa_required: true, userId: user.id });
     }
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token });
+    const refreshToken = generateRefreshToken(user);
+    await user.update({ refresh_token: refreshToken });
+    res.json({ token, refreshToken });
   } catch (err) {
     console.error('Error in /login:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Refresh Token Endpoint
+router.post('/refresh', async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(400).json({ error: 'Refresh token required' });
+  try {
+    const payload = jwt.verify(refreshToken, REFRESH_SECRET);
+    const user = await User.findByPk(payload.id);
+    if (!user || user.refresh_token !== refreshToken) {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    // Optionally rotate refresh token
+    const newRefreshToken = generateRefreshToken(user);
+    await user.update({ refresh_token: newRefreshToken });
+    res.json({ token, refreshToken: newRefreshToken });
+  } catch (err) {
+    console.error('Error in /refresh:', err);
+    res.status(401).json({ error: 'Invalid or expired refresh token' });
   }
 });
 

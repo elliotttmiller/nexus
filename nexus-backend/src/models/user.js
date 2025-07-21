@@ -15,6 +15,9 @@ const User = sequelize.define('User', {
   twofa_secret: {
     type: DataTypes.STRING
   },
+  refresh_token: {
+    type: DataTypes.STRING
+  },
   createdAt: {
     type: DataTypes.DATE,
     field: 'created_at'
