@@ -58,8 +58,25 @@ def test_endpoint(path, payload, protected=False):
     except Exception as e:
         print(f'Error testing {path}:', str(e))
 
+def test_get_accounts():
+    print('\nTesting /plaid/accounts...')
+    headers = {'Content-Type': 'application/json'}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    try:
+        res = requests.get(f'{BASE_URL}/plaid/accounts?userId=1', headers=headers)
+        print('Status:', res.status_code)
+        try:
+            data = res.json()
+            print('Response:', json.dumps(data, indent=2))
+        except Exception:
+            print('Raw Response:', res.text)
+    except Exception as e:
+        print(f'Error testing /plaid/accounts:', str(e))
+
 if __name__ == '__main__':
     login()
+    test_get_accounts()
 
     test_endpoint('/cardrank/recommend', {
         'userId': 1,
