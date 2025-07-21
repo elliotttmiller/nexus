@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 const Account = require('../models/account');
+const Card = require('../models/card');
 
 const config = new Configuration({
   basePath: PlaidEnvironments.sandbox,
@@ -80,11 +81,20 @@ router.get('/accounts', async (req, res) => {
       try {
         const response = await plaidClient.accountsGet({ access_token: acc.plaid_access_token });
         // Map Plaid accounts to app format
-        const mapped = response.data.accounts.map((plaidAcc) => ({
-          id: plaidAcc.account_id,
-          institution: acc.institution || 'Unknown',
-          balance: plaidAcc.balances.current ?? plaidAcc.balances.available ?? 0,
-          type: plaidAcc.type
+        const mapped = await Promise.all(response.data.accounts.map(async (plaidAcc) => {
+          let apr = undefined;
+          if (plaidAcc.type === 'credit') {
+            // Try to find a matching card for this account and get its APR
+            const card = await Card.findOne({ where: { account_id: acc.id } });
+            apr = card ? parseFloat(card.apr) : undefined;
+          }
+          return {
+            id: plaidAcc.account_id,
+            institution: acc.institution || 'Unknown',
+            balance: plaidAcc.balances.current ?? plaidAcc.balances.available ?? 0,
+            type: plaidAcc.type,
+            apr,
+          };
         }));
         allAccounts = allAccounts.concat(mapped);
       } catch (e) {

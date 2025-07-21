@@ -9,6 +9,7 @@ import AccountsScreen from '../../app/AccountsScreen';
 import TransactionsScreen from '../../app/TransactionsScreen';
 import ProfileScreen from '../../app/ProfileScreen';
 import DataAccessScreen from '../../app/DataAccessScreen';
+import PayScreen from '../../app/pay';
 
 const Stack = createStackNavigator();
 
@@ -24,6 +25,7 @@ export default function AppNavigator() {
       <Stack.Screen name="Transactions" component={TransactionsScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="DataAccess" component={DataAccessScreen} />
+      <Stack.Screen name="Pay" component={PayScreen} />
     </Stack.Navigator>
   );
 } 

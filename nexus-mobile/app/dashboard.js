@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import PrimaryButton from '../src/components/PrimaryButton';
 import { BACKGROUND, TEXT, PRIMARY, SUBTLE } from '../src/constants/colors';
@@ -14,7 +14,7 @@ export default function DashboardScreen() {
   const debtFreedomMonths = 15;
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Dashboard</Text>
       <View style={styles.widget}>
         <Text style={styles.widgetTitle}>Autopilot Health Score</Text>
@@ -36,12 +36,13 @@ export default function DashboardScreen() {
       <PrimaryButton title="Go to Transactions" onPress={() => router.push('/transactions')} />
       <PrimaryButton title="Go to Profile" onPress={() => router.push('/profile')} />
       <PrimaryButton title="Go to Settings" onPress={() => router.push('/settings')} />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: BACKGROUND },
+  scroll: { flex: 1, backgroundColor: BACKGROUND },
+  container: { padding: 16, backgroundColor: BACKGROUND },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: TEXT },
   widget: { backgroundColor: SUBTLE, padding: 16, borderRadius: 12, marginBottom: 16 },
   widgetTitle: { fontWeight: 'bold', fontSize: 18, marginBottom: 8, color: TEXT },
