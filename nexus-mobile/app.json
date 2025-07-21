@@ -10,7 +10,7 @@
       "web"
     ],
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "../nexus-icon.png",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
