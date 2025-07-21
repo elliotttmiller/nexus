@@ -18,6 +18,12 @@ async def lifespan(app: FastAPI):
     print("INFO: FastAPI startup event triggered.")
     credentials = None
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GOOGLE_PROJECT_ID")
+    # Robust region selection
+    location = (
+        os.environ.get("GOOGLE_LOCATION")
+        or os.environ.get("GOOGLE_CLOUD_LOCATION")
+        or "us-central1"
+    )
     gcp_creds_json_str = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
     if gcp_creds_json_str:
         print("INFO: Found GOOGLE_APPLICATION_CREDENTIALS_JSON.")
@@ -36,10 +42,10 @@ async def lifespan(app: FastAPI):
                 print(f"CRITICAL: Failed to load credentials from file path: {e}")
     if project_id and credentials:
         try:
-            vertexai.init(project=project_id, location="us-central1", credentials=credentials)
+            vertexai.init(project=project_id, location=location, credentials=credentials)
             from services import initialize_model
             app.state.gemini_model = initialize_model()
-            print("INFO: Vertex AI and Gemini model initialized successfully and attached to app state.")
+            print(f"INFO: Vertex AI and Gemini model initialized successfully in region {location} and attached to app state.")
         except Exception as e:
             print(f"CRITICAL: Failed to initialize Vertex AI during startup: {e}")
             app.state.gemini_model = None
@@ -64,6 +70,13 @@ class TransactionRequest(BaseModel):
 
 @app.get("/", summary="Health Check")
 def root():
+    if app.state.gemini_model:
+        return {"status": "ok", "ai_model_status": "loaded"}
+    else:
+        return {"status": "ok", "ai_model_status": "not_loaded"}
+
+@app.get("/health", summary="Health Check (platform)")
+def health():
     if app.state.gemini_model:
         return {"status": "ok", "ai_model_status": "loaded"}
     else:
