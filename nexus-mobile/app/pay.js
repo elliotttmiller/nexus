@@ -233,6 +233,7 @@ export default function PayScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <Text style={styles.resultTitle}>AI Recommendations</Text>
+              {aiRecommendations && console.log('AI Recommendations:', aiRecommendations)}
               {aiRecommendations && (
                 <ScrollView>
                   {/* Minimize Interest */}

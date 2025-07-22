@@ -70,7 +70,8 @@ def create_sandbox_public_token(username, password):
         "client_id": PLAID_CLIENT_ID,
         "secret": PLAID_SECRET,
         "institution_id": "ins_109508",  # First Platypus Bank
-        "initial_products": ["auth", "transactions"],
+        # UPDATED: request all products for a unified link token
+        "initial_products": ["auth", "transactions", "identity", "liabilities"],
         "options": {
             "override_username": username,
             "override_password": password

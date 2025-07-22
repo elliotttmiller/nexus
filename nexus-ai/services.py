@@ -13,14 +13,14 @@ load_dotenv()
 def initialize_model():
     """Initializes and returns the Gemini model object."""
     try:
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
             logger.critical("services.py - GOOGLE_API_KEY not found.")
-            return None
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-pro-latest")
+        return None
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-1.5-pro-latest")
         logger.info("services.py - Google AI Gemini model initialized successfully.")
-        return model
+    return model
     except Exception as e:
         logger.critical(f"services.py - Failed to initialize Gemini model: {e}", exc_info=True)
         return None

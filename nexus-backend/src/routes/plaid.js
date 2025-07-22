@@ -86,12 +86,17 @@ async function fetchAndMergeCompleteAccountData(accessToken, institutionName) {
       ...(liabilities.mortgage || [])
     ];
     for (const liability of allLiabilities) {
-      const primaryApr = liability.aprs && liability.aprs.find(apr => apr.apr_type === 'purchase_apr') || (liability.aprs && liability.aprs.length > 0 ? liability.aprs[0] : null);
+      // Find the purchase_apr, or fallback to the first APR if not present
+      let primaryApr = undefined;
+      if (liability.aprs && Array.isArray(liability.aprs)) {
+        primaryApr = liability.aprs.find(apr => apr.apr_type === 'purchase_apr') || liability.aprs[0];
+      }
       liabilityDataMap.set(liability.account_id, {
         apr: primaryApr ? primaryApr.apr_percentage : undefined,
+        minimum_payment_amount: liability.minimum_payment_amount,
       });
     }
-    return allAccounts.map(account => {
+    const mergedAccounts = allAccounts.map(account => {
       const liabilityDetails = liabilityDataMap.get(account.account_id);
       return {
         id: account.account_id,
@@ -100,9 +105,12 @@ async function fetchAndMergeCompleteAccountData(accessToken, institutionName) {
         balance: account.balances.current,
         type: account.type,
         apr: liabilityDetails ? liabilityDetails.apr : undefined,
+        minimumPayment: liabilityDetails ? liabilityDetails.minimum_payment_amount : undefined,
         creditLimit: account.type === 'credit' ? account.balances.limit : undefined,
       };
     });
+    console.log('Merged Plaid accounts:', JSON.stringify(mergedAccounts, null, 2));
+    return mergedAccounts;
   } catch (error) {
     console.error('[Plaid Service] Error fetching or merging Plaid data:', error.response ? error.response.data : error);
     return [];
