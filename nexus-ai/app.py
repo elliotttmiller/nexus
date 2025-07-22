@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Nexus Cortex AI", version="7.0.0-final", lifespan=lifespan)
 
 # --- 4. Import Services and Define Endpoints ---
-from services import categorize_transactions_ai, detect_anomalies_ai, spending_insights_ai, budget_health_ai, cash_flow_prediction_ai, interestkiller_ai
+from services import spending_insights_ai, budget_health_ai, cash_flow_prediction_ai, interestkiller_ai
 
 # --- Pydantic Models ---
 class Transaction(BaseModel):
@@ -91,25 +91,6 @@ def root():
 @app.get("/health", summary="Health Check (platform)")
 def health():
     return {"status": "ok"}
-
-@app.post("/v2/categorize")
-def categorize_v2(req: TransactionRequest):
-    try:
-        # Pass the gemini_model from the app's state, matching the new function signature
-        result = categorize_transactions_ai(app.state.gemini_model, req.model_dump().get('transactions'))
-        return {"result": json.loads(result)}
-    except Exception as e:
-        logger.error(f"Error in /v2/categorize: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-@app.post("/v2/anomalies")
-def anomalies_v2(req: TransactionRequest):
-    try:
-        result = detect_anomalies_ai(app.state.gemini_model, req.model_dump().get('transactions'))
-        return {"result": json.loads(result)}
-    except Exception as e:
-        logger.error(f"Error in /v2/anomalies: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/v2/spending-insights")
 def spending_insights_v2(req: SpendingInsightsRequest):

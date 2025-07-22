@@ -66,6 +66,20 @@ def spending_insights_ai(model, transactions: list, previous_transactions: list 
         ```
     **</answer>**
 
+    **EXAMPLE:**
+    <thinking>
+    - Calculated total spending for each category.
+    - Compared to previous period, 'Dining Out' and 'Groceries' increased the most.
+    - Actionable insight: 'Dining Out' is up 40%. Suggest cooking at home more often.
+    </thinking>
+    <answer>
+    {{
+      "category_totals": {{"Dining Out": 320.50, "Groceries": 210.00, "Utilities": 90.00}},
+      "top_increases": [{{"category": "Dining Out", "increase_percentage": "40%"}}, {{"category": "Groceries", "increase_percentage": "20%"}}],
+      "insight": "Your 'Dining Out' spending is up 40% from last month. Try cooking at home one more night a week to save money."
+    }}
+    </answer>
+
     **DATA:**
     - Current Transactions: {json.dumps(transactions)}
     - Previous Period Transactions: {json.dumps(previous_transactions) if previous_transactions else "null"}
@@ -94,6 +108,20 @@ def budget_health_ai(model, user_budget: dict, transactions: list) -> str:
         }}
         ```
     **</answer>**
+
+    **EXAMPLE:**
+    <thinking>
+    - Summed spending for each category.
+    - 'Shopping' and 'Dining Out' are over budget.
+    - Health score is 72. Tip: Focus on reducing 'Shopping' next week.
+    </thinking>
+    <answer>
+    {{
+      "health_score": 72,
+      "overspending_categories": ["Shopping", "Dining Out"],
+      "tip": "You're doing great in 'Groceries'! Let's see if we can apply that same focus to the 'Shopping' category next week."
+    }}
+    </answer>
 
     **DATA:**
     - User's Budget: {json.dumps(user_budget)}
@@ -124,6 +152,22 @@ def cash_flow_prediction_ai(model, accounts: list, upcoming_bills: list, recent_
         }}
         ```
     **</answer>**
+
+    **EXAMPLE:**
+    <thinking>
+    - Summed depository account balances: $2,000.
+    - Estimated spending for rest of month: $1,200.
+    - Upcoming bills: Rent $1,000, Phone $100.
+    - Predicted balance: -$300. Uncovered bill: Phone.
+    - Suggest pausing non-essential subscriptions.
+    </thinking>
+    <answer>
+    {{
+      "predicted_balance": -300.0,
+      "uncovered_bills": [{{"bill_name": "Phone", "amount": 100.0}}],
+      "suggestion": "Your phone bill may not be covered. Consider pausing non-essential subscriptions to free up cash."
+    }}
+    </answer>
 
     **DATA:**
     - Accounts: {json.dumps(accounts)}
@@ -163,6 +207,26 @@ def interestkiller_ai(model, accounts: list, payment_amount: float) -> str:
         }}
         ```
     **</answer>**
+
+    **EXAMPLE:**
+    <thinking>
+    - Strategy 1: Card A has highest APR. Pay minimums on others, rest to Card A. Projected interest savings: $25.
+    - Strategy 2: Card B has 55% utilization. Paying $400 brings it to 29%. This boosts credit score.
+    </thinking>
+    <answer>
+    {{
+      "minimize_interest_plan": {{
+        "name": "Avalanche Method",
+        "split": [{{"card_id": "A123", "amount": 600.0}}, {{"card_id": "B456", "amount": 50.0}}],
+        "explanation": "By focusing your payment on Card A, which has the highest APR, you save $25 in interest this month."
+      }},
+      "maximize_score_plan": {{
+        "name": "Credit Score Booster",
+        "split": [{{"card_id": "B456", "amount": 400.0}}, {{"card_id": "A123", "amount": 250.0}}],
+        "explanation": "Paying $400 to Card B drops its utilization from 55% to 29%, which can significantly boost your credit score."
+      }}
+    }}
+    </answer>
 
     **DATA:**
     - Accounts: {json.dumps(accounts)}
