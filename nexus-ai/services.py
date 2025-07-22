@@ -1,3 +1,5 @@
+# FINAL, ENHANCED: services.py
+
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -9,6 +11,7 @@ logger = logging.getLogger("nexus-ai")
 load_dotenv()
 
 def initialize_model():
+    """Initializes and returns the Gemini model object."""
     try:
         api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:
@@ -23,146 +26,146 @@ def initialize_model():
         return None
 
 def call_gemini(model: genai.GenerativeModel, prompt: str) -> str:
-    """
-    Generates content and robustly extracts the final answer from the <answer> tag
-    using a regular expression. If <answer> tags are missing, attempts to extract the first JSON object.
-    """
+    """Generates content and robustly extracts the final answer from the <answer> tag."""
     if not model:
         logger.warning("call_gemini called but model is not available.")
         return "{\"error\": \"AI model is not available. Check server startup logs.\"}"
     try:
         full_response = model.generate_content(prompt).text
-        logger.info(f"Raw AI response: {full_response}")
-        # Use a regular expression for robust parsing.
+        # Use a robust regex to find the <answer> content. This is more reliable.
         match = re.search(r'<answer>(.*?)</answer>', full_response, re.DOTALL | re.IGNORECASE)
         if match:
-            answer_text = match.group(1).strip()
-            return answer_text
+            return match.group(1).strip()
         else:
             logger.error(f"Could not find <answer> tags in AI response. Full response: {full_response}")
-            # Fallback: try to extract the first JSON object from the response
-            json_match = re.search(r'\{[\s\S]*?\}', full_response)
-            if json_match:
-                json_str = json_match.group(0)
-                try:
-                    # Validate it's valid JSON
-                    json.loads(json_str)
-                    return json_str
-                except Exception:
-                    pass
-            return "{\"error\": \"AI returned a malformed response (missing tags and no valid JSON).\"}"
+            return "{\"error\": \"AI returned a malformed response (missing tags).\"}"
     except Exception as e:
         logger.error(f"Gemini API call failed: {e}", exc_info=True)
         return '{"error": "AI generation failed. Please check server logs."}'
 
-def categorize_transactions_ai(model, transactions: list) -> str:
+# --- UNIFIED AI LOGIC CORE ---
+
+def spending_insights_ai(model, transactions: list, previous_transactions: list = None) -> str:
+    """Analyzes spending patterns with enhanced contextual awareness."""
     prompt = f"""
-    You are an expert financial AI. Your task is to categorize a list of transactions.
-    1. In a <thinking> block, reason about the category for each merchant.
-    2. In an <answer> block, provide ONLY a valid JSON array.
-    Transactions: {json.dumps(transactions)}
+    You are Nexus AI, a sharp and insightful financial analyst. Your task is to analyze a user's transaction data and provide clear, actionable insights.
+
+    **Instructions:**
+    1.  **<thinking>** In a thinking block, perform your analysis.
+        - Calculate the total spending for each category in the current period.
+        - If previous_transactions are available, compare the totals to identify the top 2 categories with the largest spending increase.
+        - Based on the data, formulate a single, non-generic, actionable insight to help the user. For example, instead of "spend less," suggest "Your 'Takeout' spending is up 50%. Could you try cooking at home one more night a week?"
+    2.  **</thinking>**
+    3.  **<answer>** In an answer block, provide ONLY a valid JSON object with the following structure. Do not add any other text.
+        ```json
+        {{
+          "category_totals": {{ "CategoryName": "TotalAmount" }},
+          "top_increases": [ {{ "category": "CategoryName", "increase_percentage": "Percentage" }} ],
+          "insight": "Your single, actionable insight here."
+        }}
+        ```
+    **</answer>**
+
+    **DATA:**
+    - Current Transactions: {json.dumps(transactions)}
+    - Previous Period Transactions: {json.dumps(previous_transactions) if previous_transactions else "null"}
     """
     return call_gemini(model, prompt)
 
-def detect_anomalies_ai(model, transactions: list) -> str:
-    prompt = f"""
-    You are an expert fraud detection AI. Your task is to find anomalies in a list of transactions.
-    1. In a <thinking> block, reason about anomalies.
-    2. In an <answer> block, provide ONLY a valid JSON array.
-    Transactions: {json.dumps(transactions)}
-    """
-    return call_gemini(model, prompt)
-
-def spending_insights_ai(model, transactions: list) -> str:
-    prompt = f"""
-    You are a financial AI assistant. Analyze the user's recent transactions and provide:
-    1. A summary of total spending by category.
-    2. The top 2 categories with the largest increase compared to the previous period.
-    3. One actionable insight to help the user save money.
-    IMPORTANT: Your answer will be rejected if it is not inside <answer>...</answer> tags. Do NOT use markdown, do NOT use triple backticks, ONLY output the JSON inside <answer>...</answer> tags, with nothing else before or after.
-    <thinking>
-    - Review the transaction list, group by category, compare to previous period if possible.
-    </thinking>
-    <answer>
-    {{
-      "category_totals": {{}},
-      "top_increases": [],
-      "insight": ""
-    }}
-    </answer>
-    Transactions: {json.dumps(transactions)}
-    """
-    return call_gemini(model, prompt)
 
 def budget_health_ai(model, user_budget: dict, transactions: list) -> str:
+    """Provides a sophisticated analysis of budget adherence."""
     prompt = f"""
-    You are a financial AI. Analyze the user's budget and recent transactions.
-    1. Provide a health score (0-100) based on how well they're sticking to their budget.
-    2. List any categories where they're overspending.
-    3. Give one actionable tip to improve their budget health.
-    IMPORTANT: Your answer will be rejected if it is not inside <answer>...</answer> tags. Do NOT use markdown, do NOT use triple backticks, ONLY output the JSON inside <answer>...</answer> tags, with nothing else before or after.
-    <thinking>
-    - Compare actual spending to budgeted amounts.
-    </thinking>
-    <answer>
-    {{
-      "health_score": 0,
-      "overspending_categories": [],
-      "tip": ""
-    }}
-    </answer>
-    Budget: {json.dumps(user_budget)}
-    Transactions: {json.dumps(transactions)}
+    You are Nexus AI, an encouraging and helpful budget coach. Your task is to assess a user's budget health.
+
+    **Instructions:**
+    1.  **<thinking>** In a thinking block, perform your analysis.
+        - For each category in the budget, sum the corresponding transactions.
+        - Calculate a `health_score` (0-100) based on overall adherence. A score of 100 means on or under budget in all categories. Penalize heavily for overspending in major categories.
+        - Identify all categories where spending has exceeded the budgeted amount.
+        - Formulate a single, positive, and actionable tip. Instead of "You overspent," try "You're doing great in 'Groceries'! Let's see if we can apply that same focus to the 'Shopping' category next week."
+    2.  **</thinking>**
+    3.  **<answer>** In an answer block, provide ONLY a valid JSON object with the following structure. Do not add any other text.
+        ```json
+        {{
+          "health_score": 0,
+          "overspending_categories": ["CategoryName"],
+          "tip": "Your single, encouraging, and actionable tip here."
+        }}
+        ```
+    **</answer>**
+
+    **DATA:**
+    - User's Budget: {json.dumps(user_budget)}
+    - Current Transactions: {json.dumps(transactions)}
     """
     return call_gemini(model, prompt)
 
-def cash_flow_prediction_ai(model, accounts: list, upcoming_bills: list, transactions: list) -> str:
+
+def cash_flow_prediction_ai(model, accounts: list, upcoming_bills: list, recent_spending_velocity: float) -> str:
+    """Predicts future cash flow with greater accuracy."""
     prompt = f"""
-    You are a financial AI. Predict if the user will have enough cash to cover upcoming bills.
-    1. Estimate end-of-month cash balance.
-    2. List any bills that may not be covered.
-    3. Suggest one action to avoid a shortfall.
-    IMPORTANT: Your answer will be rejected if it is not inside <answer>...</answer> tags. Do NOT use markdown, do NOT use triple backticks, ONLY output the JSON inside <answer>...</answer> tags, with nothing else before or after.
-    <thinking>
-    - Analyze account balances, recurring bills, and recent spending.
-    </thinking>
-    <answer>
-    {{
-      "predicted_balance": 0.0,
-      "uncovered_bills": [],
-      "suggestion": ""
-    }}
-    </answer>
-    Accounts: {json.dumps(accounts)}
-    Upcoming bills: {json.dumps(upcoming_bills)}
-    Transactions: {json.dumps(transactions)}
+    You are Nexus AI, a forward-thinking financial forecaster. Your task is to predict the user's short-term cash flow.
+
+    **Instructions:**
+    1.  **<thinking>** In a thinking block, perform your analysis.
+        - Sum the balances of all 'depository' accounts to get the current cash.
+        - Estimate future spending until the end of the month based on the `recent_spending_velocity` (a daily average).
+        - Subtract the estimated spending and the total of `upcoming_bills` from the current cash to get a `predicted_balance`.
+        - Identify which specific bills, if any, will not be covered if the predicted balance is negative.
+        - Formulate a single, high-impact suggestion. For example, "Your Netflix and Spotify bills are due before your next paycheck. Consider pausing one to ensure you cover your rent."
+    2.  **</thinking>**
+    3.  **<answer>** In an answer block, provide ONLY a valid JSON object with the following structure. Do not add any other text.
+        ```json
+        {{
+          "predicted_balance": 0.0,
+          "uncovered_bills": [ {{ "bill_name": "BillName", "amount": "Amount" }} ],
+          "suggestion": "Your single, high-impact suggestion here."
+        }}
+        ```
+    **</answer>**
+
+    **DATA:**
+    - Accounts: {json.dumps(accounts)}
+    - Upcoming Bills: {json.dumps(upcoming_bills)}
+    - Recent Spending Velocity (USD/day): {recent_spending_velocity}
     """
     return call_gemini(model, prompt)
+
 
 def interestkiller_ai(model, accounts: list, payment_amount: float) -> str:
+    """
+    Replaces the old algorithmic solver. Uses AI to compute and explain two optimal payment strategies.
+    This is now the single source of truth for payment optimization.
+    """
     prompt = f"""
-    You are an expert financial AI. Given the following credit cards (with balances, APRs, and credit limits) and a payment amount, do the following:
-    1. Compute the optimal split of the payment to MINIMIZE INTEREST. For this split, calculate and explain how much interest the user will save this month and why this split is optimal.
-    2. Compute the optimal split of the payment to MAXIMIZE CREDIT SCORE (minimize utilization). For this split, calculate and explain how much the user's utilization will drop (before and after, as a percentage) and why this helps their score.
-    3. For each, return a user-friendly, actionable explanation (not just numbers).
-    IMPORTANT: Your answer will be rejected if it is not inside <answer>...</answer> tags. Do NOT use markdown, do NOT use triple backticks, ONLY output the JSON inside <answer>...</answer> tags, with nothing else before or after.
-    <thinking>
-    - Analyze the accounts, balances, APRs, and credit limits.
-    - Use financial best practices for both goals.
-    </thinking>
-    <answer>
-    {{
-      "minimize_interest": {{
-        "split": [{{"card_id": "...", "amount": ...}}],
-        "explanation": "..."
-      }},
-      "maximize_score": {{
-        "split": [{{"card_id": "...", "amount": ...}}],
-        "explanation": "..."
-      }}
-    }}
-    </answer>
-    Accounts: {json.dumps(accounts)}
-    Payment amount: {payment_amount}
+    You are Nexus AI, an expert fiduciary financial strategist. Your task is to devise two optimal payment plans for a user's credit cards.
+
+    **Instructions:**
+    1.  **<thinking>** In a thinking block, perform your analysis for BOTH strategies.
+        - **Strategy 1 (Minimize Interest Cost):** This is the "Avalanche" method. Identify the card with the highest APR. Plan to pay the minimum on all other cards and allocate the rest of the payment amount to this high-APR card. Calculate the projected interest savings for the month compared to only paying minimums.
+        - **Strategy 2 (Maximize Credit Score):** This is the "Utilization" method. Identify cards with credit utilization over 30% or 50%. Plan to pay the minimum on all cards, then allocate the rest of the payment to the card whose utilization is highest, especially if the payment can bring it below a key threshold (e.g., from 35% to 29%). Explain that lower utilization is a major factor in credit scores.
+        - Formulate a clear, benefit-driven explanation for each plan.
+    2.  **</thinking>**
+    3.  **<answer>** In an answer block, provide ONLY a valid JSON object with the following structure. Do not add any other text.
+        ```json
+        {{
+          "minimize_interest_plan": {{
+            "name": "Avalanche Method",
+            "split": [{{ "card_id": "CardID", "amount": "PaymentAmount" }}],
+            "explanation": "To save you the most money, this plan attacks your highest interest rate card first. This is the fastest mathematical path to becoming debt-free."
+          }},
+          "maximize_score_plan": {{
+            "name": "Credit Score Booster",
+            "split": [{{ "card_id": "CardID", "amount": "PaymentAmount" }}],
+            "explanation": "To boost your credit score, this plan focuses on lowering your credit utilization on your most-used cards, a key factor in your score."
+          }}
+        }}
+        ```
+    **</answer>**
+
+    **DATA:**
+    - Accounts: {json.dumps(accounts)}
+    - Total Payment Amount: {payment_amount}
     """
     return call_gemini(model, prompt) 
