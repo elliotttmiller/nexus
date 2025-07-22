@@ -137,4 +137,32 @@ def cash_flow_prediction_ai(model, accounts: list, upcoming_bills: list, transac
     Upcoming bills: {json.dumps(upcoming_bills)}
     Transactions: {json.dumps(transactions)}
     """
+    return call_gemini(model, prompt)
+
+def interestkiller_ai(model, accounts: list, payment_amount: float) -> str:
+    prompt = f"""
+    You are an expert financial AI. Given the following credit cards (with balances, APRs, and credit limits) and a payment amount, do the following:
+    1. Compute the optimal split of the payment to MINIMIZE INTEREST. For this split, calculate and explain how much interest the user will save this month and why this split is optimal.
+    2. Compute the optimal split of the payment to MAXIMIZE CREDIT SCORE (minimize utilization). For this split, calculate and explain how much the user's utilization will drop (before and after, as a percentage) and why this helps their score.
+    3. For each, return a user-friendly, actionable explanation (not just numbers).
+    IMPORTANT: Your answer will be rejected if it is not inside <answer>...</answer> tags. Do NOT use markdown, do NOT use triple backticks, ONLY output the JSON inside <answer>...</answer> tags, with nothing else before or after.
+    <thinking>
+    - Analyze the accounts, balances, APRs, and credit limits.
+    - Use financial best practices for both goals.
+    </thinking>
+    <answer>
+    {{
+      "minimize_interest": {{
+        "split": [{{"card_id": "...", "amount": ...}}],
+        "explanation": "..."
+      }},
+      "maximize_score": {{
+        "split": [{{"card_id": "...", "amount": ...}}],
+        "explanation": "..."
+      }}
+    }}
+    </answer>
+    Accounts: {json.dumps(accounts)}
+    Payment amount: {payment_amount}
+    """
     return call_gemini(model, prompt) 

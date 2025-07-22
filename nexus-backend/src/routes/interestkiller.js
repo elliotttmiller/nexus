@@ -125,23 +125,10 @@ router.post('/pay/ai-recommendation', async (req, res) => {
   }
   try {
     console.log('AI Recommendation payload:', JSON.stringify({ cards, payment_amount }, null, 2));
-    const [minInterest, maxScore] = await Promise.all([
-      getInterestKillerSplit(cards, payment_amount, 'MINIMIZE_INTEREST_COST'),
-      getInterestKillerSplit(cards, payment_amount, 'MAXIMIZE_CREDIT_SCORE')
-    ]);
-    // If the result is an array, wrap it in an object with split and explanation
-    const wrapResult = (res) => Array.isArray(res) ? { split: res, explanation: '' } : res;
-    const minInterestObj = wrapResult(minInterest);
-    const maxScoreObj = wrapResult(maxScore);
-    // Add explanations
-    minInterestObj.explanation = `By following this split, you will save approximately $${calculateInterestSavings(minInterestObj.split, cards)} in interest this month.`;
-    const util = calculateUtilizationImprovement(maxScoreObj.split, cards);
-    maxScoreObj.explanation = `Your credit utilization will drop from ${util.before}% to ${util.after}%, which can help improve your credit score.`;
-    console.log('AI Recommendation response:', JSON.stringify({ minimize_interest: minInterestObj, maximize_score: maxScoreObj }, null, 2));
-    res.json({
-      minimize_interest: minInterestObj,
-      maximize_score: maxScoreObj
-    });
+    // Always use the AI-driven logic for both splits and explanations
+    const aiResult = await getInterestKillerSplit(cards, payment_amount, 'BOTH');
+    // Pass through the AI's response directly
+    res.json(aiResult);
   } catch (error) {
     console.error('AI Recommendation error:', error);
     res.status(500).json({ error: error.message });

@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Nexus Cortex AI", version="7.0.0-final", lifespan=lifespan)
 
 # --- 4. Import Services and Define Endpoints ---
-from services import categorize_transactions_ai, detect_anomalies_ai, spending_insights_ai, budget_health_ai, cash_flow_prediction_ai
+from services import categorize_transactions_ai, detect_anomalies_ai, spending_insights_ai, budget_health_ai, cash_flow_prediction_ai, interestkiller_ai
 
 # --- Pydantic Models ---
 class Transaction(BaseModel):
@@ -156,13 +156,8 @@ def cardrank_v2(req: V2CardRankRequest):
 @app.post('/v2/interestkiller')
 def interestkiller_v2(req: V2InterestKillerRequest):
     try:
-        from interestkiller import advanced_payment_split
-        result = advanced_payment_split(
-            [acc.model_dump() for acc in req.accounts],
-            req.payment_amount,
-            req.optimization_goal
-        )
-        return result
+        result = interestkiller_ai(app.state.gemini_model, [acc.model_dump() for acc in req.accounts], req.payment_amount)
+        return json.loads(result)
     except Exception as e:
         logger.error(f"Error in /v2/interestkiller: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) 

@@ -50,10 +50,10 @@ async function getInterestKillerSplit(accounts, paymentAmount, optimizationGoal)
       payment_amount: paymentAmount,
       optimization_goal: optimizationGoal,
     });
-    return res.data.split;
+    return res.data; // Return the full AI-driven object
   } catch (error) {
     console.error("InterestKiller AI Service Error:", error.response ? error.response.data : error.message);
-    return []; // Return empty array on failure
+    return { split: [], explanation: 'AI service unavailable' };
   }
 }
 
