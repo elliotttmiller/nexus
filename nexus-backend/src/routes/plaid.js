@@ -70,6 +70,9 @@ async function fetchAndMergeCompleteAccountData(accessToken, institutionName) {
       plaidClient.accountsGet({ access_token: accessToken }),
       plaidClient.liabilitiesGet({ access_token: accessToken }).catch(() => ({ data: { liabilities: {} } }))
     ]);
+    // Debug logging for Plaid API responses
+    console.log('Plaid accountsGet response:', JSON.stringify(accountsResponse.data, null, 2));
+    console.log('Plaid liabilitiesGet response:', JSON.stringify(liabilitiesResponse.data, null, 2));
     const allAccounts = accountsResponse.data.accounts;
     const liabilities = liabilitiesResponse.data.liabilities || {};
     const liabilityDataMap = new Map();
