@@ -109,34 +109,16 @@ router.get('/accounts', async (req, res) => {
   try {
     const accounts = await Account.findAll({ where: { user_id: userId } });
     if (!accounts || accounts.length === 0) {
-      // Return mock data for development/testing, including four mock credit cards
-      return res.json([
-        { id: 1, institution: 'Test Bank', balance: 1000, type: 'checking' },
-        { id: 2, institution: 'Mock Credit Union', balance: 2500, type: 'savings' },
-        { id: 'mock_credit_1', institution: 'Mock Bank', balance: 2500, type: 'credit', apr: 19.99, creditLimit: 8000 },
-        { id: 'mock_credit_2', institution: 'Mock Bank', balance: 1500, type: 'credit', apr: 24.99, creditLimit: 5000 },
-        { id: 'mock_credit_3', institution: 'Mock Bank', balance: 500, type: 'credit', apr: 16.49, creditLimit: 3000 },
-        { id: 'mock_credit_4', institution: 'Mock Bank', balance: 4200, type: 'credit', apr: 29.99, creditLimit: 12000 }
-      ]);
+      // Return empty array if no real Plaid accounts are linked
+      return res.json([]);
     }
     let allAccounts = [];
     for (const acc of accounts) {
       const merged = await fetchAndMergeCompleteAccountData(acc.plaid_access_token, acc.institution);
       allAccounts = allAccounts.concat(merged);
     }
-    // If no liability accounts found, add a mock credit card for demo/testing
-    const hasLiability = allAccounts.some(acc => acc.type === 'credit' && acc.apr !== undefined && acc.creditLimit !== undefined);
-    if (!hasLiability) {
-      console.warn('No real liability accounts found, adding mock credit card for demo/testing.');
-      allAccounts.push({
-        id: 'mock_credit_1',
-        institution: 'Mock Bank',
-        balance: 2500,
-        type: 'credit',
-        apr: 19.99,
-        creditLimit: 8000
-      });
-    }
+    // Remove fallback that adds a mock credit card if no liability accounts are found
+    // Only return real Plaid data
     console.log('Returning accounts:', allAccounts);
     res.json(allAccounts);
   } catch (err) {

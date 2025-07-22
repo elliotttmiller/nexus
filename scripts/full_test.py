@@ -1,5 +1,6 @@
 import requests
 import json
+import argparse
 
 API_BASE_URL = 'https://nexus-production-2e34.up.railway.app'  # Use Railway production backend
 BASE_URL = f'{API_BASE_URL}/api'
@@ -99,29 +100,39 @@ def get_accounts():
         print(f'Error getting accounts:', str(e))
         return []
 
-def unlink_all_accounts():
-    accounts = get_accounts()
-    if not accounts or not isinstance(accounts, list):
-        print('No accounts to unlink.')
+def unlink_all_accounts(user_id=1):
+    print(f"Unlinking all Plaid accounts for user {user_id}...")
+    headers = {'Content-Type': 'application/json'}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    # List all accounts
+    resp = requests.get(f"{BASE_URL}/users/data-access", params={"userId": user_id}, headers=headers)
+    if resp.status_code == 401 and refresh_token:
+        print('401 Unauthorized on list, attempting token refresh...')
+        refresh_jwt()
+        headers['Authorization'] = f'Bearer {token}'
+        resp = requests.get(f"{BASE_URL}/users/data-access", params={"userId": user_id}, headers=headers)
+    if resp.status_code != 200:
+        print(f"Failed to list accounts: {resp.text}")
+        return
+    accounts = resp.json()
+    if not accounts:
+        print("No accounts to unlink.")
         return
     for acc in accounts:
-        acc_id = acc.get('id')
+        acc_id = acc.get("id")
         if not acc_id:
             continue
-        print(f'Unlinking account {acc_id}...')
-        headers = {'Content-Type': 'application/json'}
-        if token:
+        del_resp = requests.delete(f"{BASE_URL}/users/data-access/{acc_id}", headers=headers)
+        if del_resp.status_code == 401 and refresh_token:
+            print(f'401 Unauthorized on delete for account {acc_id}, attempting token refresh...')
+            refresh_jwt()
             headers['Authorization'] = f'Bearer {token}'
-        try:
-            res = requests.delete(f'{BASE_URL}/users/data-access/{acc_id}', headers=headers)
-            if res.status_code == 401 and refresh_token:
-                print('401 Unauthorized on delete, attempting token refresh...')
-                refresh_jwt()
-                headers['Authorization'] = f'Bearer {token}'
-                res = requests.delete(f'{BASE_URL}/users/data-access/{acc_id}', headers=headers)
-            print(f'Account {acc_id} unlink status:', res.status_code)
-        except Exception as e:
-            print(f'Error unlinking account {acc_id}:', str(e))
+            del_resp = requests.delete(f"{BASE_URL}/users/data-access/{acc_id}", headers=headers)
+        if del_resp.status_code == 200:
+            print(f"Unlinked account {acc_id}")
+        else:
+            print(f"Failed to unlink account {acc_id}: {del_resp.text}")
 
 def test_ai_recommendation():
     print('\nTesting AI Recommendation...')
@@ -151,7 +162,11 @@ def test_ai_recommendation():
 
 if __name__ == '__main__':
     login()
-    unlink_all_accounts()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--unlink-all", action="store_true", help="Unlink all Plaid accounts for user 1")
+    args = parser.parse_args()
+    if args.unlink_all:
+        unlink_all_accounts(user_id=1)
     test_get_accounts()
     test_ai_recommendation()
 
