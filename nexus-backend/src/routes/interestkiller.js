@@ -127,8 +127,12 @@ router.post('/pay/ai-recommendation', async (req, res) => {
     console.log('AI Recommendation payload:', JSON.stringify({ cards, payment_amount }, null, 2));
     // Always use the AI-driven logic for both splits and explanations
     const aiResult = await getInterestKillerSplit(cards, payment_amount, 'BOTH');
-    // Pass through the AI's response directly
-    res.json(aiResult);
+    // Remap keys for frontend compatibility
+    const remapped = {
+      minimize_interest: aiResult.minimize_interest_plan,
+      maximize_score: aiResult.maximize_score_plan
+    };
+    res.json(remapped);
   } catch (error) {
     console.error('AI Recommendation error:', error);
     res.status(500).json({ error: error.message });
