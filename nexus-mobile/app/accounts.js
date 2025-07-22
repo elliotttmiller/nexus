@@ -19,14 +19,17 @@ export default function AccountsScreen() {
     setLoading(true);
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`);
+      console.log('fetchAccounts response status:', res.status);
       if (res.status === 401) {
         Alert.alert('Session expired', 'Please log in again.');
         router.replace('/login');
         return;
       }
       const data = await res.json();
+      console.log('fetchAccounts data:', data);
       setAccounts(data);
     } catch (err) {
+      console.log('fetchAccounts error:', err);
       Alert.alert('Error', err.message);
     } finally {
       setLoading(false);
@@ -48,6 +51,7 @@ export default function AccountsScreen() {
       const data = await res.json();
       if (res.ok && data.link_token) {
         setLinkToken(data.link_token);
+        console.log('Fetched Plaid linkToken:', data.link_token);
       } else {
         Alert.alert('Error', data.error || 'Failed to get link token');
       }
@@ -88,31 +92,44 @@ export default function AccountsScreen() {
         ListEmptyComponent={<Text style={styles.text}>No linked accounts.</Text>}
       />
       {linkToken && (
-        <PlaidLink
-          tokenConfig={{ token: linkToken, noLoadingState: false }}
-          onSuccess={async ({ publicToken, metadata }) => {
-            try {
-              const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
-                method: 'POST',
-                body: JSON.stringify({ public_token: publicToken, userId: 1, institution: metadata.institution?.name })
-              });
-              const data = await res.json();
-              if (res.ok) {
-                Alert.alert('Success', 'Account linked!');
-                fetchAccounts();
-              } else {
-                Alert.alert('Error', data.error || 'Failed to link account');
+        <>
+          {console.log('Rendering PlaidLink', linkToken)}
+          <PlaidLink
+            tokenConfig={{ token: linkToken, noLoadingState: false }}
+            onSuccess={async ({ publicToken, metadata }) => {
+              console.log('PlaidLink onSuccess publicToken:', publicToken);
+              console.log('PlaidLink onSuccess metadata:', metadata);
+              try {
+                const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
+                  method: 'POST',
+                  body: JSON.stringify({ public_token: publicToken, userId: 1, institution: metadata.institution?.name })
+                });
+                console.log('exchange_public_token response status:', res.status);
+                const data = await res.json();
+                console.log('exchange_public_token data:', data);
+                if (res.ok) {
+                  Alert.alert('Success', 'Account linked!');
+                  fetchAccounts();
+                } else {
+                  Alert.alert('Error', data.error || 'Failed to link account');
+                }
+              } catch (err) {
+                console.log('exchange_public_token error:', err);
+                Alert.alert('Error', err.message);
               }
-            } catch (err) {
-              Alert.alert('Error', err.message);
-            }
-          }}
-          onExit={() => setLinkToken(null)}
-        >
-          <Text style={{ color: '#fff', backgroundColor: PRIMARY, padding: 12, borderRadius: 8, textAlign: 'center', marginBottom: 8 }}>
-            Open Plaid Link
-          </Text>
-        </PlaidLink>
+            }}
+            onExit={(exit) => {
+              console.log('PlaidLink onExit:', exit);
+            }}
+            onEvent={(eventName, metadata) => {
+              console.log('PlaidLink onEvent:', eventName, metadata);
+            }}
+          >
+            <Text style={{ color: '#fff', backgroundColor: PRIMARY, padding: 12, borderRadius: 8, textAlign: 'center', marginBottom: 8 }}>
+              Open Plaid Link
+            </Text>
+          </PlaidLink>
+        </>
       )}
       <PrimaryButton title={linkLoading ? 'Getting Link Token...' : 'Link New Account'} onPress={fetchLinkToken} disabled={linkLoading} />
     </View>
