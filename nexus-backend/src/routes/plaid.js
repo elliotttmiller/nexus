@@ -18,15 +18,19 @@ const plaidClient = new PlaidApi(config);
 // Create Link Token
 router.post('/create_link_token', async (req, res) => {
   try {
-    const response = await plaidClient.linkTokenCreate({
-      user: { client_user_id: req.body.userId ? String(req.body.userId) : 'test-user' },
+    const { userId } = req.body;
+    // Unified, robust product request
+    const tokenConfig = {
+      user: { client_user_id: String(userId) },
       client_name: 'Nexus',
-      products: ['auth', 'transactions', 'liabilities'], // Added liabilities
+      products: ['transactions', 'auth', 'identity', 'liabilities'],
       country_codes: ['US'],
       language: 'en',
-      // institution_id removed to allow user selection in UI
-    });
-    res.json(response.data);
+      webhook: 'https://your-backend-url.up.railway.app/api/plaid/webhook', // optional, can be updated
+    };
+    console.log('[Plaid] Creating Link Token with products:', tokenConfig.products);
+    const response = await plaidClient.linkTokenCreate(tokenConfig);
+    res.json({ link_token: response.data.link_token });
   } catch (err) {
     console.error('Error in /create_link_token:', err);
     res.status(500).json({ error: err.message });
