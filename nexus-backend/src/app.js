@@ -50,7 +50,13 @@ app.use('/api/interestkiller', authenticateToken, interestKillerRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/insights', insightsRoutes);
 
-app.get('/', (req, res) => res.send('Nexus API Running'));
+// Health check endpoint for Railway
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Nexus Backend is healthy.'
+  });
+});
 
 app.use(Sentry.Handlers.errorHandler());
 
