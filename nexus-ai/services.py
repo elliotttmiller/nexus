@@ -308,6 +308,7 @@ def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_co
     4.  **Heuristics for Projections:**
         - **Credit Score:** Dropping utilization below a key threshold (e.g., 30%) can lead to a 20-40 point increase over 2-3 months.
         - **Interest Savings:** Project monthly savings over a 12-month period to show a compelling annual figure.
+    5.  **Insufficient Funds Protocol (MANDATORY):** First, calculate the sum of all minimum payments. If the user's `payment_amount` is LESS than this sum, you must abandon the standard Avalanche/Score Booster plans. Instead, for BOTH plans, you will apply the entire `payment_amount` to the SINGLE card with the highest APR. The `explanation` MUST clearly state that the payment is not enough to cover all minimums and that this action is taken to minimize damage. The `split` will contain only one item.
 
     --- EXPLANATION & PROJECTION RULES ---
     1.  **Persona:** You are an expert providing a clear recommendation. Start with an assertive, positive statement.
