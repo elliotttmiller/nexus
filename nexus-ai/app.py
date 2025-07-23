@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
+import math
 
 # --- 1. Load Environment ---
 load_dotenv()
@@ -23,7 +24,13 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Nexus Cortex AI", version="7.0.0-final", lifespan=lifespan)
 
 # --- 4. Import Services and Define Endpoints ---
-from services import spending_insights_ai, budget_health_ai, cash_flow_prediction_ai, interestkiller_ai
+from services import (
+    interestkiller_ai_pure,
+    spending_insights_ai,
+    budget_health_ai,
+    cash_flow_prediction_ai,
+    interestkiller_ai
+)
 
 # --- Pydantic Models ---
 class Transaction(BaseModel):
@@ -68,6 +75,11 @@ class TransactionContext(BaseModel):
 class UserContext(BaseModel):
     primaryGoal: str
 
+class UserFinancialContext(BaseModel):
+    primary_goal: str
+    total_debt_last_month: Optional[float] = None
+    last_plan_chosen: Optional[str] = None
+
 class V2CardRankRequest(BaseModel):
     user_cards: List[Card]
     transaction_context: TransactionContext
@@ -82,6 +94,7 @@ class Account(BaseModel):
 class V2InterestKillerRequest(BaseModel):
     accounts: List[Account]
     payment_amount: float
+    user_context: UserFinancialContext
 
 @app.get("/", summary="Health Check")
 def root():
@@ -135,9 +148,36 @@ def cardrank_v2(req: V2CardRankRequest):
 
 @app.post('/v2/interestkiller')
 def interestkiller_v2(req: V2InterestKillerRequest):
+    raw_ai_result = interestkiller_ai_pure(app.state.gemini_model, [acc.model_dump() for acc in req.accounts], req.payment_amount, req.user_context.model_dump())
     try:
-        result = interestkiller_ai(app.state.gemini_model, [acc.model_dump() for acc in req.accounts], req.payment_amount)
-        return json.loads(result)
-    except Exception as e:
-        logger.error(f"Error in /v2/interestkiller: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e)) 
+        ai_json = json.loads(raw_ai_result)
+        # --- GUARDRAILS START ---
+        plan_keys = ["minimize_interest_plan", "maximize_score_plan"]
+        for key in plan_keys:
+            if key not in ai_json:
+                raise ValueError(f"AI response missing required plan key: '{key}'.")
+        for key in plan_keys:
+            plan_data = ai_json[key]
+            if not isinstance(plan_data, dict):
+                raise ValueError(f"Plan '{key}' is not a valid object.")
+            required_sub_keys = ['name', 'split', 'explanation', 'projected_outcome']
+            if not all(sub_key in plan_data for sub_key in required_sub_keys):
+                raise ValueError(f"Plan '{key}' is missing required sub-keys (e.g., 'projected_outcome').")
+            split = plan_data.get("split")
+            if not isinstance(split, list):
+                raise ValueError(f"Plan '{key}' has an invalid 'split' array.")
+            total_allocated = sum(item.get('amount', 0) for item in split)
+            if not math.isclose(total_allocated, req.payment_amount, rel_tol=1e-2):
+                logger.error(f"AI MATH FAILURE in plan '{key}'. Expected: {req.payment_amount}, AI allocated: {total_allocated}")
+                raise ValueError(f"AI failed to correctly allocate the total payment amount for plan '{key}'.")
+            for item in split:
+                if not all(k in item for k in ['card_id', 'card_name', 'amount', 'type']):
+                    raise ValueError(f"An item in the '{key}' split is missing required keys.")
+        recommendation = ai_json.get("nexus_recommendation")
+        if not recommendation or recommendation not in [ai_json[key].get("name") for key in plan_keys]:
+            raise ValueError(f"Invalid 'nexus_recommendation' value: '{recommendation}'. It must match one of the plan names.")
+        # --- GUARDRAILS END ---
+        return ai_json
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"AI response for InterestKiller failed validation: {e}. Raw response: {raw_ai_result}")
+        raise HTTPException(status_code=500, detail=f"AI response failed validation: {e}") 

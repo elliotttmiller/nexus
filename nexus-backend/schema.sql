@@ -12,6 +12,8 @@ CREATE TABLE accounts (
   user_id INTEGER REFERENCES users(id),
   plaid_access_token VARCHAR(255),
   institution VARCHAR(255),
+  institution_id VARCHAR(255),
+  institution_name VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

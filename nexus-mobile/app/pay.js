@@ -254,6 +254,13 @@ export default function PayScreen() {
         <TouchableOpacity style={styles.aiButton} onPress={handleAIRecommendation} disabled={aiLoading}>
           <Text style={styles.aiButtonText}>{aiLoading ? 'Loading...' : 'AI Recommendation'}</Text>
         </TouchableOpacity>
+        {aiLoading && (
+          <View style={{ alignItems: 'center', marginVertical: 24 }}>
+            <ActivityIndicator size="large" color={PRIMARY} />
+            <Text style={{ color: PRIMARY, fontWeight: 'bold', fontSize: 18, marginTop: 12 }}>Nexus AI is analyzing your options...</Text>
+            <Text style={{ color: '#555', fontSize: 15, marginTop: 6 }}>This may take a few moments.</Text>
+          </View>
+        )}
         {cards.length === 0 ? (
           <Text style={styles.text}>No credit cards found.</Text>
         ) : (

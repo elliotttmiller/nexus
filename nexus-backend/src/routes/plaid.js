@@ -4,6 +4,7 @@ const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 const db = require('../models');
 const Account = db.Account;
 const Card = db.Card;
+const { createClient } = require('redis');
 
 const config = new Configuration({
   basePath: PlaidEnvironments.sandbox,
@@ -15,6 +16,11 @@ const config = new Configuration({
   },
 });
 const plaidClient = new PlaidApi(config);
+
+// Initialize Redis client
+const redisClient = createClient({ url: process.env.REDIS_URL });
+redisClient.on('error', (err) => console.log('Redis Client Error', err));
+(async () => { try { await redisClient.connect(); } catch (e) { console.error('Redis connect error:', e); } })();
 
 // Create Link Token
 router.post('/create_link_token', async (req, res) => {
@@ -122,10 +128,17 @@ async function fetchAndMergeCompleteAccountData(accessToken, institutionName) {
 router.get('/accounts', async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.status(400).json({ error: 'userId required' });
+  const cacheKey = `user:${userId}:accounts`;
   try {
+    // 1. Try to get data from cache first
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      console.log(`CACHE HIT for user ${userId}`);
+      return res.json(JSON.parse(cachedData));
+    }
+    console.log(`CACHE MISS for user ${userId}`);
     const accounts = await Account.findAll({ where: { user_id: userId } });
     if (!accounts || accounts.length === 0) {
-      // Return empty array if no real Plaid accounts are linked
       return res.json([]);
     }
     let allAccounts = [];
@@ -133,8 +146,8 @@ router.get('/accounts', async (req, res) => {
       const merged = await fetchAndMergeCompleteAccountData(acc.plaid_access_token, acc.institution);
       allAccounts = allAccounts.concat(merged);
     }
-    // Remove fallback that adds a mock credit card if no liability accounts are found
-    // Only return real Plaid data
+    // Store the result in Redis with a 30-minute expiration (1800 seconds)
+    await redisClient.set(cacheKey, JSON.stringify(allAccounts), { EX: 1800 });
     console.log('Returning accounts:', allAccounts);
     res.json(allAccounts);
   } catch (err) {

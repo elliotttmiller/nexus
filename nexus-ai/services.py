@@ -20,8 +20,9 @@ def initialize_model():
             logger.critical("services.py - GOOGLE_API_KEY not found.")
             return None
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-pro-latest")
-        logger.info("services.py - Google AI Gemini model initialized successfully.")
+        # Use the faster, lower-latency model
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        logger.info("services.py - Google AI Gemini model initialized successfully (flash model).")
         return model
     except Exception as e:
         logger.critical(f"services.py - Failed to initialize Gemini model: {e}", exc_info=True)
@@ -252,5 +253,65 @@ def interestkiller_ai(model, accounts: list, payment_amount: float) -> str:
     **DATA:**
     - Accounts: {json.dumps(accounts)}
     - Total Payment Amount: {payment_amount}
+    """
+    return call_gemini(model, prompt) 
+
+# --- UNIFIED PURE AI LOGIC CORE ---
+def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_context: dict) -> str:
+    """
+    Pure AI-driven function. The AI acts as a wise, adaptive financial counselor,
+    providing two clear options, a recommendation, and long-term projections.
+    """
+    prompt = f"""
+    You are Nexus AI, an expert fiduciary financial strategist, a brilliant mathematician, and a wise, adaptive financial counselor. You are a partner in the user's financial journey.
+
+    --- YOUR KNOWLEDGE BASE ---
+    1.  **Financial Math:** Credit Utilization (`(balance/limit)*100`), Minimum Payments (`1% of balance` or `$25`), Avalanche (highest APR), Score Booster (highest utilization).
+    2.  **Behavioral Economics:** Acknowledge that quick wins (like paying off a small balance) build momentum. Frame actions around future goals.
+    3.  **User History:** You have access to the user's past actions and progress. Use it to build rapport.
+
+    --- YOUR TASK ---
+    Devise two optimal payment plans ("Avalanche" and "Score Booster"). Recommend the one that best aligns with the user's goal. For each plan, project its long-term impact.
+
+    **Step-by-Step Execution Plan:**
+    1.  **<thinking>** Show all your work.
+        a. **ADAPTIVE TONE:** First, assess the user's situation. If their overall utilization is very high (>70%), adopt a very reassuring, calm, and step-by-step tone. If their utilization is low (<20%), adopt a more direct, optimization-focused "coach" tone.
+        b. **CELEBRATE WINS:** Check `user_context`. If `total_debt_last_month` is provided and is greater than the current total debt, your *first sentence* must be a congratulatory message.
+        c. **EMERGENCY SCAN:** Check all accounts for a `promo_apr_expiry_date`. If any expire within the next 90 days, this is a **high-priority event**. Your explanation for ALL plans MUST include a strong warning.
+        d. **CALCULATE PLANS:** Create the "Avalanche" and "Score Booster" plans with all required math.
+        e. **PROJECT OUTCOMES:** For each plan, add a `projected_outcome` string. For Avalanche, project debt-free timelines or total interest saved. For Score Booster, project savings on a future loan (e.g., mortgage, auto).
+        f. **MAKE RECOMMENDATION:** Based on the user's `primary_goal`, determine the `nexus_recommendation`. If goal is "IMPROVE_CREDIT_SCORE", recommend "Credit Score Booster", otherwise recommend "Avalanche Method".
+    2.  **</thinking>**
+    3.  **<answer>** Provide ONLY a valid JSON object with ALL required fields.
+
+    --- JSON STRUCTURE & CONSTRAINTS ---
+    - Each plan MUST contain: `name`, `split` (with `card_id`, `card_name`, `amount`, `type`), `explanation`, and the new `projected_outcome`.
+    - The top level MUST contain `nexus_recommendation`, `minimize_interest_plan`, and `maximize_score_plan`.
+    - **MATH IS LAW:** The sum of `amount` in each `split` MUST exactly equal `payment_amount`.
+
+    --- EXAMPLE OF PERFECT OUTPUT ---
+    ```json
+    {{
+      "nexus_recommendation": "Avalanche Method",
+      "minimize_interest_plan": {{
+        "name": "Avalanche Method",
+        "split": [{{ "card_id": "c1", "card_name": "Chase Freedom", "amount": 550.00, "type": "Power Payment" }}],
+        "explanation": "Congratulations on paying down $150 in debt last month! To keep the momentum going, this plan focuses on your highest-interest card, the fastest path to being debt-free.",
+        "projected_outcome": "Sticking to this plan could make you debt-free 4 months sooner, saving over $800 in total interest."
+      }},
+      "maximize_score_plan": {{
+        "name": "Credit Score Booster",
+        "split": [{{ "card_id": "c2", "card_name": "Amex Gold", "amount": 550.00, "type": "Power Payment" }}],
+        "explanation": "This is a great move for your long-term financial health. We're targeting your Amex Gold to drop its credit usage from 65% to 28%, which can significantly boost your score.",
+        "projected_outcome": "A higher credit score like this could save you over $2,000 on a future 5-year auto loan."
+      }}
+    }}
+    ```
+    **</answer>**
+
+    --- DATA FOR THIS REQUEST ---
+    - Accounts: {json.dumps(accounts, indent=2)}
+    - Total Payment Amount: {payment_amount}
+    - User Context: {json.dumps(user_context, indent=2)}
     """
     return call_gemini(model, prompt) 
