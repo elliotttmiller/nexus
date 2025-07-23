@@ -202,10 +202,10 @@ export default function PayScreen() {
       return;
     }
     // Map accounts to required structure
-    const accounts = (selected.length > 0 ? cards.filter(c => selected.includes(c.id)) : cards)
+    let accounts = (selected.length > 0 ? cards.filter(c => selected.includes(c.id)) : cards)
       .map(c => ({
         id: c.id || '',
-        name: c.name || c.card_name || 'Card', // Ensure name is always present
+        name: c.name || c.card_name || 'Card',
         balance: typeof c.balance === 'number' ? c.balance : parseFloat(c.balance) || 0,
         apr: typeof c.apr === 'number' ? c.apr : parseFloat(c.apr) || 0,
         creditLimit: typeof c.creditLimit === 'number'
@@ -216,9 +216,19 @@ export default function PayScreen() {
         promo_apr_expiry_date: c.promo_apr_expiry_date || null,
         type: c.type || 'credit'
       }));
+    // Filter out any accounts missing required fields
+    const validAccounts = accounts.filter(acc =>
+      acc.id && typeof acc.balance === 'number' && !isNaN(acc.balance) &&
+      typeof acc.apr === 'number' && !isNaN(acc.apr) &&
+      typeof acc.creditLimit === 'number' && !isNaN(acc.creditLimit)
+    );
+    if (validAccounts.length !== accounts.length) {
+      setError('Some cards are missing required data and were excluded from the recommendation.');
+      Alert.alert('Data Error', 'Some cards are missing required data and were excluded from the recommendation.');
+    }
     const payload = {
       userId: 1,
-      accounts,
+      accounts: validAccounts,
       payment_amount: Number(amount),
       user_context: {
         primary_goal: goal
