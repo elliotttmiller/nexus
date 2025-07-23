@@ -228,7 +228,7 @@ export default function PayScreen() {
             </TouchableOpacity>
           </View>
         )}
-        {/* AI Recommendation Modal (already present) */}
+        {/* AI Recommendation Modal */}
         <Modal visible={aiModalVisible} transparent animationType="slide">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -239,32 +239,36 @@ export default function PayScreen() {
                   {/* Minimize Interest */}
                   <View style={{ marginBottom: 24 }}>
                     <Text style={styles.label}>Minimize Interest</Text>
-                    {Array.isArray(aiRecommendations.minimize_interest?.split) && aiRecommendations.minimize_interest.split.map((s, i) => (
+                    {Array.isArray(aiRecommendations.minimize_interest_plan?.split) && aiRecommendations.minimize_interest_plan.split.map((s, i) => (
                       <View key={i} style={styles.splitRow}>
-                        <Text style={styles.resultText}>Card {s.card_id}:</Text>
-                        <Text style={styles.resultText}>${s.amount}</Text>
+                        <Text style={styles.resultText}>Card ••••{String(s.card_id).slice(-4)}:</Text>
+                        <Text style={styles.resultText}>${s.amount.toFixed(2)}</Text>
                       </View>
                     ))}
-                    {aiRecommendations.minimize_interest?.explanation && (
-                      <Text style={styles.explanationHighlight}>{aiRecommendations.minimize_interest.explanation}</Text>
+                    {aiRecommendations.minimize_interest_plan?.explanation && (
+                      <Text style={styles.explanationHighlight}>{aiRecommendations.minimize_interest_plan.explanation}</Text>
                     )}
-                    <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.minimize_interest, 'MINIMIZE_INTEREST_COST')}>
+                    <Pressable 
+                      style={styles.applyButton} 
+                      onPress={() => applyRecommendation(aiRecommendations.minimize_interest_plan, 'MINIMIZE_INTEREST_COST')}>
                       <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
                     </Pressable>
                   </View>
                   {/* Maximize Score */}
                   <View>
                     <Text style={styles.label}>Maximize Score</Text>
-                    {Array.isArray(aiRecommendations.maximize_score?.split) && aiRecommendations.maximize_score.split.map((s, i) => (
+                    {Array.isArray(aiRecommendations.maximize_score_plan?.split) && aiRecommendations.maximize_score_plan.split.map((s, i) => (
                       <View key={i} style={styles.splitRow}>
-                        <Text style={styles.resultText}>Card {s.card_id}:</Text>
-                        <Text style={styles.resultText}>${s.amount}</Text>
+                        <Text style={styles.resultText}>Card ••••{String(s.card_id).slice(-4)}:</Text>
+                        <Text style={styles.resultText}>${s.amount.toFixed(2)}</Text>
                       </View>
                     ))}
-                    {aiRecommendations.maximize_score?.explanation && (
-                      <Text style={styles.explanationHighlight}>{aiRecommendations.maximize_score.explanation}</Text>
+                    {aiRecommendations.maximize_score_plan?.explanation && (
+                      <Text style={styles.explanationHighlight}>{aiRecommendations.maximize_score_plan.explanation}</Text>
                     )}
-                    <Pressable style={styles.applyButton} onPress={() => applyRecommendation(aiRecommendations.maximize_score, 'MAXIMIZE_CREDIT_SCORE')}>
+                    <Pressable 
+                      style={styles.applyButton} 
+                      onPress={() => applyRecommendation(aiRecommendations.maximize_score_plan, 'MAXIMIZE_CREDIT_SCORE')}>
                       <Text style={styles.applyButtonText}>Apply This Recommendation</Text>
                     </Pressable>
                   </View>

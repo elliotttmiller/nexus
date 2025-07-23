@@ -1,8 +1,13 @@
 // ENHANCED aiService.js
 
 const axios = require('axios');
+// Ensure environment variables are loaded
+if (!process.env.AI_BASE_URL && !process.env.API_BASE_URL) {
+  require('dotenv').config();
+}
+
 // Use the public URL for the AI service
-const AI_BASE_URL = process.env.AI_BASE_URL || 'https://aiservice-production-acab.up.railway.app'; // Public AI service URL
+const AI_BASE_URL = process.env.AI_BASE_URL || process.env.API_BASE_URL || 'http://localhost:8000'; // Local nexus-ai service
 
 /**
  * Retrieves the optimal card recommendation based on a rich context.
@@ -40,20 +45,22 @@ async function getCardRank(userCards, transactionContext, userContext) {
  *
  * @param {Array} accounts - Array of account objects, each with balance, apr, creditLimit, promoAPR, promoEndDate.
  * @param {number} paymentAmount - The total amount to be paid.
- * @param {string} optimizationGoal - "MINIMIZE_INTEREST_COST", "MAXIMIZE_CREDIT_SCORE"
- * @returns {Promise<Array>} The calculated payment split.
+ * @returns {Promise<Object>} An object containing both payment split plans and their explanations.
  */
-async function getInterestKillerSplit(accounts, paymentAmount, optimizationGoal) {
+async function getInterestKillerSplit(accounts, paymentAmount) {
   try {
     const res = await axios.post(`${AI_BASE_URL}/v2/interestkiller`, {
       accounts,
       payment_amount: paymentAmount,
-      optimization_goal: optimizationGoal,
     });
-    return res.data; // Return the full AI-driven object
+    return res.data; // Return the full AI-driven object with both plans
   } catch (error) {
     console.error("InterestKiller AI Service Error:", error.response ? error.response.data : error.message);
-    return { split: [], explanation: 'AI service unavailable' };
+    return { 
+      error: 'AI service unavailable',
+      minimize_interest_plan: { split: [], explanation: 'AI service unavailable' },
+      maximize_score_plan: { split: [], explanation: 'AI service unavailable' }
+    };
   }
 }
 

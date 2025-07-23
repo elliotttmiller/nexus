@@ -82,7 +82,6 @@ class Account(BaseModel):
 class V2InterestKillerRequest(BaseModel):
     accounts: List[Account]
     payment_amount: float
-    optimization_goal: str
 
 @app.get("/", summary="Health Check")
 def root():
