@@ -7,19 +7,20 @@ services:
   backend:
     build: ./nexus-backend
     ports:
-      - "5000:5000"
+      - "8080:8080"
     environment:
-      - AI_BASE_URL=http://ai:8000
-      - DATABASE_URL=postgres://user:password@db:5432/nexusdb
+      - AI_BASE_URL=https://aiservice-production-acab.up.railway.app
+      - DATABASE_URL=postgres://postgres:hTckoowSOUVGSbZXigsxWBVXxlXYFAfu@shinkansen.proxy.rlwy.net:57937/railway
+      - API_BASE_URL=https://nexus-production-2e34.up.railway.app
     depends_on:
       - ai
       - db
   db:
     image: postgres:15
     environment:
-      POSTGRES_DB: nexusdb
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: railway
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: hTckoowSOUVGSbZXigsxWBVXxlXYFAfu
     ports:
       - "5432:5432"
     volumes:

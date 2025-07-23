@@ -1,9 +1,16 @@
 require('dotenv').config();
 
+// Force production environment
+process.env.NODE_ENV = 'production';
+
 module.exports = {
-  // Configuration for all environments
-  development: {
-    use_env_variable: 'DATABASE_URL',
+  // Production configuration
+  production: {
+    database: 'railway',
+    username: 'postgres',
+    password: 'hTckoowSOUVGSbZXigsxWBVXxlXYFAfu',
+    host: 'shinkansen.proxy.rlwy.net',
+    port: 57937,
     dialect: 'postgres',
     logging: console.log,
     dialectOptions: {
@@ -25,17 +32,6 @@ module.exports = {
     logging: false,
     dialectOptions: {
       ssl: false
-    }
-  },
-  production: {
-    url: process.env.DATABASE_URL,
-    dialect: 'postgres',
-    logging: false,
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
     },
     pool: {
       max: 5,
