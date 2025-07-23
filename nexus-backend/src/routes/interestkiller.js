@@ -120,76 +120,43 @@ router.post('/pay/ai-recommendation', async (req, res) => {
     cards = userCards.map(card => ({
       id: card.id,
       institution: card.institution || 'Unknown',
+      name: card.name || card.card_name || 'Card', // Ensure name is present
       balance: parseFloat(card.balance),
       apr: parseFloat(card.apr),
       creditLimit: card.creditLimit || 5000, // or fetch from DB
+      promo_apr_expiry_date: card.promo_apr_expiry_date || null,
+      type: card.type || 'credit'
     }));
   }
-  
   // Filter to only credit cards and ensure all required fields are present
   const creditCards = cards
     .filter(card => card.type === 'credit')
     .map(card => ({
       id: card.id,
+      name: card.name || card.card_name || 'Card', // Ensure name is present
       balance: parseFloat(card.balance) || 0,
       apr: parseFloat(card.apr) || 15.0, // Default APR if missing
-      creditLimit: parseFloat(card.creditLimit) || 5000 // Default credit limit if missing
+      creditLimit: parseFloat(card.creditLimit) || 5000, // Default credit limit if missing
+      promo_apr_expiry_date: card.promo_apr_expiry_date || null
     }))
     .filter(card => card.id && !isNaN(card.balance) && !isNaN(card.apr) && !isNaN(card.creditLimit));
-  
   if (!creditCards || creditCards.length === 0) {
     return res.status(400).json({ error: 'No valid credit cards found for this user.' });
   }
-  
   try {
     const user_context = { primary_goal: 'minimize_interest' };
-    console.log('AI Recommendation payload:', JSON.stringify({ accounts: creditCards, payment_amount, user_context }, null, 2));
+    const aiPayload = {
+      accounts: creditCards,
+      payment_amount,
+      user_context
+    };
+    console.log('AI Recommendation payload:', JSON.stringify(aiPayload, null, 2));
     // Always use the AI-driven logic for both splits and explanations
     const aiResult = await getInterestKillerSplit(creditCards, payment_amount, user_context);
-    // Use the AI result directly as it already has the correct keys
     res.json(aiResult);
   } catch (error) {
     console.error('AI Recommendation error:', error);
-    
-    // Fallback: Provide basic algorithmic recommendations when AI fails
-    console.log('Providing fallback recommendations due to AI service failure');
-    
-    // Sort cards by APR for avalanche method
-    const sortedByAPR = [...creditCards].sort((a, b) => b.apr - a.apr);
-    
-    // Sort cards by utilization for credit score method
-    const sortedByUtilization = [...creditCards]
-      .map(card => ({ ...card, utilization: card.balance / card.creditLimit }))
-      .sort((a, b) => b.utilization - a.utilization);
-    
-    // Create basic payment splits
-    const minimumPayments = creditCards.reduce((sum, card) => sum + (card.minimumPayment || 25), 0);
-    const remainingAmount = payment_amount - minimumPayments;
-    
-    const fallbackResponse = {
-      minimize_interest: {
-        name: "Avalanche Method (Fallback)",
-        split: creditCards.map(card => ({
-          card_id: card.id,
-          amount: card.id === sortedByAPR[0].id ? 
-            (card.minimumPayment || 25) + Math.max(0, remainingAmount) : 
-            (card.minimumPayment || 25)
-        })),
-        explanation: `Paying extra to your highest APR card (${sortedByAPR[0].apr}% APR) to minimize interest costs. AI service temporarily unavailable.`
-      },
-      maximize_score: {
-        name: "Credit Score Booster (Fallback)",
-        split: creditCards.map(card => ({
-          card_id: card.id,
-          amount: card.id === sortedByUtilization[0].id ? 
-            (card.minimumPayment || 25) + Math.max(0, remainingAmount) : 
-            (card.minimumPayment || 25)
-        })),
-        explanation: `Paying extra to your highest utilization card (${(sortedByUtilization[0].utilization * 100).toFixed(1)}% utilization) to improve your credit score. AI service temporarily unavailable.`
-      }
-    };
-    
-    res.json(fallbackResponse);
+    res.status(500).json({ error: 'AI service unavailable' });
   }
 });
 
