@@ -45,13 +45,15 @@ async function getCardRank(userCards, transactionContext, userContext) {
  *
  * @param {Array} accounts - Array of account objects, each with balance, apr, creditLimit, promoAPR, promoEndDate.
  * @param {number} paymentAmount - The total amount to be paid.
+ * @param {Object} userContext - The user's broader financial and goal-oriented state.
  * @returns {Promise<Object>} An object containing both payment split plans and their explanations.
  */
-async function getInterestKillerSplit(accounts, paymentAmount) {
+async function getInterestKillerSplit(accounts, paymentAmount, userContext) {
   try {
     const res = await axios.post(`${AI_BASE_URL}/v2/interestkiller`, {
       accounts,
       payment_amount: paymentAmount,
+      user_context: userContext
     });
     return res.data; // Return the full AI-driven object with both plans
   } catch (error) {

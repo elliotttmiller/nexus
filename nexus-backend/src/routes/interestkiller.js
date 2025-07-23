@@ -54,7 +54,8 @@ router.post('/suggest', async (req, res) => {
         promoEndDate: null // TODO: Replace with real value if available
       };
     });
-    const split = await getInterestKillerSplit(accounts, parseFloat(amount), optimizationGoal || 'MINIMIZE_INTEREST_COST');
+    const user_context = { primary_goal: 'minimize_interest' };
+    const split = await getInterestKillerSplit(accounts, parseFloat(amount), user_context);
     // Log event
     await UserEvent.create({
       user_id: userId,
@@ -77,7 +78,8 @@ router.post('/pay', async (req, res) => {
     return res.status(400).json({ error: 'Please enter a valid payment amount.' });
   }
   try {
-    const result = await getInterestKillerSplit(accounts, payment_amount, optimization_goal || 'MINIMIZE_INTEREST_COST');
+    const user_context = { primary_goal: 'minimize_interest' };
+    const result = await getInterestKillerSplit(accounts, payment_amount, user_context);
     // Optionally log the payment attempt here
     res.json(result);
   } catch (error) {
@@ -142,7 +144,8 @@ router.post('/pay/ai-recommendation', async (req, res) => {
   try {
     console.log('AI Recommendation payload:', JSON.stringify({ accounts: creditCards, payment_amount }, null, 2));
     // Always use the AI-driven logic for both splits and explanations
-    const aiResult = await getInterestKillerSplit(creditCards, payment_amount, 'BOTH');
+    const user_context = { primary_goal: 'minimize_interest' };
+    const aiResult = await getInterestKillerSplit(creditCards, payment_amount, user_context);
     // Use the AI result directly as it already has the correct keys
     res.json(aiResult);
   } catch (error) {
