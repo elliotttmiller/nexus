@@ -2,16 +2,18 @@ require('dotenv').config();
 
 module.exports = {
   development: {
-    database: 'railway',
-    username: 'postgres',
-    password: 'hTckoowSOUVGSbZXigsxWBVXxlXYFAfu',
-    host: 'shinkansen.proxy.rlwy.net',
-    port: 57937,
+    database: process.env.PGDATABASE || 'railway',
+    username: process.env.PGUSER || 'postgres',
+    password: process.env.PGPASSWORD || 'hTckoowSOUVGSbZXigsxWBVXxlXYFAfu',
+    host: process.env.PGHOST || 'shinkansen.proxy.rlwy.net',
+    port: process.env.PGPORT || 57937,
     dialect: 'postgres',
     logging: console.log,
-    // Explicitly disable SSL for development
     dialectOptions: {
-      ssl: false
+      ssl: process.env.NODE_ENV === 'production' ? {
+        require: true,
+        rejectUnauthorized: false
+      } : false
     },
     pool: {
       max: 5,
