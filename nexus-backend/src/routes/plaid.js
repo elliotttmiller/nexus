@@ -6,6 +6,7 @@ const Account = db.Account;
 const Card = db.Card;
 const Transaction = db.Transaction;
 const { createClient } = require('redis');
+const { Op } = require('sequelize');
 
 const config = new Configuration({
   basePath: PlaidEnvironments.sandbox,
@@ -191,10 +192,10 @@ router.get('/accounts/payment-context', async (req, res) => {
       const recurringTxs = await Transaction.findAll({
         where: {
           user_id: userId,
-          date: { $gte: sixtyDaysAgo },
-          $or: [
+          date: { [Op.gte]: sixtyDaysAgo },
+          [Op.or]: [
             { is_recurring: true },
-            { category: { $iLike: '%bill%' } }
+            { category: { [Op.iLike]: '%bill%' } }
           ]
         }
       });
