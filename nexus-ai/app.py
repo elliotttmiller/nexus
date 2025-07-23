@@ -126,6 +126,47 @@ def select_persona(user_context: dict, accounts: list) -> str:
         return "The user is in a high-stress situation with high debt. Adopt a very calm, reassuring, and step-by-step tone. Focus on making the plan feel manageable and not overwhelming."
     return "The user is in a standard optimization state. Adopt a direct, confident, and encouraging 'financial coach' tone."
 
+# --- NEW: The Pre-Computation Algorithm ---
+def precompute_payment_plans(accounts: list, payment_amount: float) -> dict:
+    """
+    Deterministic algorithm for payment splits. Returns a data structure for the AI to explain.
+    """
+    for acc in accounts:
+        balance = acc.get('balance', 0)
+        limit = acc.get('creditLimit', 0)
+        acc['minimum_payment'] = max(25, balance * 0.01) if balance > 25 else balance
+        acc['utilization_percent'] = (balance / limit) * 100 if limit > 0 else 0
+    total_minimums = sum(acc['minimum_payment'] for acc in accounts)
+    # Avalanche Plan
+    avalanche_target = max(accounts, key=lambda x: (x['apr'], x['balance'], x['id']))
+    avalanche_split = []
+    power_payment_amount_avalanche = payment_amount - (total_minimums - avalanche_target['minimum_payment'])
+    for acc in accounts:
+        if acc['id'] == avalanche_target['id']:
+            avalanche_split.append({"card_id": acc['id'], "card_name": acc['name'], "amount": round(power_payment_amount_avalanche, 2), "type": "Power Payment"})
+        else:
+            avalanche_split.append({"card_id": acc['id'], "card_name": acc['name'], "amount": round(acc['minimum_payment'], 2), "type": "Minimum Payment"})
+    # Score Booster Plan
+    score_booster_target = max(accounts, key=lambda x: (x['utilization_percent'], x['balance'], x['id']))
+    score_booster_split = []
+    power_payment_amount_score = payment_amount - (total_minimums - score_booster_target['minimum_payment'])
+    for acc in accounts:
+        if acc['id'] == score_booster_target['id']:
+            score_booster_split.append({"card_id": acc['id'], "card_name": acc['name'], "amount": round(power_payment_amount_score, 2), "type": "Power Payment"})
+        else:
+            score_booster_split.append({"card_id": acc['id'], "card_name": acc['name'], "amount": round(acc['minimum_payment'], 2), "type": "Minimum Payment"})
+    # Insufficient Funds Protocol
+    if payment_amount < total_minimums:
+        highest_apr_card = max(accounts, key=lambda x: (x['apr'], x['balance'], x['id']))
+        insufficient_split = [{"card_id": highest_apr_card['id'], "card_name": highest_apr_card['name'], "amount": round(payment_amount, 2), "type": "Power Payment"}]
+        avalanche_split = insufficient_split
+        score_booster_split = insufficient_split
+    return {
+        "avalanche_plan": {"split": avalanche_split, "target_card": avalanche_target},
+        "score_booster_plan": {"split": score_booster_split, "target_card": score_booster_target},
+        "is_insufficient": payment_amount < total_minimums
+    }
+
 from services import interestkiller_ai_hybrid
 
 @app.get("/", summary="Health Check")
@@ -179,76 +220,40 @@ def cardrank_v2(req: V2CardRankRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/v2/interestkiller')
-async def interestkiller_v2(req: V2InterestKillerRequest, request: Request):
-    import logging
-    import traceback
-    logger = logging.getLogger("nexus-ai-debug")
+def interestkiller_v2(req: V2InterestKillerRequest):
     try:
-        raw_body = await request.body()
-        logger.info(f"DEBUG: Raw request body: {raw_body.decode('utf-8')}")
-    except Exception as e:
-        logger.error(f"DEBUG: Could not log raw request body: {e}")
-    try:
-        logger.info(f"DEBUG: Parsed request: {req}")
-        logger.info(f"DEBUG: payment_amount: {req.payment_amount}")
-        logger.info(f"DEBUG: user_context: {req.user_context}")
-        for idx, acc in enumerate(req.accounts):
-            logger.info(f"DEBUG: Account {idx}: {acc}")
-    except Exception as e:
-        logger.error(f"DEBUG: Could not log parsed request details: {e}")
-    try:
-        # --- HYBRID AI-AUGMENTED SYSTEM ---
-        accounts_data = [acc.model_dump() for acc in req.accounts]
-        user_context_data = req.user_context.model_dump()
-        precomputed_data = precompute_financial_data(accounts_data, req.payment_amount)
-        persona_instruction = select_persona(user_context_data, accounts_data)
+        # 1. RUN THE ALGORITHM to get perfect math and targets
+        plan_data = precompute_payment_plans(
+            [acc.model_dump() for acc in req.accounts],
+            req.payment_amount
+        )
+        # 2. CALL THE AI, giving it the pre-computed data. Its job is now just to write text.
         raw_ai_result = interestkiller_ai_hybrid(
             app.state.gemini_model,
-            precomputed_data,
-            req.payment_amount,
-            user_context_data,
-            persona_instruction=persona_instruction
+            plan_data,
+            req.user_context.model_dump()
         )
-        logger.info(f"DEBUG: AI raw result: {raw_ai_result}")
         ai_json = json.loads(raw_ai_result)
-        # --- GUARDRAILS START ---
-        plan_keys = ["minimize_interest_plan", "maximize_score_plan"]
-        for key in plan_keys:
-            if key not in ai_json:
-                logger.error(f"AI response missing required plan key: '{key}'.")
-                raise ValueError(f"AI response missing required plan key: '{key}'.")
-        for key in plan_keys:
-            plan_data = ai_json[key]
-            if not isinstance(plan_data, dict):
-                logger.error(f"Plan '{key}' is not a valid object.")
-                raise ValueError(f"Plan '{key}' is not a valid object.")
-            required_sub_keys = ['name', 'split', 'explanation', 'projected_outcome']
-            if not all(sub_key in plan_data for sub_key in required_sub_keys):
-                logger.error(f"Plan '{key}' is missing required sub-keys (e.g., 'projected_outcome').")
-                raise ValueError(f"Plan '{key}' is missing required sub-keys (e.g., 'projected_outcome').")
-            split = plan_data.get("split")
-            if not isinstance(split, list):
-                logger.error(f"Plan '{key}' has an invalid 'split' array.")
-                raise ValueError(f"Plan '{key}' has an invalid 'split' array.")
-            total_allocated = sum(item.get('amount', 0) for item in split)
-            # --- Backend nudge for minor math errors ---
-            diff = req.payment_amount - total_allocated
-            if abs(diff) < 1.0 and len(split) > 0:
-                split[-1]['amount'] += diff
-                total_allocated = sum(item.get('amount', 0) for item in split)
-            if not math.isclose(total_allocated, req.payment_amount, rel_tol=1e-2):
-                logger.error(f"AI MATH FAILURE in plan '{key}'. Expected: {req.payment_amount}, AI allocated: {total_allocated}")
-                raise ValueError(f"AI failed to correctly allocate the total payment amount for plan '{key}'.")
-            for item in split:
-                if not all(k in item for k in ['card_id', 'card_name', 'amount', 'type']):
-                    logger.error(f"An item in the '{key}' split is missing required keys.")
-                    raise ValueError(f"An item in the '{key}' split is missing required keys.")
-        recommendation = ai_json.get("nexus_recommendation")
-        if not recommendation or recommendation not in [ai_json[key].get("name") for key in plan_keys]:
-            logger.error(f"Invalid 'nexus_recommendation' value: '{recommendation}'. It must match one of the plan names.")
-            raise ValueError(f"Invalid 'nexus_recommendation' value: '{recommendation}'. It must match one of the plan names.")
-        # --- GUARDRAILS END ---
-        return ai_json
-    except Exception as e:
-        logger.error(f"UNEXPECTED ERROR: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}") 
+        # 3. COMBINE & VALIDATE: Merge the perfect math from the algorithm with the text from the AI.
+        # This also acts as our final guardrail.
+        if 'minimize_interest_explanation' not in ai_json or 'maximize_score_explanation' not in ai_json:
+            raise ValueError("AI response is missing required explanation fields.")
+        final_response = {
+            "nexus_recommendation": ai_json.get("nexus_recommendation"),
+            "minimize_interest_plan": {
+                "name": "Avalanche Method",
+                "split": plan_data['avalanche_plan']['split'],
+                "explanation": ai_json['minimize_interest_explanation'],
+                "projected_outcome": ai_json['minimize_interest_projection']
+            },
+            "maximize_score_plan": {
+                "name": "Credit Score Booster",
+                "split": plan_data['score_booster_plan']['split'],
+                "explanation": ai_json['maximize_score_explanation'],
+                "projected_outcome": ai_json['maximize_score_projection']
+            }
+        }
+        return final_response
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.error(f"AI response failed validation: {e}. Raw response: {raw_ai_result}")
+        raise HTTPException(status_code=500, detail=f"AI response failed validation: {e}") 

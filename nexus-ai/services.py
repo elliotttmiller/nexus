@@ -282,59 +282,38 @@ def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_co
     """
     return call_gemini(model, prompt) 
 
-def interestkiller_ai_hybrid(model, precomputed_data: dict, payment_amount: float, user_context: dict, persona_instruction: str) -> str:
+def interestkiller_ai_hybrid(model, plan_data: dict, user_context: dict) -> str:
     """
-    Hybrid AI function: Uses precomputed financial data and a dynamic persona instruction to generate expert-level explanations and projections.
+    Hybrid AI function. Receives pre-computed, perfect data from an algorithm.
+    Its ONLY job is to craft elite-level explanations and projections.
     """
     import json
     prompt = f"""
-    You are Nexus AI, an elite Chief Financial Strategist. Your communication style is clear, empowering, data-driven, and supremely confident. You provide your clients with a decisive, optimal path forward.
+    You are Nexus AI, an elite Financial Counselor. Your task is to act as a communications expert. You will be given a pre-calculated, mathematically perfect payment plan. Your job is to translate this data into an empowering, data-driven, and user-friendly explanation.
 
-    --- PERSONA INSTRUCTION ---
-    {persona_instruction}
-
-    --- PRECOMPUTED FINANCIAL DATA ---
-    The following data has been calculated for you:
-    {json.dumps(precomputed_data, indent=2)}
-
-    --- USER CONTEXT ---
-    {json.dumps(user_context, indent=2)}
+    --- YOUR KNOWLEDGE BASE & HEURISTICS ---
+    1.  **Goal:** To explain the "Avalanche" and "Score Booster" plans.
+    2.  **Projections:**
+        - A credit score can increase by 20-40 points when utilization drops below 30%.
+        - Interest savings can be projected over 12 months for impact.
+    3.  **Rapport:** Weave in the user's historical context from `user_context` (e.g., "Congratulations on paying down debt...").
 
     --- YOUR TASK ---
-    1. Use the provided 'avalanche_target_id' and 'score_booster_target_id' as the single power payment targets for the Avalanche and Score Booster plans, respectively. Do NOT recalculate or select other targets.
-    2. For each plan, allocate minimum payments to all other cards, and the entire remaining payment to the designated power payment card.
-    3. Write an assertive, expert-level explanation and projected outcome for each plan, following the rules below.
+    Based on the provided `plan_data`, generate a JSON object containing ONLY the following six string keys:
+    1.  `nexus_recommendation`: The name of the plan that matches `user_context.primary_goal`.
+    2.  `minimize_interest_explanation`: The explanation for the Avalanche plan.
+    3.  `minimize_interest_projection`: The projected outcome for the Avalanche plan.
+    4.  `maximize_score_explanation`: The explanation for the Score Booster plan.
+    5.  `maximize_score_projection`: The projected outcome for the Score Booster plan.
+    6.  `insufficient_funds_explanation`: A special explanation to use for BOTH plans if `plan_data.is_insufficient` is true.
 
-    --- EXPLANATION & PROJECTION RULES ---
-    1.  **Persona:** Start with an assertive, positive statement.
-    2.  **Explanation (The "What" and "Why"):** Focus on the single power payment. State which card is being targeted, its key metric (e.g., "your 21.5% APR card"), and the immediate, quantified impact of THIS payment (e.g., "saving you $18.50 in interest this month" or "slashing its utilization from 72% to 48%").
-    3.  **Projected Outcome (The "So What"):** Describe the long-term benefit. Connect the action to a powerful, aspirational goal (e.g., "This strategy is the fastest path to becoming debt-free, potentially 6 months sooner" or "A higher score unlocks better rates, saving you thousands on a future mortgage").
-    4.  **Rapport:** If user progress is present, weave it into the explanation as a sign of a successful partnership.
+    --- INSTRUCTIONS FOR EXPLANATIONS ---
+    - **If `plan_data.is_insufficient` is true:** Use the `insufficient_funds_explanation` to state that the payment doesn't cover all minimums and is being applied to the highest-APR card to minimize fees.
+    - **Avalanche Explanation:** State that you are targeting the `plan_data.avalanche_plan.target_card.name` because it has the highest APR. Quantify the immediate interest saved.
+    - **Score Booster Explanation:** State that you are targeting the `plan_data.score_booster_plan.target_card.name` to slash its utilization. Quantify the drop (e.g., "from 72% down to 48%").
 
-    --- GOLDEN RULE (NON-NEGOTIABLE) ---
-    **THE SUM OF THE `amount` VALUES IN EACH `split` ARRAY MUST MATHEMATICALLY EQUAL THE `payment_amount`. YOU MUST VERIFY THIS YOURSELF BEFORE GIVING THE ANSWER.**
-
-    --- REQUIRED FINAL JSON STRUCTURE ---
-    Each plan object MUST contain `name`, `split`, `explanation`, and `projected_outcome`.
-
-    --- EXAMPLE OF A PERFECT, FOCUSED OUTPUT ---
-    ```json
-    {{
-      "nexus_recommendation": "Avalanche Method",
-      "minimize_interest_plan": {{
-        "name": "Avalanche Method",
-        "split": [{{ "card_id": "c1", "card_name": "Chase Freedom", "amount": 550.00, "type": "Power Payment" }}, {{ "card_id": "c2", "card_name": "Amex Gold", "amount": 25.00, "type": "Minimum Payment" }}],
-        "explanation": "This is the most efficient path. We are directing a power payment to your Chase Freedom card, which has the highest interest rate at 24.99%. This single move saves you $21.53 in interest this month alone.",
-        "projected_outcome": "Focusing on this high-interest debt first is the fastest mathematical way to become debt-free, putting you on track to finish 5 months sooner."
-      }},
-      "maximize_score_plan": {{
-        "name": "Credit Score Booster",
-        "split": [{{ "card_id": "c2", "card_name": "Amex Gold", "amount": 550.00, "type": "Power Payment" }}, {{ "card_id": "c1", "card_name": "Chase Freedom", "amount": 25.00, "type": "Minimum Payment" }}],
-        "explanation": "This is a strategic move for your credit health. We're targeting your Amex Gold card with a power payment to slash its utilization from a high 65% down to just 28%.",
-        "projected_outcome": "Dropping below the 30% utilization threshold is a major factor in your credit score. This action could lead to a 20-40 point increase, unlocking better rates and saving you thousands on future loans."
-      }}
-    }}
-    ```
-    **</answer>**
+    --- DATA FOR YOUR TASK ---
+    - Pre-computed Plan Data: {json.dumps(plan_data, indent=2)}
+    - User Context: {json.dumps(user_context, indent=2)}
     """
     return call_gemini(model, prompt) 
