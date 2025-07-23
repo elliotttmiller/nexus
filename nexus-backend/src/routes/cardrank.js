@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { getCardRank } = require('../../aiService');
-const Card = require('../models/card');
-const UserEvent = require('../models/user_event');
+const db = require('../models');
+const Card = db.Card;
+const UserEvent = db.UserEvent;
 
 // Helper to calculate utilization
 function calcUtilization(balance, creditLimit) {

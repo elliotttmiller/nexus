@@ -4,10 +4,11 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
-const User = require('../models/user');
+const db = require('../models');
+const User = db.User;
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
-const REFRESH_SECRET = process.env.REFRESH_SECRET || 'refresh_secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_here';
+const REFRESH_SECRET = process.env.REFRESH_SECRET || 'your_refresh_secret_key_here';
 
 function generateRefreshToken(user) {
   return jwt.sign({ id: user.id, email: user.email }, REFRESH_SECRET, { expiresIn: '30d' });

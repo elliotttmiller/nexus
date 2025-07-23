@@ -1,7 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { sequelize } = require('./db');
+
+// Import models first to ensure they're registered with Sequelize
+const { sequelize } = require('./models');
+
+// Import routes after models are loaded
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const plaidRoutes = require('./routes/plaid');

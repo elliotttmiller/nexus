@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
-const Account = require('../models/account');
-const Card = require('../models/card');
+const db = require('../models');
+const Account = db.Account;
+const Card = db.Card;
 
 const config = new Configuration({
   basePath: PlaidEnvironments.sandbox,

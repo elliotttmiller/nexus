@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/user');
-const Account = require('../models/account');
+const db = require('../models');
+const User = db.User;
+const Account = db.Account;
 
 // Get user profile
 router.get('/profile', async (req, res) => {

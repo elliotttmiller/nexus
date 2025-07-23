@@ -2,9 +2,10 @@ const express = require('express');
 const { Op } = require('sequelize');
 const router = express.Router();
 const { getInterestKillerSplit } = require('../../aiService');
-const Card = require('../models/card');
-const UserEvent = require('../models/user_event');
-const PaymentHistory = require('../models/payment_history');
+const db = require('../models');
+const Card = db.Card;
+const UserEvent = db.UserEvent;
+const PaymentHistory = db.PaymentHistory;
 
 // Helper to calculate utilization
 function calcUtilization(balance, creditLimit) {
