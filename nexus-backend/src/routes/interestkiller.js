@@ -140,12 +140,8 @@ router.post('/pay/ai-recommendation', async (req, res) => {
     console.log('AI Recommendation payload:', JSON.stringify({ accounts: creditCards, payment_amount }, null, 2));
     // Always use the AI-driven logic for both splits and explanations
     const aiResult = await getInterestKillerSplit(creditCards, payment_amount, 'BOTH');
-    // Remap keys for frontend compatibility
-    const remapped = {
-      minimize_interest: aiResult.minimize_interest_plan,
-      maximize_score: aiResult.maximize_score_plan
-    };
-    res.json(remapped);
+    // Use the AI result directly as it already has the correct keys
+    res.json(aiResult);
   } catch (error) {
     console.error('AI Recommendation error:', error);
     
