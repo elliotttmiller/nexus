@@ -259,49 +259,58 @@ def interestkiller_ai(model, accounts: list, payment_amount: float) -> str:
 # --- UNIFIED PURE AI LOGIC CORE ---
 def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_context: dict) -> str:
     """
-    Pure AI-driven function. The AI acts as a wise, adaptive financial counselor,
-    providing two clear options, a recommendation, and long-term projections.
+    Final, production-hardened pure AI function. The AI is taught financial strategy and is responsible
+    for all calculations to create two plans and a recommendation. The prompt is heavily reinforced
+    to ensure structural integrity of the output.
     """
+    import json
     prompt = f"""
-    You are Nexus AI, an expert fiduciary financial strategist, a brilliant mathematician, and a wise, adaptive financial counselor. You are a partner in the user's financial journey.
+    You are Nexus AI, an expert fiduciary financial strategist, a brilliant mathematician, and a wise financial counselor. Your task is to perform calculations and generate a JSON object with two payment plans and a recommendation. You MUST adhere to the structure perfectly.
 
-    --- YOUR KNOWLEDGE BASE ---
-    1.  **Financial Math:** Credit Utilization (`(balance/limit)*100`), Minimum Payments (`1% of balance` or `$25`), Avalanche (highest APR), Score Booster (highest utilization).
-    2.  **Behavioral Economics:** Acknowledge that quick wins (like paying off a small balance) build momentum. Frame actions around future goals.
-    3.  **User History:** You have access to the user's past actions and progress. Use it to build rapport.
+    --- YOUR KNOWLEDGE BASE (First Principles) ---
+    1.  **Credit Utilization:** `(card_balance / credit_limit) * 100`. Lower is better. Dropping below 30% is a major positive event.
+    2.  **Minimum Payment:** Calculate as `1% of the card_balance`, but no less than `$25` (unless the balance is less than $25, then it's the full balance).
+    3.  **The "Avalanche" Method:** Pay minimums on all cards, then allocate the entire remainder of `payment_amount` to the single card with the highest `apr`.
+    4.  **The "Credit Score Booster" Method:** Pay minimums on all cards, then allocate the entire remainder of `payment_amount` to the card with the highest `utilization_percent`.
+    5.  **Tie-Breaking & Edge Case Rules (CRITICAL):**
+        - If there is a tie for the highest APR or highest Utilization, you MUST choose the one with the higher `balance`.
+        - If the highest APR is 0%, the "Avalanche Method" provides no interest savings. Your explanation for that plan must state this. For the split, target the card with the highest balance.
 
-    --- YOUR TASK ---
-    Devise two optimal payment plans ("Avalanche" and "Score Booster"). Recommend the one that best aligns with the user's goal. For each plan, project its long-term impact.
-
-    **Step-by-Step Execution Plan:**
-    1.  **<thinking>** Show all your work.
-        a. **ADAPTIVE TONE:** First, assess the user's situation. If their overall utilization is very high (>70%), adopt a very reassuring, calm, and step-by-step tone. If their utilization is low (<20%), adopt a more direct, optimization-focused "coach" tone.
-        b. **CELEBRATE WINS:** Check `user_context`. If `total_debt_last_month` is provided and is greater than the current total debt, your *first sentence* must be a congratulatory message.
-        c. **EMERGENCY SCAN:** Check all accounts for a `promo_apr_expiry_date`. If any expire within the next 90 days, this is a **high-priority event**. Your explanation for ALL plans MUST include a strong warning.
-        d. **CALCULATE PLANS:** Create the "Avalanche" and "Score Booster" plans with all required math.
-        e. **PROJECT OUTCOMES:** For each plan, add a `projected_outcome` string. For Avalanche, project debt-free timelines or total interest saved. For Score Booster, project savings on a future loan (e.g., mortgage, auto).
-        f. **MAKE RECOMMENDATION:** Based on the user's `primary_goal`, determine the `nexus_recommendation`. If goal is "IMPROVE_CREDIT_SCORE", recommend "Credit Score Booster", otherwise recommend "Avalanche Method".
+    --- YOUR TASK & EXECUTION PLAN ---
+    1.  **<thinking>** In a thinking block, show all your work, step-by-step.
+        a. **ADAPTIVE TONE & CELEBRATE WINS:** Assess the user's situation from `user_context` and set your tone. Congratulate them on progress if their debt has decreased.
+        b. **EMERGENCY SCAN:** Check all accounts for expiring promotional APRs and include a warning in your explanations if found.
+        c. **CALCULATE PLANS:** Create the "Avalanche" and "Score Booster" plans with all required math.
+        d. **PROJECT OUTCOMES:** For each plan, add a `projected_outcome` string (e.g., "debt-free 4 months sooner" or "saves $2,000 on a future loan").
+        e. **MAKE RECOMMENDATION:** Based on `user_context.primary_goal`, determine the `nexus_recommendation`.
+        f. **FINAL CHECK (SELF-CORRECTION):** Before creating the final answer, double-check that your generated JSON will contain ALL of the following top-level keys: `nexus_recommendation`, `minimize_interest_plan`, and `maximize_score_plan`. Also, ensure each plan object contains ALL of its required sub-keys: `name`, `split`, `explanation`, and `projected_outcome`.
     2.  **</thinking>**
-    3.  **<answer>** Provide ONLY a valid JSON object with ALL required fields.
+    3.  **<answer>** Provide ONLY a single, valid JSON object with the complete, final structure. Do not add any text before or after the JSON object.
 
-    --- JSON STRUCTURE & CONSTRAINTS ---
-    - Each plan MUST contain: `name`, `split` (with `card_id`, `card_name`, `amount`, `type`), `explanation`, and the new `projected_outcome`.
-    - The top level MUST contain `nexus_recommendation`, `minimize_interest_plan`, and `maximize_score_plan`.
-    - **MATH IS LAW:** The sum of `amount` in each `split` MUST exactly equal `payment_amount`.
+    --- REQUIRED FINAL JSON STRUCTURE ---
+    The root object MUST contain exactly these three keys: `nexus_recommendation`, `minimize_interest_plan`, `maximize_score_plan`.
+    Each of the two plan objects MUST contain exactly these four keys: `name`, `split`, `explanation`, `projected_outcome`.
+    Each item within a `split` array MUST contain exactly these four keys: `card_id`, `card_name`, `amount`, `type`.
 
-    --- EXAMPLE OF PERFECT OUTPUT ---
+    --- EXAMPLE OF A PERFECT AND COMPLETE OUTPUT ---
     ```json
     {{
       "nexus_recommendation": "Avalanche Method",
       "minimize_interest_plan": {{
         "name": "Avalanche Method",
-        "split": [{{ "card_id": "c1", "card_name": "Chase Freedom", "amount": 550.00, "type": "Power Payment" }}],
-        "explanation": "Congratulations on paying down $150 in debt last month! To keep the momentum going, this plan focuses on your highest-interest card, the fastest path to being debt-free.",
+        "split": [
+          {{ "card_id": "c1", "card_name": "Chase Freedom", "amount": 550.00, "type": "Power Payment" }},
+          {{ "card_id": "c2", "card_name": "Amex Gold", "amount": 25.00, "type": "Minimum Payment" }}
+        ],
+        "explanation": "Congratulations on your progress! To keep the momentum going, this plan focuses on your highest-interest card, the fastest path to being debt-free.",
         "projected_outcome": "Sticking to this plan could make you debt-free 4 months sooner, saving over $800 in total interest."
       }},
       "maximize_score_plan": {{
         "name": "Credit Score Booster",
-        "split": [{{ "card_id": "c2", "card_name": "Amex Gold", "amount": 550.00, "type": "Power Payment" }}],
+        "split": [
+          {{ "card_id": "c2", "card_name": "Amex Gold", "amount": 550.00, "type": "Power Payment" }},
+          {{ "card_id": "c1", "card_name": "Chase Freedom", "amount": 25.00, "type": "Minimum Payment" }}
+        ],
         "explanation": "This is a great move for your long-term financial health. We're targeting your Amex Gold to drop its credit usage from 65% to 28%, which can significantly boost your score.",
         "projected_outcome": "A higher credit score like this could save you over $2,000 on a future 5-year auto loan."
       }}
