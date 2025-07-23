@@ -108,15 +108,20 @@ async function fetchAndMergeCompleteAccountData(accessToken, institutionName) {
     }
     const mergedAccounts = allAccounts.map(account => {
       const liabilityDetails = liabilityDataMap.get(account.account_id);
+      // Force type 'credit' for credit cards (Plaid type or name)
+      let mappedType = account.type;
+      if (account.type === 'credit' || (account.name && account.name.toLowerCase().includes('credit'))) {
+        mappedType = 'credit';
+      }
       return {
         id: account.account_id,
         name: account.name,
         institution: institutionName || 'Unknown',
         balance: account.balances.current,
-        type: account.type,
+        type: mappedType,
         apr: liabilityDetails ? liabilityDetails.apr : undefined,
         minimumPayment: liabilityDetails ? liabilityDetails.minimum_payment_amount : undefined,
-        creditLimit: account.type === 'credit' ? account.balances.limit : undefined,
+        creditLimit: mappedType === 'credit' ? account.balances.limit : undefined,
       };
     });
     console.log('Merged Plaid accounts:', JSON.stringify(mergedAccounts, null, 2));

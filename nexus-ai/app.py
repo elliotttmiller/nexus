@@ -231,6 +231,11 @@ async def interestkiller_v2(req: V2InterestKillerRequest, request: Request):
                 logger.error(f"Plan '{key}' has an invalid 'split' array.")
                 raise ValueError(f"Plan '{key}' has an invalid 'split' array.")
             total_allocated = sum(item.get('amount', 0) for item in split)
+            # --- Backend nudge for minor math errors ---
+            diff = req.payment_amount - total_allocated
+            if abs(diff) < 1.0 and len(split) > 0:
+                split[-1]['amount'] += diff
+                total_allocated = sum(item.get('amount', 0) for item in split)
             if not math.isclose(total_allocated, req.payment_amount, rel_tol=1e-2):
                 logger.error(f"AI MATH FAILURE in plan '{key}'. Expected: {req.payment_amount}, AI allocated: {total_allocated}")
                 raise ValueError(f"AI failed to correctly allocate the total payment amount for plan '{key}'.")
