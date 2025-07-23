@@ -28,8 +28,14 @@ def initialize_model():
         logger.critical(f"services.py - Failed to initialize Gemini model: {e}", exc_info=True)
         return None
 
-def call_gemini(model: genai.GenerativeModel, prompt: str, max_retries: int = 3) -> str:
-    """Generates content with retry logic and robustly extracts the final answer from the <answer> tag."""
+def call_gemini(model: 'genai.GenerativeModel', prompt: str, max_retries: int = 3) -> str:
+    """
+    Generates content with retry logic and robustly extracts the final answer
+    from either <answer> tags OR ```json Markdown fences.
+    """
+    import random
+    import time
+    import re
     if not model:
         logger.warning("call_gemini called but model is not available.")
         return "{\"error\": \"AI model is not available. Check server startup logs.\"}"
@@ -37,20 +43,22 @@ def call_gemini(model: genai.GenerativeModel, prompt: str, max_retries: int = 3)
     for attempt in range(max_retries + 1):
         try:
             full_response = model.generate_content(prompt).text
-            # Use a robust regex to find the <answer> content. This is more reliable.
-            match = re.search(r'<answer>(.*?)</answer>', full_response, re.DOTALL | re.IGNORECASE)
+            # --- UPGRADED PARSER LOGIC ---
+            # This regex looks for either <answer> or ```json and captures what's inside.
+            # (?:...) is a non-capturing group, | means OR.
+            match = re.search(r'(?:<answer>|```json\n)(.*?)(?:</answer>|```)', full_response, re.DOTALL | re.IGNORECASE)
+            # --- END OF UPGRADED LOGIC ---
+
             if match:
+                # The captured content is in group(1). Strip any whitespace.
                 return match.group(1).strip()
             else:
-                logger.error(f"Could not find <answer> tags in AI response. Full response: {full_response}")
-                return "{\"error\": \"AI returned a malformed response (missing tags).\"}"
+                logger.error(f"Could not find <answer> tags OR ```json fences in AI response. Full response: {full_response}")
+                return "{\"error\": \"AI returned a malformed response (no valid tags or fences).\"}"
         except Exception as e:
             error_str = str(e).lower()
-            
-            # Check if it's a rate limit error
             if 'rate limit' in error_str or 'quota' in error_str or 'resource_exhausted' in error_str:
                 if attempt < max_retries:
-                    # Exponential backoff with jitter
                     wait_time = (2 ** attempt) + random.uniform(0, 1)
                     logger.warning(f"Rate limit hit, retrying in {wait_time:.2f} seconds (attempt {attempt + 1}/{max_retries + 1})")
                     time.sleep(wait_time)
@@ -59,7 +67,6 @@ def call_gemini(model: genai.GenerativeModel, prompt: str, max_retries: int = 3)
                     logger.error(f"Rate limit exceeded after {max_retries + 1} attempts")
                     return '{"error": "Rate limit exceeded. Please try again later or upgrade your API plan."}'
             else:
-                # Non-rate-limit error, don't retry
                 logger.error(f"Gemini API call failed: {e}", exc_info=True)
                 return '{"error": "AI generation failed. Please check server logs."}'
     
