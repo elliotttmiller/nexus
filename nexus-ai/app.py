@@ -96,6 +96,38 @@ class V2InterestKillerRequest(BaseModel):
     payment_amount: float
     user_context: UserFinancialContext
 
+# --- Pre-computation and persona selection utilities ---
+def precompute_financial_data(accounts: list, payment_amount: float) -> dict:
+    enriched_accounts = []
+    for acc in accounts:
+        balance = acc.get('balance', 0)
+        limit = acc.get('creditLimit', 0)
+        min_payment = max(25, balance * 0.01) if balance > 25 else balance
+        utilization = (balance / limit) * 100 if limit > 0 else 0
+        enriched_accounts.append({
+            **acc,
+            "minimum_payment": round(min_payment, 2),
+            "utilization_percent": round(utilization, 2)
+        })
+    highest_apr_card = max(enriched_accounts, key=lambda x: (x['apr'], x['balance'], x['id']))
+    highest_util_card = max(enriched_accounts, key=lambda x: (x['utilization_percent'], x['balance'], x['id']))
+    return {
+        "enriched_accounts": enriched_accounts,
+        "avalanche_target_id": highest_apr_card['id'],
+        "score_booster_target_id": highest_util_card['id']
+    }
+
+def select_persona(user_context: dict, accounts: list) -> str:
+    total_debt = sum(acc['balance'] for acc in accounts)
+    if user_context.get('total_debt_last_month') and total_debt < user_context['total_debt_last_month']:
+        return "Your top priority is to start with a strong, congratulatory message celebrating the user's progress in paying down debt. Build on this positive momentum."
+    overall_utilization = sum(acc['balance'] for acc in accounts) / sum(acc['creditLimit'] for acc in accounts) if sum(acc['creditLimit'] for acc in accounts) > 0 else 0
+    if overall_utilization > 0.7:
+        return "The user is in a high-stress situation with high debt. Adopt a very calm, reassuring, and step-by-step tone. Focus on making the plan feel manageable and not overwhelming."
+    return "The user is in a standard optimization state. Adopt a direct, confident, and encouraging 'financial coach' tone."
+
+from services import interestkiller_ai_hybrid
+
 @app.get("/", summary="Health Check")
 def root():
     return {"status": "ok", "ai_model_status": "loaded" if app.state.gemini_model else "initialization_failed"}
@@ -151,13 +183,11 @@ async def interestkiller_v2(req: V2InterestKillerRequest, request: Request):
     import logging
     import traceback
     logger = logging.getLogger("nexus-ai-debug")
-    # Log the raw request body
     try:
         raw_body = await request.body()
         logger.info(f"DEBUG: Raw request body: {raw_body.decode('utf-8')}")
     except Exception as e:
         logger.error(f"DEBUG: Could not log raw request body: {e}")
-    # Log the parsed request
     try:
         logger.info(f"DEBUG: Parsed request: {req}")
         logger.info(f"DEBUG: payment_amount: {req.payment_amount}")
@@ -167,7 +197,18 @@ async def interestkiller_v2(req: V2InterestKillerRequest, request: Request):
     except Exception as e:
         logger.error(f"DEBUG: Could not log parsed request details: {e}")
     try:
-        raw_ai_result = interestkiller_ai_pure(app.state.gemini_model, [acc.model_dump() for acc in req.accounts], req.payment_amount, req.user_context.model_dump())
+        # --- HYBRID AI-AUGMENTED SYSTEM ---
+        accounts_data = [acc.model_dump() for acc in req.accounts]
+        user_context_data = req.user_context.model_dump()
+        precomputed_data = precompute_financial_data(accounts_data, req.payment_amount)
+        persona_instruction = select_persona(user_context_data, accounts_data)
+        raw_ai_result = interestkiller_ai_hybrid(
+            app.state.gemini_model,
+            precomputed_data,
+            req.payment_amount,
+            user_context_data,
+            persona_instruction=persona_instruction
+        )
         logger.info(f"DEBUG: AI raw result: {raw_ai_result}")
         ai_json = json.loads(raw_ai_result)
         # --- GUARDRAILS START ---

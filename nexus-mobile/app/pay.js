@@ -21,6 +21,8 @@ export default function PayScreen() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiRecommendations, setAiRecommendations] = useState(null);
   const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [paymentContext, setPaymentContext] = useState(null);
+  const [usingSuggested, setUsingSuggested] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -34,6 +36,18 @@ export default function PayScreen() {
         setCards([]);
         setFundingAccounts([]);
       });
+    // Fetch safe payment context
+    fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts/payment-context?userId=1`)
+      .then(res => res.json())
+      .then(ctx => {
+        setPaymentContext(ctx);
+        if (ctx && ctx.maxSafePayment > 0) {
+          setAmount(ctx.maxSafePayment.toString());
+          setUsingSuggested(true);
+          if (ctx.recommendedFundingAccountId) setSelectedFunding(ctx.recommendedFundingAccountId);
+        }
+      })
+      .catch(() => setPaymentContext(null));
   }, []);
 
   const toggleSelect = (id) => {
@@ -294,14 +308,42 @@ export default function PayScreen() {
             </TouchableOpacity>
           ))
         )}
+        <View style={{ marginBottom: 12 }}>
+          {paymentContext && (
+            <View style={{ backgroundColor: '#f5f6fa', borderRadius: 8, padding: 12, marginBottom: 8 }}>
+              <Text style={{ fontWeight: 'bold', color: PRIMARY, marginBottom: 4 }}>Safe Payment Suggestion</Text>
+              <Text>Total Cash: ${paymentContext.totalCash.toFixed(2)}</Text>
+              <Text>Upcoming Bills: ${paymentContext.totalUpcomingBills.toFixed(2)}</Text>
+              <Text>Safety Buffer: ${paymentContext.safetyBuffer.toFixed(2)}</Text>
+              <Text style={{ fontWeight: 'bold', marginTop: 4 }}>Max Safe Payment: ${paymentContext.maxSafePayment.toFixed(2)}</Text>
+              {paymentContext.recommendedFundingAccountId && (
+                <Text>Recommended Funding Account: ••••{String(paymentContext.recommendedFundingAccountId).slice(-4)}</Text>
+              )}
+              {Array.isArray(paymentContext.upcomingBills) && paymentContext.upcomingBills.length > 0 && (
+                <View style={{ marginTop: 4 }}>
+                  <Text style={{ fontWeight: 'bold' }}>Upcoming Bills:</Text>
+                  {paymentContext.upcomingBills.map((b, i) => (
+                    <Text key={i}>- {b.name}: ${b.estimated_amount.toFixed(2)}</Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+        </View>
         <TextInput
           placeholder="Total payment amount"
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={val => {
+            setAmount(val);
+            setUsingSuggested(paymentContext && val === paymentContext.maxSafePayment.toString());
+          }}
           keyboardType="numeric"
           style={styles.input}
           placeholderTextColor="#888"
         />
+        {usingSuggested && paymentContext && (
+          <Text style={{ color: PRIMARY, fontWeight: 'bold', marginBottom: 8 }}>Suggested</Text>
+        )}
         <Text style={styles.label}>Optimization Goal:</Text>
         <View style={styles.goalRow}>
           <TouchableOpacity

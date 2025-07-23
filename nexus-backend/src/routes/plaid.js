@@ -4,6 +4,7 @@ const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 const db = require('../models');
 const Account = db.Account;
 const Card = db.Card;
+const Transaction = db.Transaction;
 const { createClient } = require('redis');
 
 const config = new Configuration({
@@ -153,6 +154,85 @@ router.get('/accounts', async (req, res) => {
     res.json(allAccounts);
   } catch (err) {
     console.error('Error in /accounts:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Safe Payment & Cash Flow Aware Endpoint ---
+// GET /accounts/payment-context?userId=...
+router.get('/accounts/payment-context', async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+  try {
+    // 1. Fetch all accounts for the user
+    const cacheKey = `user:${userId}:accounts`;
+    let allAccounts = [];
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      allAccounts = JSON.parse(cachedData);
+    } else {
+      const accounts = await Account.findAll({ where: { user_id: userId } });
+      for (const acc of accounts) {
+        const merged = await fetchAndMergeCompleteAccountData(acc.plaid_access_token, acc.institution);
+        allAccounts = allAccounts.concat(merged);
+      }
+      await redisClient.set(cacheKey, JSON.stringify(allAccounts), { EX: 1800 });
+    }
+    // 2. Filter for depository (checking/savings) accounts
+    const fundingAccounts = allAccounts.filter(acc => acc.type === 'depository' || acc.type === 'checking' || acc.type === 'savings');
+    const totalCash = fundingAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+    // 3. Fetch upcoming bills (simple prediction: recurring transactions or category includes 'bill')
+    let totalUpcomingBills = 0;
+    let upcomingBills = [];
+    try {
+      const today = new Date();
+      const sixtyDaysAgo = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
+      // Find all recurring or bill-like transactions in the last 60 days
+      const recurringTxs = await Transaction.findAll({
+        where: {
+          user_id: userId,
+          date: { $gte: sixtyDaysAgo },
+          $or: [
+            { is_recurring: true },
+            { category: { $iLike: '%bill%' } }
+          ]
+        }
+      });
+      // Group by merchant/category and estimate next 30 days' bills
+      const billMap = new Map();
+      for (const tx of recurringTxs) {
+        const key = tx.merchant || tx.category || 'Other';
+        if (!billMap.has(key)) billMap.set(key, { total: 0, count: 0 });
+        billMap.get(key).total += parseFloat(tx.amount);
+        billMap.get(key).count += 1;
+      }
+      // Estimate next 30 days' bills as average per group
+      for (const [key, val] of billMap.entries()) {
+        const avg = val.total / val.count;
+        totalUpcomingBills += avg;
+        upcomingBills.push({ name: key, estimated_amount: avg });
+      }
+    } catch (e) {
+      console.warn('Bill prediction failed:', e.message);
+    }
+    // 4. Safety buffer
+    const safetyBuffer = 500;
+    // 5. Calculate max safe payment
+    const discretionaryCash = totalCash - totalUpcomingBills - safetyBuffer;
+    const maxSafePayment = Math.max(0, discretionaryCash);
+    // 6. Recommend best funding account (highest balance)
+    const recommendedFundingAccount = fundingAccounts.sort((a, b) => (b.balance || 0) - (a.balance || 0))[0] || null;
+    res.json({
+      maxSafePayment,
+      recommendedFundingAccountId: recommendedFundingAccount ? recommendedFundingAccount.id : null,
+      fundingAccounts,
+      totalCash,
+      totalUpcomingBills,
+      upcomingBills,
+      safetyBuffer
+    });
+  } catch (err) {
+    console.error('Error in /accounts/payment-context:', err);
     res.status(500).json({ error: err.message });
   }
 });
