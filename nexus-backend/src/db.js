@@ -47,10 +47,7 @@ async function testConnection() {
   try {
     await sequelize.authenticate();
     console.log('Database connection has been established successfully.');
-    
-    // Sync all models with the database
-    await sequelize.sync({ alter: process.env.NODE_ENV !== 'production' });
-    console.log('Database synchronized');
+    // Removed sequelize.sync() to prevent schema changes in production
   } catch (error) {
     console.error('Unable to connect to the database:', error);
     process.exit(1);

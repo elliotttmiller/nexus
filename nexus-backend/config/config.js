@@ -17,6 +17,24 @@ if (process.env.DATABASE_URL) {
 }
 
 module.exports = {
+  development: {
+    database: dbConfig.database || process.env.DB_NAME || 'railway',
+    username: dbConfig.username || process.env.DB_USER || 'postgres',
+    password: dbConfig.password || process.env.DB_PASSWORD || 'hTckoowSOUVGSbZXigsxWBVXxlXYFAfu',
+    host: dbConfig.host || process.env.DB_HOST || 'localhost',
+    port: dbConfig.port || process.env.DB_PORT || 5432,
+    dialect: 'postgres',
+    logging: console.log,
+    dialectOptions: {
+      ssl: false
+    },
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    }
+  },
   production: {
     database: dbConfig.database || process.env.DB_NAME || 'railway',
     username: dbConfig.username || process.env.DB_USER || 'postgres',
