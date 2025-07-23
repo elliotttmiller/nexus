@@ -1,8 +1,10 @@
 const express = require('express');
+const { Op } = require('sequelize');
 const router = express.Router();
 const { getInterestKillerSplit } = require('../../aiService');
 const Card = require('../models/card');
 const UserEvent = require('../models/user_event');
+const PaymentHistory = require('../models/payment_history');
 
 // Helper to calculate utilization
 function calcUtilization(balance, creditLimit) {
@@ -184,6 +186,64 @@ router.post('/pay/ai-recommendation', async (req, res) => {
     };
     
     res.json(fallbackResponse);
+  }
+});
+
+// Save payment history
+router.post('/save-payment', async (req, res) => {
+  const { userId, amount, status, cards } = req.body;
+  
+  if (!userId || !amount || !Array.isArray(cards)) {
+    return res.status(400).json({ error: 'Missing required payment information' });
+  }
+
+  try {
+    const payment = await PaymentHistory.create({
+      user_id: userId,
+      amount: parseFloat(amount),
+      status: status || 'pending',
+      details: JSON.stringify({ cards }),
+      timestamp: new Date()
+    });
+
+    res.status(201).json({
+      success: true,
+      paymentId: payment.id
+    });
+  } catch (error) {
+    console.error('Error saving payment:', error);
+    res.status(500).json({ error: 'Failed to save payment history' });
+  }
+});
+
+// Get payment history for a user
+router.get('/payment-history', async (req, res) => {
+  const { userId } = req.query;
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  try {
+    const payments = await PaymentHistory.findAll({
+      where: { user_id: userId },
+      order: [['timestamp', 'DESC']],
+      limit: 50 // Return last 50 payments
+    });
+
+    // Format the response
+    const formattedPayments = payments.map(payment => ({
+      id: payment.id,
+      amount: payment.amount,
+      status: payment.status,
+      timestamp: payment.timestamp,
+      cards: JSON.parse(payment.details || '[]').cards || []
+    }));
+
+    res.json(formattedPayments);
+  } catch (error) {
+    console.error('Error fetching payment history:', error);
+    res.status(500).json({ error: 'Failed to fetch payment history' });
   }
 });
 

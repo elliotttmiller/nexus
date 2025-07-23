@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-  const UserEvent = sequelize.define('UserEvent', {
+  const PaymentHistory = sequelize.define('PaymentHistory', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -13,28 +13,29 @@ module.exports = (sequelize, DataTypes) => {
         key: 'id',
       },
     },
-    event_type: {
-      type: DataTypes.STRING,
+    amount: {
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
-        notEmpty: true,
+        min: 0.01, // Minimum payment amount
       },
     },
-    event_subtype: {
-      type: DataTypes.STRING,
-      allowNull: true,
+    status: {
+      type: DataTypes.ENUM('pending', 'success', 'failed'),
+      allowNull: false,
+      defaultValue: 'pending',
     },
-    data: {
+    details: {
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: {},
     },
-    ip_address: {
+    transaction_id: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    user_agent: {
-      type: DataTypes.TEXT,
+    payment_method: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     created_at: {
@@ -48,7 +49,7 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.NOW,
     },
   }, {
-    tableName: 'user_events',
+    tableName: 'payment_history',
     timestamps: true,
     underscored: true,
     indexes: [
@@ -56,7 +57,7 @@ module.exports = (sequelize, DataTypes) => {
         fields: ['user_id'],
       },
       {
-        fields: ['event_type'],
+        fields: ['status'],
       },
       {
         fields: ['created_at'],
@@ -64,8 +65,8 @@ module.exports = (sequelize, DataTypes) => {
     ],
   });
 
-  UserEvent.associate = function(models) {
-    UserEvent.belongsTo(models.User, {
+  PaymentHistory.associate = function(models) {
+    PaymentHistory.belongsTo(models.User, {
       foreignKey: 'user_id',
       as: 'user',
       onDelete: 'CASCADE',
@@ -73,28 +74,13 @@ module.exports = (sequelize, DataTypes) => {
   };
 
   // Add any instance methods or hooks here
-  UserEvent.beforeUpdate((userEvent) => {
-    userEvent.updated_at = new Date();
-  });
-
-  // Static method to log an event
-  UserEvent.logEvent = async function(userId, eventType, data = {}, options = {}) {
-    try {
-      const { ip, userAgent, transaction } = options;
-      
-      return await this.create({
-        user_id: userId,
-        event_type: eventType,
-        event_subtype: options.eventSubtype,
-        data,
-        ip_address: ip,
-        user_agent: userAgent,
-      }, { transaction });
-    } catch (error) {
-      console.error('Error logging user event:', error);
-      throw error;
-    }
+  PaymentHistory.prototype.getFormattedAmount = function() {
+    return `$${this.amount.toFixed(2)}`;
   };
 
-  return UserEvent;
+  PaymentHistory.beforeUpdate((payment) => {
+    payment.updated_at = new Date();
+  });
+
+  return PaymentHistory;
 };

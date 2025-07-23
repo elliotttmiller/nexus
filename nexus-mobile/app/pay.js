@@ -71,24 +71,106 @@ export default function PayScreen() {
     setError('');
     setExecuting(true);
     setPaymentResults(null);
+    
     if (!selectedFunding) {
-      setError('Select a funding account.');
+      setError('Please select a funding account.');
       setExecuting(false);
       return;
     }
+    
+    if (!result?.split || result.split.length === 0) {
+      setError('No payment split found. Please try the recommendation again.');
+      setExecuting(false);
+      return;
+    }
+    
     try {
-      const res = await fetchWithAuth(`${API_BASE_URL}/api/pay/execute`, {
+      console.log('Executing payment with:', {
+        funding_account_id: selectedFunding,
+        split: result.split
+      });
+      
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/pay/execute`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           userId: 1,
           funding_account_id: selectedFunding,
-          split: result.split
+          split: result.split.map(item => ({
+            card_id: item.card_id,
+            amount: parseFloat(item.amount) || 0
+          }))
         })
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Payment execution failed:', res.status, errorData);
+        throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
-      setPaymentResults(data.payments);
+      console.log('Payment execution successful:', data);
+      setPaymentResults(data.payments || []);
+      
+      // Save payment to history
+      try {
+        await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/save-payment`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: 1,
+            amount: parseFloat(amount),
+            status: 'success',
+            cards: result.split.map(item => ({
+              card_id: item.card_id,
+              amount: parseFloat(item.amount),
+              last4: cards.find(c => c.id === item.card_id)?.last4 || '••••'
+            }))
+          })
+        });
+      } catch (error) {
+        console.error('Failed to save payment history:', error);
+      }
+      
+      // Show success message
+      Alert.alert(
+        'Payment Successful',
+        'Your payment has been processed successfully!',
+        [
+          { 
+            text: 'View Transactions',
+            onPress: () => {
+              // Reset form
+              setSelected([]);
+              setAmount('');
+              setSelectedFunding('');
+              setResult(null);
+              // Navigate to transactions after a short delay
+              setTimeout(() => router.replace('/transactions'), 500);
+            }
+          },
+          { 
+            text: 'OK', 
+            onPress: () => {
+              // Reset form
+              setSelected([]);
+              setAmount('');
+              setSelectedFunding('');
+              setResult(null);
+            }
+          }
+        ],
+        { cancelable: false }
+      );
+      
     } catch (err) {
-      setError('Payment execution failed.');
+      console.error('Payment execution error:', err);
+      setError(`Payment execution failed: ${err.message || 'Unknown error'}`);
     } finally {
       setExecuting(false);
     }

@@ -26,5 +26,8 @@
         "sequelize": "^6.32.1",
         "speakeasy": "^2.0.0",
         "winston": "^3.10.0"
+    },
+    "devDependencies": {
+        "sequelize-cli": "^6.6.3"
     }
 }

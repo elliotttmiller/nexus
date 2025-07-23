@@ -1,38 +1,71 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../db');
+module.exports = (sequelize, DataTypes) => {
+  const Card = sequelize.define('Card', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    account_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    card_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    apr: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+    },
+    balance: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+      defaultValue: 0,
+    },
+    credit_limit: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    due_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    rewards: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  }, {
+    tableName: 'cards',
+    timestamps: true,
+    underscored: true,
+  });
 
-const Card = sequelize.define('Card', {
-  account_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
-  card_name: {
-    type: DataTypes.STRING
-  },
-  apr: {
-    type: DataTypes.DECIMAL(5,2)
-  },
-  balance: {
-    type: DataTypes.DECIMAL(12,2)
-  },
-  due_date: {
-    type: DataTypes.DATE
-  },
-  rewards: {
-    type: DataTypes.JSONB
-  },
-  createdAt: {
-    type: DataTypes.DATE,
-    field: 'created_at'
-  },
-  updatedAt: {
-    type: DataTypes.DATE,
-    field: 'updated_at'
-  }
-}, {
-  tableName: 'cards',
-  freezeTableName: true,
-  timestamps: true
-});
+  Card.associate = function(models) {
+    Card.belongsTo(models.User, {
+      foreignKey: 'user_id',
+      as: 'user',
+    });
 
-module.exports = Card; 
+    // Add any other associations here
+  };
+
+  return Card;
+};
