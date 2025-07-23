@@ -61,14 +61,30 @@ db.Sequelize = Sequelize;
 // Test the database connection and sync models
 async function testConnection() {
   try {
-    await sequelize.authenticate();
+    console.log('Attempting to connect to database...');
+    console.log(`Host: ${sequelize.config.host}, Database: ${sequelize.config.database}, User: ${sequelize.config.username}`);
+    
+    await sequelize.authenticate({ timeout: 10000 });
     console.log('Database connection has been established successfully.');
     
     // Sync all models with the database
-    await sequelize.sync({ alter: process.env.NODE_ENV !== 'production' });
+    console.log('Synchronizing database...');
+    await sequelize.sync({ 
+      alter: process.env.NODE_ENV !== 'production',
+      logging: console.log
+    });
     console.log('Database synchronized');
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
+    console.error('Unable to connect to the database:');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Connection config:', {
+      host: sequelize.config.host,
+      database: sequelize.config.database,
+      username: sequelize.config.username,
+      port: sequelize.config.port,
+      dialect: sequelize.config.dialect
+    });
     process.exit(1);
   }
 }

@@ -1,18 +1,30 @@
 require('dotenv').config();
 
-// Force production environment
-process.env.NODE_ENV = 'production';
+// Force production environment if not set
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+
+// Parse DATABASE_URL if available
+let dbConfig = {};
+if (process.env.DATABASE_URL) {
+  const url = new URL(process.env.DATABASE_URL);
+  dbConfig = {
+    database: url.pathname.substring(1), // Remove leading '/'
+    username: url.username,
+    password: url.password,
+    host: url.hostname,
+    port: url.port,
+  };
+}
 
 module.exports = {
-  // Production configuration
   production: {
-    database: 'railway',
-    username: 'postgres',
-    password: 'hTckoowSOUVGSbZXigsxWBVXxlXYFAfu',
-    host: 'shinkansen.proxy.rlwy.net',
-    port: 57937,
+    database: dbConfig.database || process.env.DB_NAME || 'railway',
+    username: dbConfig.username || process.env.DB_USER || 'postgres',
+    password: dbConfig.password || process.env.DB_PASSWORD || 'hTckoowSOUVGSbZXigsxWBVXxlXYFAfu',
+    host: dbConfig.host || process.env.DB_HOST || 'shinkansen.proxy.rlwy.net',
+    port: dbConfig.port || process.env.DB_PORT || 57937,
     dialect: 'postgres',
-    logging: console.log,
+    logging: process.env.NODE_ENV === 'development' ? console.log : false,
     dialectOptions: {
       ssl: {
         require: true,

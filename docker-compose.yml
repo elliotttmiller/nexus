@@ -9,21 +9,16 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - NODE_ENV=production
+      - PORT=8080
       - AI_BASE_URL=https://aiservice-production-acab.up.railway.app
       - DATABASE_URL=postgres://postgres:hTckoowSOUVGSbZXigsxWBVXxlXYFAfu@shinkansen.proxy.rlwy.net:57937/railway
       - API_BASE_URL=https://nexus-production-2e34.up.railway.app
+      - DB_HOST=shinkansen.proxy.rlwy.net
+      - DB_PORT=57937
+      - DB_NAME=railway
+      - DB_USER=postgres
+      - DB_PASSWORD=hTckoowSOUVGSbZXigsxWBVXxlXYFAfu
     depends_on:
       - ai
-      - db
-  db:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: railway
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: hTckoowSOUVGSbZXigsxWBVXxlXYFAfu
-    ports:
-      - "5432:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-volumes:
-  db_data: 
+# Using Railway database instead of local database
