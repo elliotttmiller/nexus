@@ -291,6 +291,7 @@ def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_co
         d. **PROJECT OUTCOMES:** For each plan, add a `projected_outcome` string (e.g., "debt-free 4 months sooner" or "saves $2,000 on a future loan").
         e. **MAKE RECOMMENDATION:** Based on `user_context.primary_goal`, determine the `nexus_recommendation`.
         f. **FINAL CHECK (SELF-CORRECTION):** Before creating the final answer, double-check that your generated JSON will contain ALL of the following top-level keys: `nexus_recommendation`, `minimize_interest_plan`, and `maximize_score_plan`. Also, ensure each plan object contains ALL of its required sub-keys: `name`, `split`, `explanation`, and `projected_outcome`.
+        g. **MATH CHECK:** Sum the split amounts for each plan and confirm they match `payment_amount` ({payment_amount}). If not, adjust the last item so the total matches exactly (no rounding errors).
     2.  **</thinking>**
     3.  **<answer>** Provide ONLY a single, valid JSON object with the complete, final structure. Do not add any text before or after the JSON object.
 
@@ -307,7 +308,7 @@ def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_co
         "name": "Avalanche Method",
         "split": [
           {{ "card_id": "c1", "card_name": "Chase Freedom", "amount": 550.00, "type": "Power Payment" }},
-          {{ "card_id": "c2", "card_name": "Amex Gold", "amount": 25.00, "type": "Minimum Payment" }}
+          {{ "card_id": "c2", "card_name": "Amex Gold", "amount": 1450.00, "type": "Minimum Payment" }}
         ],
         "explanation": "Congratulations on your progress! To keep the momentum going, this plan focuses on your highest-interest card, the fastest path to being debt-free.",
         "projected_outcome": "Sticking to this plan could make you debt-free 4 months sooner, saving over $800 in total interest."
@@ -316,7 +317,7 @@ def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_co
         "name": "Credit Score Booster",
         "split": [
           {{ "card_id": "c2", "card_name": "Amex Gold", "amount": 550.00, "type": "Power Payment" }},
-          {{ "card_id": "c1", "card_name": "Chase Freedom", "amount": 25.00, "type": "Minimum Payment" }}
+          {{ "card_id": "c1", "card_name": "Chase Freedom", "amount": 1450.00, "type": "Minimum Payment" }}
         ],
         "explanation": "This is a great move for your long-term financial health. We're targeting your Amex Gold to drop its credit usage from 65% to 28%, which can significantly boost your score.",
         "projected_outcome": "A higher credit score like this could save you over $2,000 on a future 5-year auto loan."
@@ -329,5 +330,7 @@ def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_co
     - Accounts: {json.dumps(accounts, indent=2)}
     - Total Payment Amount: {payment_amount}
     - User Context: {json.dumps(user_context, indent=2)}
+
+    IMPORTANT: The sum of all `amount` fields in each plan’s `split` array MUST be exactly equal to `payment_amount` ({payment_amount}). Double-check your math before finalizing your answer. If there is any rounding error, adjust the last split item so the total matches exactly.
     """
     return call_gemini(model, prompt) 
