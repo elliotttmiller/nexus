@@ -123,44 +123,100 @@ def select_persona(user_context: dict, accounts: list) -> str:
     return "The user is in a standard optimization state. Adopt a direct, confident, and encouraging 'financial coach' tone."
 
 # --- NEW: The Pre-Computation Algorithm ---
-def precompute_payment_plans(accounts: list, payment_amount: float) -> dict:
+def estimate_interest_saved(split, accounts, months=12):
+    # Only consider the power payment card
+    for item in split:
+        if item['type'] == 'Power Payment':
+            card = next((acc for acc in accounts if acc['id'] == item['card_id']), None)
+            if card and card.get('apr'):
+                # Simple estimate: interest saved = (power_payment_amount * apr/100) * months / 12
+                return round(item['amount'] * (card['apr'] / 100) * months / 12, 2)
+    return 0.0
+
+def estimate_score_boost(split, accounts):
+    # Only consider the power payment card
+    for item in split:
+        if item['type'] == 'Power Payment':
+            card = next((acc for acc in accounts if acc['id'] == item['card_id']), None)
+            if card and card.get('utilization_percent') is not None:
+                before = card['utilization_percent']
+                # Estimate after-payment utilization
+                after = before - (item['amount'] / card['creditLimit'] * 100) if card['creditLimit'] else before
+                # Heuristic: drop below 50% = 10-20 pts, below 30% = 20-40 pts
+                if before > 30 and after <= 30:
+                    return '20-40'
+                elif before > 50 and after <= 50:
+                    return '10-20'
+    return '0'
+
+# --- NEW: The "Chief Strategist" Pre-Computation Algorithm ---
+def precompute_payment_plans_sophisticated(accounts: list, payment_amount: float) -> dict:
     """
-    Deterministic algorithm for payment splits. Returns a data structure for the AI to explain.
+    A sophisticated, multi-phase algorithm that makes strategic decisions about
+    which cards to pay, including paying some off entirely and skipping others.
     """
+    # --- Phase 1: Triage & Intel Gathering ---
     for acc in accounts:
         balance = acc.get('balance', 0)
         limit = acc.get('creditLimit', 0)
         acc['minimum_payment'] = max(25, balance * 0.01) if balance > 25 else balance
         acc['utilization_percent'] = (balance / limit) * 100 if limit > 0 else 0
-    total_minimums = sum(acc['minimum_payment'] for acc in accounts)
-    # Avalanche Plan
-    avalanche_target = max(accounts, key=lambda x: (x['apr'], x['balance'], x['id']))
+
+    discretionary_payment = payment_amount
+    paid_off_cards = []
+    skipped_cards = []
+    processed_card_ids = set()
     avalanche_split = []
-    power_payment_amount_avalanche = payment_amount - (total_minimums - avalanche_target['minimum_payment'])
-    for acc in accounts:
-        if acc['id'] == avalanche_target['id']:
-            avalanche_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(power_payment_amount_avalanche, 2), "type": "Power Payment"})
-        else:
-            avalanche_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(acc['minimum_payment'], 2), "type": "Minimum Payment"})
-    # Score Booster Plan
-    score_booster_target = max(accounts, key=lambda x: (x['utilization_percent'], x['balance'], x['id']))
     score_booster_split = []
-    power_payment_amount_score = payment_amount - (total_minimums - score_booster_target['minimum_payment'])
-    for acc in accounts:
-        if acc['id'] == score_booster_target['id']:
-            score_booster_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(power_payment_amount_score, 2), "type": "Power Payment"})
+
+    # --- Phase 2: Emergency & Opportunity Scan ---
+    # 2a: Debt Elimination Opportunity (Pay off small balances first)
+    sorted_by_balance = sorted(accounts, key=lambda x: x['balance'])
+    for acc in sorted_by_balance:
+        if discretionary_payment >= acc['balance'] and acc['balance'] > 0:
+            payment = acc['balance']
+            avalanche_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(payment, 2), "type": "Payoff"})
+            score_booster_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(payment, 2), "type": "Payoff"})
+            discretionary_payment -= payment
+            paid_off_cards.append(acc)
+            processed_card_ids.add(acc['id'])
+
+    remaining_cards = [acc for acc in accounts if acc['id'] not in processed_card_ids]
+
+    # 2b: Strategic Skip Opportunity (Ignore 0% APR cards for now)
+    cards_requiring_minimums = []
+    for acc in remaining_cards:
+        if acc['apr'] > 0:
+            cards_requiring_minimums.append(acc)
         else:
-            score_booster_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(acc['minimum_payment'], 2), "type": "Minimum Payment"})
-    # Insufficient Funds Protocol
-    if payment_amount < total_minimums:
-        highest_apr_card = max(accounts, key=lambda x: (x['apr'], x['balance'], x['id']))
-        insufficient_split = [{"card_id": highest_apr_card['id'], "card_name": highest_apr_card.get('name', 'Card'), "amount": round(payment_amount, 2), "type": "Power Payment"}]
-        avalanche_split = insufficient_split
-        score_booster_split = insufficient_split
+            skipped_cards.append(acc)
+            avalanche_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": 0.00, "type": "Strategic Skip"})
+            score_booster_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": 0.00, "type": "Strategic Skip"})
+
+    # --- Phase 3: Core Strategic Allocation (On remaining cards) ---
+    if cards_requiring_minimums and discretionary_payment > 0:
+        total_remaining_minimums = sum(acc['minimum_payment'] for acc in cards_requiring_minimums)
+        # Avalanche Logic
+        avalanche_target = max(cards_requiring_minimums, key=lambda x: (x['apr'], x['balance']))
+        power_payment_avalanche = discretionary_payment - (total_remaining_minimums - avalanche_target['minimum_payment'])
+        for acc in cards_requiring_minimums:
+            amount = power_payment_avalanche if acc['id'] == avalanche_target['id'] else acc['minimum_payment']
+            avalanche_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(amount, 2), "type": "Power Payment" if acc['id'] == avalanche_target['id'] else "Minimum Payment"})
+        # Score Booster Logic
+        score_booster_target = max(cards_requiring_minimums, key=lambda x: (x['utilization_percent'], x['balance']))
+        power_payment_score = discretionary_payment - (total_remaining_minimums - score_booster_target['minimum_payment'])
+        for acc in cards_requiring_minimums:
+            amount = power_payment_score if acc['id'] == score_booster_target['id'] else acc['minimum_payment']
+            score_booster_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(amount, 2), "type": "Power Payment" if acc['id'] == score_booster_target['id'] else "Minimum Payment"})
+
+    # --- Phase 4: Construct Final Data Dossier for AI ---
     return {
-        "avalanche_plan": {"split": avalanche_split, "target_card": avalanche_target},
-        "score_booster_plan": {"split": score_booster_split, "target_card": score_booster_target},
-        "is_insufficient": payment_amount < total_minimums
+        "avalanche_plan": {"split": avalanche_split},
+        "score_booster_plan": {"split": score_booster_split},
+        "context": {
+            "paid_off_cards": [c.get('name', 'Card') for c in paid_off_cards],
+            "skipped_cards": [c.get('name', 'Card') for c in skipped_cards]
+        }
     }
 
 from services import interestkiller_ai_hybrid
@@ -218,12 +274,10 @@ def cardrank_v2(req: V2CardRankRequest):
 @app.post('/v2/interestkiller')
 async def interestkiller_v2(req: V2InterestKillerRequest):
     try:
-        # 1. RUN THE ALGORITHM to get perfect math and targets
-        plan_data = precompute_payment_plans(
+        plan_data = precompute_payment_plans_sophisticated(
             [acc.model_dump() for acc in req.accounts],
             req.payment_amount
         )
-        # 2. CALL THE AI, giving it the pre-computed data. Its job is now just to write text.
         raw_ai_result = interestkiller_ai_hybrid(
             app.state.gemini_model,
             plan_data,

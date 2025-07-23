@@ -248,7 +248,7 @@ def interestkiller_ai(model, accounts: list, payment_amount: float) -> str:
     - Accounts: {json.dumps(accounts)}
     - Total Payment Amount: {payment_amount}
     """
-    return call_gemini(model, prompt) 
+    return call_gemini(model, prompt)
 
 # --- SIMPLIFIED PROMPT FOR JSON MODE ---
 def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_context: dict) -> str:
@@ -280,37 +280,28 @@ def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_co
     - Total Payment Amount: {payment_amount}
     - User Context: {json.dumps(user_context, indent=2)}
     """
-    return call_gemini(model, prompt) 
+    return call_gemini(model, prompt)
 
 def interestkiller_ai_hybrid(model, plan_data: dict, user_context: dict) -> str:
     """
-    Hybrid AI function. Receives pre-computed, perfect data from an algorithm.
-    Its ONLY job is to craft elite-level explanations and projections.
+    Hybrid AI function. Receives pre-computed data from our sophisticated
+    "Chief Strategist Algorithm" and crafts elite-level explanations.
     """
     import json
     prompt = f"""
-    You are Nexus AI, an elite Financial Counselor. Your task is to act as a communications expert. You will be given a pre-calculated, mathematically perfect payment plan. Your job is to translate this data into an empowering, data-driven, and user-friendly explanation.
+    You are Nexus AI, an elite Chief Financial Strategist. You will be given a mathematically perfect payment plan and rich strategic context. Your job is to translate this data into an empowering, data-driven explanation for the user.
 
-    --- YOUR KNOWLEDGE BASE & HEURISTICS ---
-    1.  **Goal:** To explain the "Avalanche" and "Score Booster" plans.
-    2.  **Projections:**
-        - A credit score can increase by 20-40 points when utilization drops below 30%.
-        - Interest savings can be projected over 12 months for impact.
-    3.  **Rapport:** Weave in the user's historical context from `user_context` (e.g., "Congratulations on paying down debt...").
+    --- STRATEGIC CONTEXT ANALYSIS (CRITICAL) ---
+    - First, check `plan_data.context.paid_off_cards`. If this list is not empty, your explanation MUST start by celebrating this major victory. Frame it as "eliminating a debt account completely."
+    - Next, check `plan_data.context.skipped_cards`. If this list is not empty, you MUST explain that this was a deliberate, expert-level choice to ignore low-interest (or 0% APR) cards to maximize the impact on high-interest debt.
+
+    --- EXPLANATION & PROJECTION RULES ---
+    1.  **Persona:** You are an expert providing a clear recommendation. Start with an assertive, positive statement.
+    2.  **Explanation (The "What" and "Why"):** After handling the strategic context, focus on the single "Power Payment" card. State why it was chosen (highest APR or utilization) and the immediate, quantified impact.
+    3.  **Projected Outcome (The "So What"):** Describe the long-term benefit (debt freedom, better loans, etc.).
 
     --- YOUR TASK ---
-    Based on the provided `plan_data`, generate a JSON object containing ONLY the following six string keys:
-    1.  `nexus_recommendation`: The name of the plan that matches `user_context.primary_goal`.
-    2.  `minimize_interest_explanation`: The explanation for the Avalanche plan.
-    3.  `minimize_interest_projection`: The projected outcome for the Avalanche plan.
-    4.  `maximize_score_explanation`: The explanation for the Score Booster plan.
-    5.  `maximize_score_projection`: The projected outcome for the Score Booster plan.
-    6.  `insufficient_funds_explanation`: A special explanation to use for BOTH plans if `plan_data.is_insufficient` is true.
-
-    --- INSTRUCTIONS FOR EXPLANATIONS ---
-    - **If `plan_data.is_insufficient` is true:** Use the `insufficient_funds_explanation` to state that the payment doesn't cover all minimums and is being applied to the highest-APR card to minimize fees.
-    - **Avalanche Explanation:** State that you are targeting the `plan_data.avalanche_plan.target_card.name` because it has the highest APR. Quantify the immediate interest saved.
-    - **Score Booster Explanation:** State that you are targeting the `plan_data.score_booster_plan.target_card.name` to slash its utilization. Quantify the drop (e.g., "from 72% down to 48%").
+    Based on the provided `plan_data` and its `context`, generate a JSON object containing the required explanation and projection strings.
 
     --- DATA FOR YOUR TASK ---
     - Pre-computed Plan Data: {json.dumps(plan_data, indent=2)}
