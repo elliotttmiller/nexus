@@ -1,19 +1,16 @@
 require('dotenv').config();
 
 module.exports = {
+  // Configuration for all environments
   development: {
-    database: process.env.PGDATABASE || 'railway',
-    username: process.env.PGUSER || 'postgres',
-    password: process.env.PGPASSWORD || 'hTckoowSOUVGSbZXigsxWBVXxlXYFAfu',
-    host: process.env.PGHOST || 'shinkansen.proxy.rlwy.net',
-    port: process.env.PGPORT || 57937,
+    use_env_variable: 'DATABASE_URL',
     dialect: 'postgres',
     logging: console.log,
     dialectOptions: {
-      ssl: process.env.NODE_ENV === 'production' ? {
+      ssl: {
         require: true,
         rejectUnauthorized: false
-      } : false
+      }
     },
     pool: {
       max: 5,
