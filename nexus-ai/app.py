@@ -274,20 +274,30 @@ def cardrank_v2(req: V2CardRankRequest):
 @app.post('/v2/interestkiller')
 async def interestkiller_v2(req: V2InterestKillerRequest):
     try:
+        logger.info(f"Received /v2/interestkiller request: {req}")
         plan_data = precompute_payment_plans_sophisticated(
             [acc.model_dump() for acc in req.accounts],
             req.payment_amount
         )
+        logger.info(f"Computed plan_data: {json.dumps(plan_data, indent=2)}")
         raw_ai_result = interestkiller_ai_hybrid(
             app.state.gemini_model,
             plan_data,
             req.user_context.model_dump()
         )
-        ai_json = json.loads(raw_ai_result)
-        # 3. COMBINE & VALIDATE: Merge the perfect math from the algorithm with the text from the AI.
-        # This also acts as our final guardrail.
-        if 'minimize_interest_explanation' not in ai_json or 'maximize_score_explanation' not in ai_json:
-            raise ValueError("AI response is missing required explanation fields.")
+        logger.info(f"Raw AI result: {raw_ai_result}")
+        try:
+            ai_json = json.loads(raw_ai_result)
+        except Exception as e:
+            logger.error(f"Failed to parse AI JSON: {e}. Raw AI result: {raw_ai_result}")
+            raise HTTPException(status_code=500, detail=f"AI response was not valid JSON: {e}")
+        logger.info(f"Parsed AI JSON: {json.dumps(ai_json, indent=2)}")
+        # Check for required keys
+        required_keys = ["nexus_recommendation", "minimize_interest_explanation", "minimize_interest_projection", "maximize_score_explanation", "maximize_score_projection"]
+        for key in required_keys:
+            if key not in ai_json:
+                logger.error(f"AI response missing required key: {key}. Full AI JSON: {json.dumps(ai_json, indent=2)}")
+                raise HTTPException(status_code=500, detail=f"AI response missing required key: {key}")
         final_response = {
             "nexus_recommendation": ai_json.get("nexus_recommendation"),
             "minimize_interest_plan": {
@@ -303,7 +313,8 @@ async def interestkiller_v2(req: V2InterestKillerRequest):
                 "projected_outcome": ai_json['maximize_score_projection']
             }
         }
+        logger.info(f"Final response: {json.dumps(final_response, indent=2)}")
         return final_response
-    except (json.JSONDecodeError, ValueError) as e:
-        logger.error(f"AI response failed validation: {e}. Raw response: {raw_ai_result}")
-        raise HTTPException(status_code=500, detail=f"AI response failed validation: {e}") 
+    except Exception as e:
+        logger.error(f"UNEXPECTED ERROR in /v2/interestkiller: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}") 
