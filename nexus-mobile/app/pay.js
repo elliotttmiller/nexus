@@ -185,16 +185,34 @@ export default function PayScreen() {
       setAiLoading(false);
       return;
     }
-    // If no cards selected, send all cards; backend will use them for AI
-    const accounts = selected.length > 0 ? cards.filter(c => selected.includes(c.id)) : cards;
+    // Map accounts to required structure
+    const accounts = (selected.length > 0 ? cards.filter(c => selected.includes(c.id)) : cards)
+      .map(c => ({
+        id: c.id || '',
+        name: c.name || c.card_name || 'Card', // Ensure name is always present
+        balance: typeof c.balance === 'number' ? c.balance : parseFloat(c.balance) || 0,
+        apr: typeof c.apr === 'number' ? c.apr : parseFloat(c.apr) || 0,
+        creditLimit: typeof c.creditLimit === 'number'
+          ? c.creditLimit
+          : (typeof c.credit_limit === 'number'
+            ? c.credit_limit
+            : parseFloat(c.creditLimit || c.credit_limit) || 0),
+        promo_apr_expiry_date: c.promo_apr_expiry_date || null,
+        type: c.type || 'credit'
+      }));
+    const payload = {
+      userId: 1,
+      accounts,
+      payment_amount: Number(amount),
+      user_context: {
+        primary_goal: goal
+      }
+    };
+    console.log('DEBUG: AI Recommendation payload:', payload);
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/pay/ai-recommendation`, {
         method: 'POST',
-        body: JSON.stringify({
-          userId: 1,
-          accounts,
-          payment_amount: Number(amount)
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       setAiRecommendations(data);

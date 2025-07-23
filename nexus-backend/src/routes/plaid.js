@@ -17,8 +17,9 @@ const config = new Configuration({
 });
 const plaidClient = new PlaidApi(config);
 
-// Initialize Redis client
-const redisClient = createClient({ url: process.env.REDIS_URL });
+// Initialize Redis client with fallback logic
+const redisUrl = process.env.REDIS_URL || process.env.REDIS_PUBLIC_URL || 'redis://localhost:6379';
+const redisClient = createClient({ url: redisUrl });
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 (async () => { try { await redisClient.connect(); } catch (e) { console.error('Redis connect error:', e); } })();
 

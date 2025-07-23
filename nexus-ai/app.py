@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
@@ -147,24 +147,38 @@ def cardrank_v2(req: V2CardRankRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/v2/interestkiller')
-def interestkiller_v2(req: V2InterestKillerRequest):
+async def interestkiller_v2(req: V2InterestKillerRequest, request: Request):
+    import logging
+    logger = logging.getLogger("nexus-ai-debug")
+    # Log the raw request body
+    try:
+        raw_body = await request.body()
+        logger.info(f"DEBUG: Raw request body: {raw_body.decode('utf-8')}")
+    except Exception as e:
+        logger.error(f"DEBUG: Could not log raw request body: {e}")
+    logger.info(f"DEBUG: Parsed request: {req}")
     raw_ai_result = interestkiller_ai_pure(app.state.gemini_model, [acc.model_dump() for acc in req.accounts], req.payment_amount, req.user_context.model_dump())
     try:
         ai_json = json.loads(raw_ai_result)
+        logger.info(f"DEBUG: AI raw result: {raw_ai_result}")
         # --- GUARDRAILS START ---
         plan_keys = ["minimize_interest_plan", "maximize_score_plan"]
         for key in plan_keys:
             if key not in ai_json:
+                logger.error(f"AI response missing required plan key: '{key}'.")
                 raise ValueError(f"AI response missing required plan key: '{key}'.")
         for key in plan_keys:
             plan_data = ai_json[key]
             if not isinstance(plan_data, dict):
+                logger.error(f"Plan '{key}' is not a valid object.")
                 raise ValueError(f"Plan '{key}' is not a valid object.")
             required_sub_keys = ['name', 'split', 'explanation', 'projected_outcome']
             if not all(sub_key in plan_data for sub_key in required_sub_keys):
+                logger.error(f"Plan '{key}' is missing required sub-keys (e.g., 'projected_outcome').")
                 raise ValueError(f"Plan '{key}' is missing required sub-keys (e.g., 'projected_outcome').")
             split = plan_data.get("split")
             if not isinstance(split, list):
+                logger.error(f"Plan '{key}' has an invalid 'split' array.")
                 raise ValueError(f"Plan '{key}' has an invalid 'split' array.")
             total_allocated = sum(item.get('amount', 0) for item in split)
             if not math.isclose(total_allocated, req.payment_amount, rel_tol=1e-2):
@@ -172,12 +186,17 @@ def interestkiller_v2(req: V2InterestKillerRequest):
                 raise ValueError(f"AI failed to correctly allocate the total payment amount for plan '{key}'.")
             for item in split:
                 if not all(k in item for k in ['card_id', 'card_name', 'amount', 'type']):
+                    logger.error(f"An item in the '{key}' split is missing required keys.")
                     raise ValueError(f"An item in the '{key}' split is missing required keys.")
         recommendation = ai_json.get("nexus_recommendation")
         if not recommendation or recommendation not in [ai_json[key].get("name") for key in plan_keys]:
+            logger.error(f"Invalid 'nexus_recommendation' value: '{recommendation}'. It must match one of the plan names.")
             raise ValueError(f"Invalid 'nexus_recommendation' value: '{recommendation}'. It must match one of the plan names.")
         # --- GUARDRAILS END ---
         return ai_json
     except (json.JSONDecodeError, ValueError) as e:
         logger.error(f"AI response for InterestKiller failed validation: {e}. Raw response: {raw_ai_result}")
-        raise HTTPException(status_code=500, detail=f"AI response failed validation: {e}") 
+        raise HTTPException(status_code=500, detail=f"AI response failed validation: {e}")
+    except Exception as e:
+        logger.error(f"UNEXPECTED ERROR: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}") 
