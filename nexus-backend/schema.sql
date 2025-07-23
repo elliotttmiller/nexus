@@ -39,8 +39,12 @@ CREATE TABLE recommendations (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id),
   type VARCHAR(50),
-  data JSONB,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  data JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  title VARCHAR(255) NOT NULL DEFAULT '',
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE user_events (
