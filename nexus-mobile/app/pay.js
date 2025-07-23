@@ -41,11 +41,8 @@ export default function PayScreen() {
       .then(res => res.json())
       .then(ctx => {
         setPaymentContext(ctx);
-        if (ctx && ctx.maxSafePayment > 0) {
-          setAmount(ctx.maxSafePayment.toString());
-          setUsingSuggested(true);
-          if (ctx.recommendedFundingAccountId) setSelectedFunding(ctx.recommendedFundingAccountId);
-        }
+        setUsingSuggested(false); // Do not pre-fill amount
+        if (ctx && ctx.recommendedFundingAccountId) setSelectedFunding(ctx.recommendedFundingAccountId);
       })
       .catch(() => setPaymentContext(null));
   }, []);
@@ -59,6 +56,11 @@ export default function PayScreen() {
     setResult(null);
     if (selected.length === 0) return setError('Select at least one card.');
     if (!amount || isNaN(amount) || Number(amount) <= 0) return setError('Enter a valid amount.');
+    if (paymentContext && Number(amount) > paymentContext.maxSafePayment) {
+      setError(`Payment amount exceeds your safe maximum of $${paymentContext.maxSafePayment.toFixed(2)}.`);
+      Alert.alert('Payment Too High', `Your safe maximum payment is $${paymentContext.maxSafePayment.toFixed(2)}. Please enter a lower amount.`);
+      return;
+    }
     setLoading(true);
     const accounts = cards.filter(c => selected.includes(c.id));
     try {
@@ -335,7 +337,7 @@ export default function PayScreen() {
           value={amount}
           onChangeText={val => {
             setAmount(val);
-            setUsingSuggested(paymentContext && val === paymentContext.maxSafePayment.toString());
+            setUsingSuggested(false);
           }}
           keyboardType="numeric"
           style={styles.input}

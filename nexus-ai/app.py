@@ -25,11 +25,7 @@ app = FastAPI(title="Nexus Cortex AI", version="7.0.0-final", lifespan=lifespan)
 
 # --- 4. Import Services and Define Endpoints ---
 from services import (
-    interestkiller_ai_pure,
-    spending_insights_ai,
-    budget_health_ai,
-    cash_flow_prediction_ai,
-    interestkiller_ai
+    interestkiller_ai_hybrid, # <-- CORRECT FUNCTION IMPORTED
 )
 
 # --- Pydantic Models ---
@@ -143,22 +139,22 @@ def precompute_payment_plans(accounts: list, payment_amount: float) -> dict:
     power_payment_amount_avalanche = payment_amount - (total_minimums - avalanche_target['minimum_payment'])
     for acc in accounts:
         if acc['id'] == avalanche_target['id']:
-            avalanche_split.append({"card_id": acc['id'], "card_name": acc['name'], "amount": round(power_payment_amount_avalanche, 2), "type": "Power Payment"})
+            avalanche_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(power_payment_amount_avalanche, 2), "type": "Power Payment"})
         else:
-            avalanche_split.append({"card_id": acc['id'], "card_name": acc['name'], "amount": round(acc['minimum_payment'], 2), "type": "Minimum Payment"})
+            avalanche_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(acc['minimum_payment'], 2), "type": "Minimum Payment"})
     # Score Booster Plan
     score_booster_target = max(accounts, key=lambda x: (x['utilization_percent'], x['balance'], x['id']))
     score_booster_split = []
     power_payment_amount_score = payment_amount - (total_minimums - score_booster_target['minimum_payment'])
     for acc in accounts:
         if acc['id'] == score_booster_target['id']:
-            score_booster_split.append({"card_id": acc['id'], "card_name": acc['name'], "amount": round(power_payment_amount_score, 2), "type": "Power Payment"})
+            score_booster_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(power_payment_amount_score, 2), "type": "Power Payment"})
         else:
-            score_booster_split.append({"card_id": acc['id'], "card_name": acc['name'], "amount": round(acc['minimum_payment'], 2), "type": "Minimum Payment"})
+            score_booster_split.append({"card_id": acc['id'], "card_name": acc.get('name', 'Card'), "amount": round(acc['minimum_payment'], 2), "type": "Minimum Payment"})
     # Insufficient Funds Protocol
     if payment_amount < total_minimums:
         highest_apr_card = max(accounts, key=lambda x: (x['apr'], x['balance'], x['id']))
-        insufficient_split = [{"card_id": highest_apr_card['id'], "card_name": highest_apr_card['name'], "amount": round(payment_amount, 2), "type": "Power Payment"}]
+        insufficient_split = [{"card_id": highest_apr_card['id'], "card_name": highest_apr_card.get('name', 'Card'), "amount": round(payment_amount, 2), "type": "Power Payment"}]
         avalanche_split = insufficient_split
         score_booster_split = insufficient_split
     return {
