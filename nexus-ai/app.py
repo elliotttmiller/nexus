@@ -220,7 +220,7 @@ def cardrank_v2(req: V2CardRankRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/v2/interestkiller')
-def interestkiller_v2(req: V2InterestKillerRequest):
+async def interestkiller_v2(req: V2InterestKillerRequest):
     try:
         # 1. RUN THE ALGORITHM to get perfect math and targets
         plan_data = precompute_payment_plans(
