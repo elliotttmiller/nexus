@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, Button, Alert, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Modal, Pressable } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
@@ -6,6 +6,7 @@ import { BACKGROUND, TEXT, PRIMARY, BORDER, SUBTLE } from '../src/constants/colo
 import { useRouter } from 'expo-router';
 
 export default function PayScreen() {
+  const scrollViewRef = useRef(null);
   const [cards, setCards] = useState([]);
   const [selected, setSelected] = useState([]);
   const [amount, setAmount] = useState('');
@@ -124,14 +125,34 @@ export default function PayScreen() {
   };
 
   const applyRecommendation = (recommendation, newGoal) => {
-    setResult(null); // Clear previous results
-    setPaymentResults(null);
-    setSelected([]);
-    setAmount('');
-    setSelectedFunding('');
+    if (!recommendation?.split) return;
+    
+    // Auto-select the cards that have a payment amount in the recommendation
+    const selectedCardIds = [];
+    recommendation.split.forEach(splitItem => {
+      if (splitItem.amount > 0) {
+        selectedCardIds.push(splitItem.card_id);
+      }
+    });
+    
+    // Update the payment amount to the total from the recommendation
+    const totalAmount = recommendation.split.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    
+    // Set the state
+    setSelected(selectedCardIds);
+    setAmount(totalAmount.toString());
     setGoal(newGoal);
-    setResult(recommendation); // recommendation is { split, explanation }
+    setResult({
+      ...recommendation,
+      // Make sure the split is in the format expected by the payment execution
+      split: recommendation.split.filter(item => item.amount > 0)
+    });
     setAiModalVisible(false);
+    
+    // Auto-scroll to the payment section
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }, 100);
   };
 
   return (
@@ -140,7 +161,11 @@ export default function PayScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={80}
     >
-      <ScrollView style={{ flex: 1, backgroundColor: BACKGROUND }} contentContainerStyle={{ padding: 20 }}>
+      <ScrollView 
+        ref={scrollViewRef} 
+        style={{ flex: 1, backgroundColor: BACKGROUND }} 
+        contentContainerStyle={{ padding: 20 }}
+      >
         <Text style={styles.title}>Pay Credit Cards</Text>
         <Text style={styles.subtitle}>Select one or more cards to pay and enter a total payment amount.</Text>
         {/* AI Recommendation Button */}
