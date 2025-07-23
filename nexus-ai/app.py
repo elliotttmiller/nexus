@@ -124,6 +124,10 @@ class V2InterestKillerRequest(BaseModel):
 def root():
     return {"status": "ok", "ai_model_status": "loaded" if hasattr(app.state, 'gemini_model') and app.state.gemini_model else "initialization_failed"}
 
+@app.get("/health", summary="Health Check")
+def health():
+    return {"status": "ok"}
+
 
 @app.post('/v2/interestkiller')
 async def interestkiller_v2(req: V2InterestKillerRequest):
