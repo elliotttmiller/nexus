@@ -149,6 +149,7 @@ def cardrank_v2(req: V2CardRankRequest):
 @app.post('/v2/interestkiller')
 async def interestkiller_v2(req: V2InterestKillerRequest, request: Request):
     import logging
+    import traceback
     logger = logging.getLogger("nexus-ai-debug")
     # Log the raw request body
     try:
@@ -156,11 +157,19 @@ async def interestkiller_v2(req: V2InterestKillerRequest, request: Request):
         logger.info(f"DEBUG: Raw request body: {raw_body.decode('utf-8')}")
     except Exception as e:
         logger.error(f"DEBUG: Could not log raw request body: {e}")
-    logger.info(f"DEBUG: Parsed request: {req}")
-    raw_ai_result = interestkiller_ai_pure(app.state.gemini_model, [acc.model_dump() for acc in req.accounts], req.payment_amount, req.user_context.model_dump())
+    # Log the parsed request
     try:
-        ai_json = json.loads(raw_ai_result)
+        logger.info(f"DEBUG: Parsed request: {req}")
+        logger.info(f"DEBUG: payment_amount: {req.payment_amount}")
+        logger.info(f"DEBUG: user_context: {req.user_context}")
+        for idx, acc in enumerate(req.accounts):
+            logger.info(f"DEBUG: Account {idx}: {acc}")
+    except Exception as e:
+        logger.error(f"DEBUG: Could not log parsed request details: {e}")
+    try:
+        raw_ai_result = interestkiller_ai_pure(app.state.gemini_model, [acc.model_dump() for acc in req.accounts], req.payment_amount, req.user_context.model_dump())
         logger.info(f"DEBUG: AI raw result: {raw_ai_result}")
+        ai_json = json.loads(raw_ai_result)
         # --- GUARDRAILS START ---
         plan_keys = ["minimize_interest_plan", "maximize_score_plan"]
         for key in plan_keys:
@@ -194,9 +203,6 @@ async def interestkiller_v2(req: V2InterestKillerRequest, request: Request):
             raise ValueError(f"Invalid 'nexus_recommendation' value: '{recommendation}'. It must match one of the plan names.")
         # --- GUARDRAILS END ---
         return ai_json
-    except (json.JSONDecodeError, ValueError) as e:
-        logger.error(f"AI response for InterestKiller failed validation: {e}. Raw response: {raw_ai_result}")
-        raise HTTPException(status_code=500, detail=f"AI response failed validation: {e}")
     except Exception as e:
-        logger.error(f"UNEXPECTED ERROR: {e}", exc_info=True)
+        logger.error(f"UNEXPECTED ERROR: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}") 
