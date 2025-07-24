@@ -9,6 +9,7 @@ import BottomNavigation from '../src/components/BottomNavigation';
 import { PRIMARY } from '../src/constants/colors';
 import { Account, Transaction } from '../src/types';
 import AccountHealthBar from '../src/components/AccountHealthBar';
+import BackArrowHeader from '../src/components/BackArrowHeader';
 
 export default function AccountsScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -39,68 +40,71 @@ export default function AccountsScreen() {
   }).filter(tx => !filterTx || tx.description.toLowerCase().includes(filterTx.toLowerCase()));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
-        <View style={styles.topRow}>
-          <Text style={styles.pageTitle}>Accounts</Text>
-          <GreenButton title="Pay Cards" onPress={() => router.replace('/pay')} style={styles.payBtn} />
-        </View>
-        <ExpandableSection
-          data={accounts}
-          initialCount={5}
-          title="Accounts"
-          renderItem={(item: Account, i) => (
-            <View key={item.id} style={styles.accountCard}>
-              <View style={styles.accountCardRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.accountName}>{item.name}</Text>
-                  <Text style={styles.accountNumber}>••••{item.last4}</Text>
-                </View>
-                <Text style={styles.accountBalance}>
-                  {typeof item.balance === 'number' ? `$${item.balance.toFixed(2)}` : '--'}
-                </Text>
-              </View>
-              {item.apr > 0 && (
-                <View style={styles.metricsRow}>
-                  <Text style={styles.metricText}>APR: {typeof item.apr === 'number' ? item.apr : '--'}%</Text>
-                  <Text style={styles.metricText}>Interest: {typeof item.monthlyInterest === 'number' ? `$${item.monthlyInterest.toFixed(2)}` : '--'}</Text>
-                </View>
-              )}
-              {item.apr > 0 && (
-                <View style={styles.healthBarRow}>
-                  <AccountHealthBar value={typeof item.creditHealth === 'number' ? item.creditHealth : 0} />
-                  <Text style={styles.healthLabel}>{typeof item.creditHealth === 'number' ? item.creditHealth : '--'}%</Text>
-                </View>
-              )}
-            </View>
-          )}
-        />
-        {/* Transactions Section */}
-        <View style={styles.txHeaderRow}>
-          <Text style={styles.sectionTitle}>Transactions</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => setSortTx(sortTx === 'date' ? 'amount' : 'date')} style={styles.sortBtn}>
-              <Text style={styles.sortBtnText}>Sort: {sortTx === 'date' ? 'Date' : 'Amount'}</Text>
-            </TouchableOpacity>
-            <Text style={{ marginLeft: 8, color: '#888' }}>Filter:</Text>
-            <TouchableOpacity onPress={() => setFilterTx('')} style={styles.filterBtn}><Text style={styles.filterBtnText}>Clear</Text></TouchableOpacity>
+    <>
+      <BackArrowHeader />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+          <View style={styles.topRow}>
+            <Text style={styles.pageTitle}>Accounts</Text>
+            <GreenButton title="Pay Cards" onPress={() => router.replace('/pay')} style={styles.payBtn} />
           </View>
-        </View>
-        <ExpandableSection
-          data={sortedTx}
-          initialCount={7}
-          title=""
-          renderItem={(tx: Transaction, i) => (
-            <View key={tx.id} style={styles.txRow}>
-              <Text style={styles.txDesc}>{tx.description}</Text>
-              <Text style={styles.txAmount}>${tx.amount.toFixed(2)}</Text>
-              <Text style={styles.txDate}>{tx.date}</Text>
+          <ExpandableSection
+            data={accounts}
+            initialCount={5}
+            title="Accounts"
+            renderItem={(item: Account, i) => (
+              <View key={item.id} style={styles.accountCard}>
+                <View style={styles.accountCardRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.accountName}>{item.name}</Text>
+                    <Text style={styles.accountNumber}>••••{item.last4}</Text>
+                  </View>
+                  <Text style={styles.accountBalance}>
+                    {typeof item.balance === 'number' ? `$${item.balance.toFixed(2)}` : '--'}
+                  </Text>
+                </View>
+                {item.apr > 0 && (
+                  <View style={styles.metricsRow}>
+                    <Text style={styles.metricText}>APR: {typeof item.apr === 'number' ? item.apr : '--'}%</Text>
+                    <Text style={styles.metricText}>Interest: {typeof item.monthlyInterest === 'number' ? `$${item.monthlyInterest.toFixed(2)}` : '--'}</Text>
+                  </View>
+                )}
+                {item.apr > 0 && (
+                  <View style={styles.healthBarRow}>
+                    <AccountHealthBar value={typeof item.creditHealth === 'number' ? item.creditHealth : 0} />
+                    <Text style={styles.healthLabel}>{typeof item.creditHealth === 'number' ? item.creditHealth : '--'}%</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          />
+          {/* Transactions Section */}
+          <View style={styles.txHeaderRow}>
+            <Text style={styles.sectionTitle}>Transactions</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => setSortTx(sortTx === 'date' ? 'amount' : 'date')} style={styles.sortBtn}>
+                <Text style={styles.sortBtnText}>Sort: {sortTx === 'date' ? 'Date' : 'Amount'}</Text>
+              </TouchableOpacity>
+              <Text style={{ marginLeft: 8, color: '#888' }}>Filter:</Text>
+              <TouchableOpacity onPress={() => setFilterTx('')} style={styles.filterBtn}><Text style={styles.filterBtnText}>Clear</Text></TouchableOpacity>
             </View>
-          )}
-        />
-      </ScrollView>
-      <BottomNavigation />
-    </SafeAreaView>
+          </View>
+          <ExpandableSection
+            data={sortedTx}
+            initialCount={7}
+            title=""
+            renderItem={(tx: Transaction, i) => (
+              <View key={tx.id} style={styles.txRow}>
+                <Text style={styles.txDesc}>{tx.description}</Text>
+                <Text style={styles.txAmount}>${tx.amount.toFixed(2)}</Text>
+                <Text style={styles.txDate}>{tx.date}</Text>
+              </View>
+            )}
+          />
+        </ScrollView>
+        <BottomNavigation />
+      </SafeAreaView>
+    </>
   );
 }
 
