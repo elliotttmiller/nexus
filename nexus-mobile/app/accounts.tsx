@@ -113,6 +113,7 @@ export default function AccountsScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.accountName}>{item.name}</Text>
                       <Text style={styles.accountNumber}>•••• {item.mask || item.last4 || 'XXXX'}</Text>
+                      <Text style={styles.accountTypeLabel}>{item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Account'}</Text>
                     </View>
                     <Text style={styles.accountBalance}>
                       {typeof item.balance === 'number' ? `$${item.balance.toFixed(2)}` : '--'}
@@ -386,5 +387,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 32,
     marginBottom: 24,
+  },
+  accountTypeLabel: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
   },
 }); 
