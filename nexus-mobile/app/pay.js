@@ -419,21 +419,23 @@ export default function PayScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <Text style={styles.resultTitle}>AI Recommendations</Text>
-              {aiRecommendations && console.log('AI Recommendations:', aiRecommendations)}
+              {aiRecommendations && console.log('SUCCESS! AI Recommendation Received:', JSON.stringify(aiRecommendations, null, 2))}
               {aiRecommendations && (
                 <ScrollView>
                   {/* Minimize Interest */}
-                  <View style={{ marginBottom: 24 }}>
-                    <Text style={styles.label}>Minimize Interest</Text>
+                  <View style={{ marginBottom: 24, borderWidth: aiRecommendations.nexus_recommendation === 'Avalanche Method' ? 2 : 0, borderColor: aiRecommendations.nexus_recommendation === 'Avalanche Method' ? 'green' : 'transparent', borderRadius: 8, padding: 8 }}>
+                    <Text style={styles.label}>
+                      Minimize Interest {aiRecommendations.nexus_recommendation === 'Avalanche Method' && <Text style={{ color: 'green', fontWeight: 'bold' }}> (Recommended)</Text>}
+                    </Text>
+                    <Text style={styles.explanationHighlight}>{aiRecommendations.minimize_interest_plan.explanation}</Text>
+                    <Text style={[styles.projectedOutcome, { marginTop: 6 }]}>{aiRecommendations.minimize_interest_plan.projected_outcome}</Text>
+                    <Text style={[styles.label, { marginTop: 8 }]}>Payment Split:</Text>
                     {Array.isArray(aiRecommendations.minimize_interest_plan?.split) && aiRecommendations.minimize_interest_plan.split.map((s, i) => (
                       <View key={i} style={styles.splitRow}>
-                        <Text style={styles.resultText}>Card ••••{String(s.card_id).slice(-4)}:</Text>
-                        <Text style={styles.resultText}>${s.amount.toFixed(2)}</Text>
+                        <Text style={styles.resultText}>Card: {s.card_name}</Text>
+                        <Text style={styles.resultText}>${s.amount.toFixed(2)} ({s.type})</Text>
                       </View>
                     ))}
-                    {aiRecommendations.minimize_interest_plan?.explanation && (
-                      <Text style={styles.explanationHighlight}>{aiRecommendations.minimize_interest_plan.explanation}</Text>
-                    )}
                     <Pressable 
                       style={styles.applyButton} 
                       onPress={() => applyRecommendation(aiRecommendations.minimize_interest_plan, 'MINIMIZE_INTEREST_COST')}>
@@ -441,17 +443,19 @@ export default function PayScreen() {
                     </Pressable>
                   </View>
                   {/* Maximize Score */}
-                  <View>
-                    <Text style={styles.label}>Maximize Score</Text>
+                  <View style={{ borderWidth: aiRecommendations.nexus_recommendation === 'Credit Score Booster' ? 2 : 0, borderColor: aiRecommendations.nexus_recommendation === 'Credit Score Booster' ? 'green' : 'transparent', borderRadius: 8, padding: 8 }}>
+                    <Text style={styles.label}>
+                      Maximize Score {aiRecommendations.nexus_recommendation === 'Credit Score Booster' && <Text style={{ color: 'green', fontWeight: 'bold' }}> (Recommended)</Text>}
+                    </Text>
+                    <Text style={styles.explanationHighlight}>{aiRecommendations.maximize_score_plan.explanation}</Text>
+                    <Text style={[styles.projectedOutcome, { marginTop: 6 }]}>{aiRecommendations.maximize_score_plan.projected_outcome}</Text>
+                    <Text style={[styles.label, { marginTop: 8 }]}>Payment Split:</Text>
                     {Array.isArray(aiRecommendations.maximize_score_plan?.split) && aiRecommendations.maximize_score_plan.split.map((s, i) => (
                       <View key={i} style={styles.splitRow}>
-                        <Text style={styles.resultText}>Card ••••{String(s.card_id).slice(-4)}:</Text>
-                        <Text style={styles.resultText}>${s.amount.toFixed(2)}</Text>
+                        <Text style={styles.resultText}>Card: {s.card_name}</Text>
+                        <Text style={styles.resultText}>${s.amount.toFixed(2)} ({s.type})</Text>
                       </View>
                     ))}
-                    {aiRecommendations.maximize_score_plan?.explanation && (
-                      <Text style={styles.explanationHighlight}>{aiRecommendations.maximize_score_plan.explanation}</Text>
-                    )}
                     <Pressable 
                       style={styles.applyButton} 
                       onPress={() => applyRecommendation(aiRecommendations.maximize_score_plan, 'MAXIMIZE_CREDIT_SCORE')}>
@@ -607,5 +611,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderLeftWidth: 4,
     borderLeftColor: PRIMARY,
+  },
+  projectedOutcome: {
+    fontWeight: 'bold',
+    color: '#333',
+    fontSize: 14,
+    marginTop: 4,
   },
 }); 
