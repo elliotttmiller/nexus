@@ -15,26 +15,31 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function DashboardScreen() {
   const router = useRouter();
   const [accounts, setAccounts] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`)
+    fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=8`)
       .then(res => res.json())
       .then(data => setAccounts(data || []))
       .catch(() => setAccounts([]))
       .finally(() => setLoading(false));
+    fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=8`)
+      .then(res => res.json())
+      .then(data => setTransactions(Array.isArray(data) ? data : []))
+      .catch(() => setTransactions([]));
   }, []);
   // ...fetch accounts, transactions, etc...
   // For demonstration, use mock data:
-  const transactions = [
-    { id: 't1', description: 'Starbucks', amount: -5.25, date: '2024-07-01' },
-    { id: 't2', description: 'Amazon', amount: -120.99, date: '2024-06-30' },
-    { id: 't3', description: 'Payroll', amount: 2000, date: '2024-06-29' },
-    { id: 't4', description: 'Uber', amount: -18.50, date: '2024-06-28' },
-    { id: 't5', description: 'Whole Foods', amount: -60.00, date: '2024-06-27' },
-    { id: 't6', description: 'Spotify', amount: -9.99, date: '2024-06-26' },
-  ];
+  // const transactions = [
+  //   { id: 't1', description: 'Starbucks', amount: -5.25, date: '2024-07-01' },
+  //   { id: 't2', description: 'Amazon', amount: -120.99, date: '2024-06-30' },
+  //   { id: 't3', description: 'Payroll', amount: 2000, date: '2024-06-29' },
+  //   { id: 't4', description: 'Uber', amount: -18.50, date: '2024-06-28' },
+  //   { id: 't5', description: 'Whole Foods', amount: -60.00, date: '2024-06-27' },
+  //   { id: 't6', description: 'Spotify', amount: -9.99, date: '2024-06-26' },
+  // ];
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -79,9 +84,11 @@ export default function DashboardScreen() {
             ))}
           </ScrollView>
           <View style={styles.viewAllBtnRow}>
-            <TouchableOpacity style={styles.viewAllBtnCard} onPress={() => router.push('/accounts')} activeOpacity={0.8}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
+            {accounts.length > 0 && (
+              <TouchableOpacity style={styles.viewAllBtnCard} onPress={() => router.push('/accounts')} activeOpacity={0.8}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
         {/* Section Divider */}
@@ -94,13 +101,17 @@ export default function DashboardScreen() {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          {transactions.slice(0, 6).map((tx) => (
-            <View key={tx.id} style={styles.transactionRow}>
-              <Text style={styles.txDesc}>{tx.description}</Text>
-              <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>${Math.abs(tx.amount).toFixed(2)}</Text>
-              <Text style={styles.txDate}>{tx.date}</Text>
-            </View>
-          ))}
+          {transactions.length === 0 ? (
+            <Text style={{ fontSize: 13, color: '#888', marginTop: 8, marginBottom: 8, textAlign: 'center' }}>No recent transactions</Text>
+          ) : (
+            transactions.slice(0, 6).map((tx) => (
+              <View key={tx.id} style={styles.transactionRow}>
+                <Text style={styles.txDesc}>{tx.description}</Text>
+                <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>${Math.abs(tx.amount).toFixed(2)}</Text>
+                <Text style={styles.txDate}>{tx.date}</Text>
+              </View>
+            ))
+          )}
         </View>
         {/* Analysis Container */}
         <AnalysisContainer />

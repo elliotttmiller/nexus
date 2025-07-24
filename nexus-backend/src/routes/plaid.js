@@ -249,7 +249,7 @@ router.get('/transactions', async (req, res) => {
   if (!userId) return res.status(400).json({ error: 'userId required' });
   try {
     const account = await Account.findOne({ where: { user_id: userId } });
-    if (!account) return res.status(404).json({ error: 'No account found' });
+    if (!account) return res.json([]); // Return empty array if no account found
     const today = new Date();
     const start = start_date || new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()).toISOString().slice(0, 10);
     const end = end_date || today.toISOString().slice(0, 10);

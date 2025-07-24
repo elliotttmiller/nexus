@@ -45,8 +45,7 @@ export default function AccountsScreen() {
         if (Array.isArray(data)) {
           setTransactions(data);
         } else {
-          console.error('API did not return an array for transactions:', data);
-          setTransactions([]);
+          setTransactions([]); // Defensive: treat error as empty
         }
       } catch (err) {
         console.error('Error fetching transactions:', err);
