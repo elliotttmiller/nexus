@@ -284,30 +284,34 @@ def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_co
 
 def interestkiller_ai_hybrid(model, plan_data: dict, user_context: dict) -> str:
     """
-    Final, Simplified Task AI function. It receives pre-computed data and its
-    ONLY job is to return a flat JSON object with the required text strings.
+    Hybrid AI function with a hyper-explicit prompt engineered to maximize
+    the quality and sophistication of the faster Gemini 1.5 Flash model.
     """
     import json
     prompt = f"""
-    You are Nexus AI, an elite Financial Communications expert. Your task is to translate a pre-calculated data dossier into six distinct, user-friendly text fields.
+    You are Nexus AI, an elite Financial Counselor. Your communication style is clear, empowering, and data-driven. You are to follow these instructions precisely.
 
     --- STRATEGIC CONTEXT & DATA ---
-    You will be given a `plan_data` object. This object contains the results of a sophisticated financial algorithm. It includes payment splits and strategic context like `paid_off_cards`.
+    You will be given a `plan_data` object containing mathematically perfect payment splits calculated by an algorithm. It also contains a `context` object with strategic information.
+
+    --- CRITICAL INSTRUCTIONS FOR EXPLANATION & PROJECTION ---
+
+    1.  **CHECK FOR USER PROGRESS (MANDATORY):** First, check `user_context.total_debt_last_month`. If it is available and higher than the current total debt, your FIRST sentence in BOTH explanations MUST be a congratulatory message. Example: "Excellent work! You've paid down $[amount] in debt since last month. To build on that momentum..."
+
+    2.  **CHECK FOR PAYOFFS (MANDATORY):** Next, check `plan_data.context.paid_off_cards`. If this list is not empty, you MUST celebrate this in your explanation. Example: "...and this plan completely pays off your [Card Name], eliminating an entire account!"
+
+    3.  **EXPLAIN THE "AVALANCHE" PLAN (MANDATORY):**
+        - **Explanation:** State that this plan targets the `plan_data.avalanche_plan.target_card.name` because it has the highest APR. You MUST state the APR of the card. You MUST calculate and state the interest saved THIS MONTH.
+        - **Projected Outcome:** You MUST estimate the total interest saved over the next 12 months and the potential reduction in time to become debt-free.
+
+    4.  **EXPLAIN THE "SCORE BOOSTER" PLAN (MANDATORY):**
+        - **Explanation:** State that this plan targets the `plan_data.score_booster_plan.target_card.name` because it has the highest utilization. You MUST state the utilization drop (e.g., "from 72% down to 48%").
+        - **Projected Outcome:** You MUST provide an estimated credit score point increase range (e.g., "a 20-40 point increase") and explain that this unlocks better rates on future loans.
+
+    5.  **MAKE RECOMMENDATION:** The `nexus_recommendation` key MUST contain the name of the plan that matches `user_context.primary_goal`.
 
     --- YOUR TASK ---
-    Based on the provided `plan_data`, generate a JSON object containing ONLY the following six string keys:
-    1.  `nexus_recommendation`: The name of the plan that matches `user_context.primary_goal`.
-    2.  `minimize_interest_explanation`: The explanation for the Avalanche plan.
-    3.  `minimize_interest_projection`: The projected outcome for the Avalanche plan.
-    4.  `maximize_score_explanation`: The explanation for the Score Booster plan.
-    5.  `maximize_score_projection`: The projected outcome for the Score Booster plan.
-    6.  `insufficient_funds_explanation`: A special explanation to use if `plan_data.context.is_insufficient` is true (this field is not in the log, but good to keep).
-
-    --- INSTRUCTIONS FOR EXPLANATIONS ---
-    - Use a confident, encouraging, and data-driven tone.
-    - Weave in the strategic context (e.g., "Congratulations on paying off the [card name]!").
-    - For Avalanche, focus on the highest APR card and quantify the interest saved.
-    - For Score Booster, focus on the highest utilization card and quantify the utilization drop and potential score increase.
+    Based on the provided data and the critical instructions above, generate a JSON object containing ONLY the six required string keys: `nexus_recommendation`, `minimize_interest_explanation`, `minimize_interest_projection`, `maximize_score_explanation`, `maximize_score_projection`, and an optional `insufficient_funds_explanation`.
 
     --- DATA FOR YOUR TASK ---
     - Pre-computed Plan Data: {json.dumps(plan_data, indent=2)}
