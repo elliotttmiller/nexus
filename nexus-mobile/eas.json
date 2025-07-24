@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 5.9.1"
+    "version": ">= 5.9.1",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -18,8 +19,20 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://nexus-production-2e34.up.railway.app",
-        "EXPO_PUBLIC_AI_BASE_URL": "https://aiservice-production-acab.up.railway.app"
+        "API_BASE_URL": "https://nexus-production-2e34.up.railway.app",
+        "AI_BASE_URL": "https://aiservice-production-acab.up.railway.app",
+        "SENTRY_DSN": "https://6870589f945b88361cbb65079060a3ce@o4509683080822784.ingest.us.sentry.io/4509683186204672",
+        "PLAID_CLIENT_ID": "6878c62f8325000026a8eb6f",
+        "PLAID_SECRET": "7bf17d0cab6c264862db25dbb58516",
+        "PLAID_ENV": "sandbox",
+        "LOG_LEVEL": "info",
+        "GOOGLE_PROJECT_ID": "nexus-ai-466614",
+        "GOOGLE_LOCATION": "us-central1",
+        "GOOGLE_CLOUD_PROJECT": "nexus-ai-466614",
+        "GOOGLE_CLOUD_LOCATION": "us-central1",
+        "GOOGLE_GENAI_USE_VERTEXAI": "True",
+        "GEMINI_API_KEY": "377f290522436a08391e15e78d06ed173017de41",
+        "GOOGLE_API_KEY": "AIzaSyDbAxKNa6iaaCrV05nc0jmfmVyVR7XM28I"
       },
       "ios": {
         "resourceClass": "m-medium",
