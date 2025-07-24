@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { saveToken } from '../src/constants/token';
 import PrimaryButton from '../src/components/PrimaryButton';
 import { BACKGROUND, TEXT, PRIMARY, BORDER } from '../src/constants/colors';
+import BackArrowHeader from '../src/components/BackArrowHeader';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -41,28 +42,31 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Register</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter a new email address"
-        placeholderTextColor="#888"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Create a password (min 6 characters)"
-        placeholderTextColor="#888"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <PrimaryButton title={loading ? 'Registering...' : 'Register'} onPress={handleRegister} disabled={loading} />
-      <PrimaryButton title="Back to Login" onPress={() => router.replace('/login')} />
-    </View>
+    <>
+      <BackArrowHeader />
+      <View style={styles.container}>
+        <Text style={styles.title}>Register</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter a new email address"
+          placeholderTextColor="#888"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Create a password (min 6 characters)"
+          placeholderTextColor="#888"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        <PrimaryButton title={loading ? 'Registering...' : 'Register'} onPress={handleRegister} disabled={loading} />
+        <PrimaryButton title="Back to Login" onPress={() => router.replace('/login')} />
+      </View>
+    </>
   );
 }
 

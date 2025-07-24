@@ -4,6 +4,9 @@ import { API_BASE_URL } from '../src/constants/api';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import { BACKGROUND, TEXT, PRIMARY, BORDER, SUBTLE } from '../src/constants/colors';
 import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import BackArrowHeader from '../src/components/BackArrowHeader';
+import AccountHealthBar from '../src/components/AccountHealthBar';
 
 export default function PayScreen() {
   const scrollViewRef = useRef(null);
@@ -29,11 +32,19 @@ export default function PayScreen() {
     fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`)
       .then(res => res.json())
       .then(data => {
-        setCards(data.filter(acc => acc.type === 'credit'));
-        setFundingAccounts(data.filter(acc => acc.type !== 'credit'));
+        console.log('Fetched accounts:', data);
+        // Robust filter for credit cards
+        const creditCards = data.filter(acc => acc.type && acc.type.toLowerCase().includes('credit'));
+        setCards(creditCards.length > 0 ? creditCards : [
+          // fallback mock card for dev
+          { id: 'mock1', name: 'Mock Credit Card', balance: 500, apr: 19.99, creditLimit: 2000, last4: '1234', type: 'credit' }
+        ]);
+        setFundingAccounts(data.filter(acc => acc.type && !acc.type.toLowerCase().includes('credit')));
       })
       .catch(() => {
-        setCards([]);
+        setCards([
+          { id: 'mock1', name: 'Mock Credit Card', balance: 500, apr: 19.99, creditLimit: 2000, last4: '1234', type: 'credit' }
+        ]);
         setFundingAccounts([]);
       });
     // Fetch safe payment context
@@ -283,76 +294,39 @@ export default function PayScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: BACKGROUND }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={80}
     >
       <ScrollView 
         ref={scrollViewRef} 
-        style={{ flex: 1, backgroundColor: BACKGROUND }} 
-        contentContainerStyle={{ padding: 20 }}
+        style={{ flex: 1 }} 
+        contentContainerStyle={{ padding: 20, paddingTop: 16, paddingBottom: 40 }}
       >
+        <BackArrowHeader />
         <Text style={styles.title}>Pay Credit Cards</Text>
         <Text style={styles.subtitle}>Select one or more cards to pay and enter a total payment amount.</Text>
-        {/* AI Recommendation Button */}
-        <TouchableOpacity style={styles.aiButton} onPress={handleAIRecommendation} disabled={aiLoading}>
-          <Text style={styles.aiButtonText}>{aiLoading ? 'Loading...' : 'AI Recommendation'}</Text>
-        </TouchableOpacity>
-        {aiLoading && (
-          <View style={{ alignItems: 'center', marginVertical: 24 }}>
-            <ActivityIndicator size="large" color={PRIMARY} />
-            <Text style={{ color: PRIMARY, fontWeight: 'bold', fontSize: 18, marginTop: 12 }}>Nexus AI is analyzing your options...</Text>
-            <Text style={{ color: '#555', fontSize: 15, marginTop: 6 }}>This may take a few moments.</Text>
-          </View>
-        )}
-        {cards.length === 0 ? (
-          <Text style={styles.text}>No credit cards found.</Text>
-        ) : (
-          (cards || []).map(item => (
-            <TouchableOpacity
-              key={item.id}
-              onPress={() => toggleSelect(item.id)}
-              style={[styles.cardItem, selected.includes(item.id) && styles.cardItemSelected]}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.cardName}>{item.institution || 'Card'} •••• {item.id ? String(item.id).slice(-4) : '----'}</Text>
-              <Text style={styles.cardDetails}>Balance: ${item.balance}   APR: {item.apr || 'N/A'}%</Text>
-            </TouchableOpacity>
-          ))
-        )}
-        <View style={{ marginBottom: 12 }}>
-          {paymentContext && (
-            <View style={{ backgroundColor: '#f5f6fa', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-              <Text style={{ fontWeight: 'bold', color: PRIMARY, marginBottom: 4 }}>Safe Payment Suggestion</Text>
-              <Text>Total Cash: ${paymentContext.totalCash.toFixed(2)}</Text>
-              <Text>Upcoming Bills: ${paymentContext.totalUpcomingBills.toFixed(2)}</Text>
-              <Text>Safety Buffer: ${paymentContext.safetyBuffer.toFixed(2)}</Text>
-              <Text style={{ fontWeight: 'bold', marginTop: 4 }}>Max Safe Payment: ${paymentContext.maxSafePayment.toFixed(2)}</Text>
-              {paymentContext.recommendedFundingAccountId && (
-                <Text>Recommended Funding Account: ••••{String(paymentContext.recommendedFundingAccountId).slice(-4)}</Text>
-              )}
-              {Array.isArray(paymentContext.upcomingBills) && paymentContext.upcomingBills.length > 0 && (
-                <View style={{ marginTop: 4 }}>
-                  <Text style={{ fontWeight: 'bold' }}>Upcoming Bills:</Text>
-                  {paymentContext.upcomingBills.map((b, i) => (
-                    <Text key={i}>- {b.name}: ${b.estimated_amount.toFixed(2)}</Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <TextInput
+            placeholder="Total payment amount"
+            value={amount}
+            onChangeText={val => {
+              setAmount(val);
+              setUsingSuggested(false);
+            }}
+            keyboardType="numeric"
+            style={[styles.input, { flex: 1, marginRight: 8 }]}
+            placeholderTextColor="#888"
+          />
+          <TouchableOpacity
+            style={{ backgroundColor: PRIMARY, borderRadius: 8, padding: 10, justifyContent: 'center', alignItems: 'center' }}
+            onPress={handleAIRecommendation}
+            disabled={aiLoading}
+            activeOpacity={0.85}
+          >
+            <Feather name="zap" size={22} color="#fff" />
+          </TouchableOpacity>
         </View>
-        <TextInput
-          placeholder="Total payment amount"
-          value={amount}
-          onChangeText={val => {
-            setAmount(val);
-            setUsingSuggested(false);
-          }}
-          keyboardType="numeric"
-          style={styles.input}
-          placeholderTextColor="#888"
-        />
         {usingSuggested && paymentContext && (
           <Text style={{ color: PRIMARY, fontWeight: 'bold', marginBottom: 8 }}>Suggested</Text>
         )}
@@ -633,5 +607,89 @@ const styles = StyleSheet.create({
     color: '#333',
     fontSize: 14,
     marginTop: 4,
+  },
+  cardItemPolished: {
+    backgroundColor: SUBTLE,
+    borderRadius: 16,
+    paddingVertical: 22,
+    paddingHorizontal: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
+    minHeight: 110,
+    justifyContent: 'center',
+    transition: 'box-shadow 0.2s',
+  },
+  cardItemSelectedPolished: {
+    backgroundColor: PRIMARY + '18',
+    borderColor: PRIMARY,
+    shadowOpacity: 0.13,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  institutionName: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: '500',
+    marginBottom: 2,
+    marginLeft: 2,
+  },
+  cardTopRowPolished: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  accountNamePolished: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#222',
+    marginBottom: 1,
+  },
+  accountNumberPolished: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 2,
+  },
+  accountBalancePolished: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: PRIMARY,
+    marginLeft: 8,
+    marginRight: 2,
+  },
+  dividerPolished: {
+    height: 1,
+    backgroundColor: BORDER,
+    marginVertical: 10,
+    borderRadius: 1,
+    opacity: 0.7,
+  },
+  metricsRowPolished: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  metricTextPolished: {
+    fontSize: 13,
+    color: '#757575',
+    marginRight: 8,
+    fontWeight: '500',
+  },
+  healthBarRowPolished: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  healthLabelPolished: {
+    fontSize: 12,
+    color: '#757575',
+    marginLeft: 6,
+    fontWeight: 'bold',
   },
 }); 

@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { saveToken, saveRefreshToken, removeToken, removeRefreshToken } from '../src/constants/token';
 import PrimaryButton from '../src/components/PrimaryButton';
 import { BACKGROUND, TEXT, PRIMARY, BORDER } from '../src/constants/colors';
+import BackArrowHeader from '../src/components/BackArrowHeader';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -46,30 +47,33 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      {/* TEMP: Show API_BASE_URL on screen for debugging */}
-      <Text style={{ color: 'red', marginBottom: 8, fontSize: 12 }}>API: {API_BASE_URL}</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your email address"
-        placeholderTextColor="#888"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your password"
-        placeholderTextColor="#888"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <PrimaryButton title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} />
-      <PrimaryButton title="Register" onPress={() => router.replace('/register')} />
-    </View>
+    <>
+      <BackArrowHeader />
+      <View style={styles.container}>
+        <Text style={styles.title}>Login</Text>
+        {/* TEMP: Show API_BASE_URL on screen for debugging */}
+        <Text style={{ color: 'red', marginBottom: 8, fontSize: 12 }}>API: {API_BASE_URL}</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your email address"
+          placeholderTextColor="#888"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your password"
+          placeholderTextColor="#888"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+        <PrimaryButton title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} />
+        <PrimaryButton title="Register" onPress={() => router.replace('/register')} />
+      </View>
+    </>
   );
 }
 

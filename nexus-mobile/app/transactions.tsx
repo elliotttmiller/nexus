@@ -5,6 +5,7 @@ import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import { BACKGROUND, TEXT, PRIMARY, SUBTLE, BORDER } from '../src/constants/colors';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import BackArrowHeader from '../src/components/BackArrowHeader';
 
 export default function TransactionsScreen() {
   const [transactions, setTransactions] = useState([]);
@@ -91,98 +92,101 @@ export default function TransactionsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: BACKGROUND }}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Recent Transactions</Text>
-        <TouchableOpacity 
-          style={styles.historyButton}
-          onPress={() => setShowPaymentHistory(true)}
-        >
-          <MaterialIcons name="history" size={24} color={PRIMARY} />
-          <Text style={styles.historyButtonText}>Payment History</Text>
-        </TouchableOpacity>
-      </View>
+    <>
+      <BackArrowHeader />
+      <View style={{ flex: 1, backgroundColor: BACKGROUND }}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Recent Transactions</Text>
+          <TouchableOpacity 
+            style={styles.historyButton}
+            onPress={() => setShowPaymentHistory(true)}
+          >
+            <MaterialIcons name="history" size={24} color={PRIMARY} />
+            <Text style={styles.historyButtonText}>Payment History</Text>
+          </TouchableOpacity>
+        </View>
 
-      {loading.transactions ? (
-        <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 24 }} />
-      ) : (
-        <FlatList
-          data={transactions}
-          keyExtractor={item => item.transaction_id || item.id}
-          renderItem={({ item }) => (
-            <View style={styles.txItem}>
-              <View style={styles.txHeader}>
-                <Text style={styles.txName}>{item.name || item.merchant || 'Transaction'}</Text>
-                <Text style={[styles.txAmount, { color: item.amount < 0 ? '#4CAF50' : TEXT }]}>
-                  ${Math.abs(item.amount).toFixed(2)}
-                </Text>
-              </View>
-              <Text style={styles.text}>
-                <Text style={styles.label}>Category: </Text>
-                {item.category?.join(' › ') || item.category || 'Uncategorized'}
-              </Text>
-              <Text style={styles.text}>
-                <Text style={styles.label}>Date: </Text>
-                {formatDate(item.date)}
-              </Text>
-              {item.payment_channel && (
+        {loading.transactions ? (
+          <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 24 }} />
+        ) : (
+          <FlatList
+            data={transactions}
+            keyExtractor={item => item.transaction_id || item.id}
+            renderItem={({ item }) => (
+              <View style={styles.txItem}>
+                <View style={styles.txHeader}>
+                  <Text style={styles.txName}>{item.name || item.merchant || 'Transaction'}</Text>
+                  <Text style={[styles.txAmount, { color: item.amount < 0 ? '#4CAF50' : TEXT }]}>
+                    ${Math.abs(item.amount).toFixed(2)}
+                  </Text>
+                </View>
                 <Text style={styles.text}>
-                  <Text style={styles.label}>Type: </Text>
-                  {item.payment_channel.charAt(0).toUpperCase() + item.payment_channel.slice(1)}
+                  <Text style={styles.label}>Category: </Text>
+                  {item.category?.join(' › ') || item.category || 'Uncategorized'}
                 </Text>
-              )}
-            </View>
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <MaterialIcons name="receipt" size={48} color={SUBTLE} />
-              <Text style={styles.emptyText}>No transactions found</Text>
-              <Text style={[styles.emptyText, { fontSize: 14 }]}>Your transactions will appear here</Text>
-            </View>
-          }
-          contentContainerStyle={styles.transactionList}
-        />
-      )}
-
-      {/* Payment History Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={showPaymentHistory}
-        onRequestClose={() => setShowPaymentHistory(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Payment History</Text>
-              <Pressable 
-                onPress={() => setShowPaymentHistory(false)}
-                style={styles.closeButton}
-              >
-                <MaterialIcons name="close" size={24} color={TEXT} />
-              </Pressable>
-            </View>
-            
-            {loading.payments ? (
-              <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 24 }} />
-            ) : paymentHistory.length > 0 ? (
-              <FlatList
-                data={paymentHistory}
-                keyExtractor={(item, index) => `payment-${index}`}
-                renderItem={renderPaymentItem}
-                contentContainerStyle={styles.paymentList}
-              />
-            ) : (
-              <View style={styles.emptyState}>
-                <MaterialIcons name="payment" size={48} color={SUBTLE} />
-                <Text style={styles.emptyText}>No payment history found</Text>
-                <Text style={[styles.emptyText, { fontSize: 14 }]}>Your payment history will appear here</Text>
+                <Text style={styles.text}>
+                  <Text style={styles.label}>Date: </Text>
+                  {formatDate(item.date)}
+                </Text>
+                {item.payment_channel && (
+                  <Text style={styles.text}>
+                    <Text style={styles.label}>Type: </Text>
+                    {item.payment_channel.charAt(0).toUpperCase() + item.payment_channel.slice(1)}
+                  </Text>
+                )}
               </View>
             )}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <MaterialIcons name="receipt" size={48} color={SUBTLE} />
+                <Text style={styles.emptyText}>No transactions found</Text>
+                <Text style={[styles.emptyText, { fontSize: 14 }]}>Your transactions will appear here</Text>
+              </View>
+            }
+            contentContainerStyle={styles.transactionList}
+          />
+        )}
+
+        {/* Payment History Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showPaymentHistory}
+          onRequestClose={() => setShowPaymentHistory(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Payment History</Text>
+                <Pressable 
+                  onPress={() => setShowPaymentHistory(false)}
+                  style={styles.closeButton}
+                >
+                  <MaterialIcons name="close" size={24} color={TEXT} />
+                </Pressable>
+              </View>
+              
+              {loading.payments ? (
+                <ActivityIndicator size="large" color={PRIMARY} style={{ marginTop: 24 }} />
+              ) : paymentHistory.length > 0 ? (
+                <FlatList
+                  data={paymentHistory}
+                  keyExtractor={(item, index) => `payment-${index}`}
+                  renderItem={renderPaymentItem}
+                  contentContainerStyle={styles.paymentList}
+                />
+              ) : (
+                <View style={styles.emptyState}>
+                  <MaterialIcons name="payment" size={48} color={SUBTLE} />
+                  <Text style={styles.emptyText}>No payment history found</Text>
+                  <Text style={[styles.emptyText, { fontSize: 14 }]}>Your payment history will appear here</Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
+    </>
   );
 }
 
