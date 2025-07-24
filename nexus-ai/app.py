@@ -132,39 +132,47 @@ def health():
 @app.post('/v2/interestkiller')
 async def interestkiller_v2(req: V2InterestKillerRequest):
     try:
-        # This call will now succeed because the function is defined above
+        # 1. Algorithm runs and produces perfect math
         plan_data = precompute_payment_plans_sophisticated(
             [acc.model_dump() for acc in req.accounts], 
             req.payment_amount
         )
         
+        # 2. AI is called with its simplified task
         raw_ai_result = interestkiller_ai_hybrid(
             app.state.gemini_model,
             plan_data,
             req.user_context.model_dump()
         )
-        # Patch: Fix invalid \$ escape in AI response before JSON parsing
-        if isinstance(raw_ai_result, str):
-            raw_ai_result = raw_ai_result.replace(r'\\$', '$').replace(r'\$', '$')
-        ai_json = json.loads(raw_ai_result)
+        sanitized_ai_result = raw_ai_result.replace('\\$', '$').replace('\$', '$')
+        ai_text_fields = json.loads(sanitized_ai_result)
 
-        # Validate that the AI returned the text we need
-        if 'minimize_interest_explanation' not in ai_json or 'maximize_score_explanation' not in ai_json:
+        # 3. --- FINAL ASSEMBLY & GUARDRAIL ---
+        # This is now the main validation. Does the AI's flat object have the text we need?
+        required_text_keys = [
+            'nexus_recommendation',
+            'minimize_interest_explanation', 
+            'minimize_interest_projection',
+            'maximize_score_explanation',
+            'maximize_score_projection'
+        ]
+        if not all(key in ai_text_fields for key in required_text_keys):
             raise ValueError("AI response is missing required explanation fields.")
             
+        # 4. Assemble the final, rich object to send to the user
         final_response = {
-            "nexus_recommendation": ai_json.get("nexus_recommendation"),
+            "nexus_recommendation": ai_text_fields.get("nexus_recommendation"),
             "minimize_interest_plan": {
                 "name": "Avalanche Method",
-                "split": plan_data['avalanche_plan']['split'],
-                "explanation": ai_json['minimize_interest_explanation'],
-                "projected_outcome": ai_json['minimize_interest_projection']
+                "split": plan_data['avalanche_plan']['split'], # Math from algorithm
+                "explanation": ai_text_fields['minimize_interest_explanation'], # Text from AI
+                "projected_outcome": ai_text_fields['minimize_interest_projection'] # Text from AI
             },
             "maximize_score_plan": {
                 "name": "Credit Score Booster",
-                "split": plan_data['score_booster_plan']['split'],
-                "explanation": ai_json['maximize_score_explanation'],
-                "projected_outcome": ai_json['maximize_score_projection']
+                "split": plan_data['score_booster_plan']['split'], # Math from algorithm
+                "explanation": ai_text_fields['maximize_score_explanation'], # Text from AI
+                "projected_outcome": ai_text_fields['maximize_score_projection'] # Text from AI
             }
         }
         

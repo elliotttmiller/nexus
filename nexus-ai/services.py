@@ -284,24 +284,30 @@ def interestkiller_ai_pure(model, accounts: list, payment_amount: float, user_co
 
 def interestkiller_ai_hybrid(model, plan_data: dict, user_context: dict) -> str:
     """
-    Hybrid AI function. Receives pre-computed data from our sophisticated
-    "Chief Strategist Algorithm" and crafts elite-level explanations.
+    Final, Simplified Task AI function. It receives pre-computed data and its
+    ONLY job is to return a flat JSON object with the required text strings.
     """
     import json
     prompt = f"""
-    You are Nexus AI, an elite Chief Financial Strategist. You will be given a mathematically perfect payment plan and rich strategic context. Your job is to translate this data into an empowering, data-driven explanation for the user.
+    You are Nexus AI, an elite Financial Communications expert. Your task is to translate a pre-calculated data dossier into six distinct, user-friendly text fields.
 
-    --- STRATEGIC CONTEXT ANALYSIS (CRITICAL) ---
-    - First, check `plan_data.context.paid_off_cards`. If this list is not empty, your explanation MUST start by celebrating this major victory. Frame it as "eliminating a debt account completely."
-    - Next, check `plan_data.context.skipped_cards`. If this list is not empty, you MUST explain that this was a deliberate, expert-level choice to ignore low-interest (or 0% APR) cards to maximize the impact on high-interest debt.
-
-    --- EXPLANATION & PROJECTION RULES ---
-    1.  **Persona:** You are an expert providing a clear recommendation. Start with an assertive, positive statement.
-    2.  **Explanation (The "What" and "Why"):** After handling the strategic context, focus on the single "Power Payment" card. State why it was chosen (highest APR or utilization) and the immediate, quantified impact.
-    3.  **Projected Outcome (The "So What"):** Describe the long-term benefit (debt freedom, better loans, etc.).
+    --- STRATEGIC CONTEXT & DATA ---
+    You will be given a `plan_data` object. This object contains the results of a sophisticated financial algorithm. It includes payment splits and strategic context like `paid_off_cards`.
 
     --- YOUR TASK ---
-    Based on the provided `plan_data` and its `context`, generate a JSON object containing the required explanation and projection strings.
+    Based on the provided `plan_data`, generate a JSON object containing ONLY the following six string keys:
+    1.  `nexus_recommendation`: The name of the plan that matches `user_context.primary_goal`.
+    2.  `minimize_interest_explanation`: The explanation for the Avalanche plan.
+    3.  `minimize_interest_projection`: The projected outcome for the Avalanche plan.
+    4.  `maximize_score_explanation`: The explanation for the Score Booster plan.
+    5.  `maximize_score_projection`: The projected outcome for the Score Booster plan.
+    6.  `insufficient_funds_explanation`: A special explanation to use if `plan_data.context.is_insufficient` is true (this field is not in the log, but good to keep).
+
+    --- INSTRUCTIONS FOR EXPLANATIONS ---
+    - Use a confident, encouraging, and data-driven tone.
+    - Weave in the strategic context (e.g., "Congratulations on paying off the [card name]!").
+    - For Avalanche, focus on the highest APR card and quantify the interest saved.
+    - For Score Booster, focus on the highest utilization card and quantify the utilization drop and potential score increase.
 
     --- DATA FOR YOUR TASK ---
     - Pre-computed Plan Data: {json.dumps(plan_data, indent=2)}
