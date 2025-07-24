@@ -6,7 +6,8 @@
       }
     },
     "ios": {
-      "bundleIdentifier": "com.timberpuppies.nexusmobile",
+      "bundleIdentifier": "app.nexus.ai",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
