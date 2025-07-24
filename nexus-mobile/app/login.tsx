@@ -50,7 +50,7 @@ export default function LoginScreen() {
     <>
       <BackArrowHeader />
       <View style={styles.container}>
-        <Text style={styles.title}>Login</Text>
+        <Text style={styles.title}>Welcome to Nexus Ai</Text>
         {/* TEMP: Show API_BASE_URL on screen for debugging */}
         <Text style={{ color: 'red', marginBottom: 8, fontSize: 12 }}>API: {API_BASE_URL}</Text>
         <TextInput
@@ -78,7 +78,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: BACKGROUND },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 24, color: TEXT },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: BACKGROUND },
+  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 32, color: TEXT, textAlign: 'center', marginTop: 12, letterSpacing: 0.2 },
   input: { borderWidth: 1, borderColor: BORDER, borderRadius: 8, padding: 12, width: '100%', marginBottom: 16, backgroundColor: '#fff', color: TEXT },
 }); 

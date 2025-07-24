@@ -8,7 +8,7 @@ export default function HomeScreen() {
   const router = useRouter();
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Welcome to Nexus. The Router is working.</Text>
+      <Text style={styles.title}>Welcome to Nexus Ai</Text>
       <PrimaryButton title="Login" onPress={() => router.push('/login')} />
       <PrimaryButton title="Register" onPress={() => router.push('/register')} />
       <PrimaryButton title="Dashboard" onPress={() => router.push('/dashboard')} />
@@ -17,6 +17,6 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: BACKGROUND },
-  text: { fontSize: 18, marginBottom: 16, color: TEXT },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: BACKGROUND, padding: 24 },
+  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 32, color: TEXT, textAlign: 'center', marginTop: 12, letterSpacing: 0.2 },
 }); 

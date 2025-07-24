@@ -10,6 +10,7 @@ import { PRIMARY, TEXT } from '../src/constants/colors';
 import { Account, Transaction } from '../src/types';
 import AccountHealthBar from '../src/components/AccountHealthBar';
 import BackArrowHeader from '../src/components/BackArrowHeader';
+import { usePlaidLink } from 'react-native-plaid-link-sdk';
 
 export default function AccountsScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -19,34 +20,39 @@ export default function AccountsScreen() {
   const [sortTx, setSortTx] = useState<'date' | 'amount'>('date');
   const [filterTx, setFilterTx] = useState('');
   const router = useRouter();
+  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
 
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
         const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`);
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setAccounts(data);
-        } else {
-          console.error('API did not return an array for accounts:', data);
-          setError('Failed to load accounts. The server returned an unexpected format.');
-          setAccounts([]);
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          console.error('Non-JSON response for accounts:', text);
+          data = [];
         }
+        setAccounts(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching accounts:', err);
-        setError('An error occurred while fetching your accounts.');
         setAccounts([]);
       }
     };
     const fetchTransactions = async () => {
       try {
         const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=1`);
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setTransactions(data);
-        } else {
-          setTransactions([]); // Defensive: treat error as empty
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          console.error('Non-JSON response for transactions:', text);
+          data = [];
         }
+        setTransactions(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error fetching transactions:', err);
         setTransactions([]);
@@ -56,6 +62,44 @@ export default function AccountsScreen() {
       setLoading(false);
     });
   }, []);
+
+  // Fetch Plaid Link token
+  const fetchLinkToken = async () => {
+    setLinkLoading(true);
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/create_link_token`, {
+        method: 'POST',
+        body: JSON.stringify({ userId: 1 }),
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        data = {};
+      }
+      setLinkToken(data.link_token || null);
+    } catch (err) {
+      setLinkToken(null);
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
+  // Plaid Link hook
+  const { open, ready } = usePlaidLink({
+    token: linkToken || '',
+    onSuccess: async (publicToken, metadata) => {
+      // Exchange public token
+      await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
+        method: 'POST',
+        body: JSON.stringify({ public_token: publicToken, userId: 1 }),
+      });
+      // Refresh accounts
+      fetchAccounts();
+    },
+    onExit: () => {},
+  });
 
   if (loading) {
     return (
@@ -133,7 +177,20 @@ export default function AccountsScreen() {
               )}
             />
           ) : (
-            <Text style={styles.emptyStateText}>No accounts found. Link an account to get started.</Text>
+            <View style={{ alignItems: 'center', marginTop: 48 }}>
+              <Text style={styles.emptyStateText}>No accounts found. Link an account to get started.</Text>
+              <TouchableOpacity
+                style={styles.linkAccountBtn}
+                onPress={() => {
+                  if (!linkToken) fetchLinkToken();
+                  else open();
+                }}
+                activeOpacity={0.85}
+                disabled={linkLoading || (!linkToken && !ready)}
+              >
+                <Text style={styles.linkAccountBtnText}>{linkLoading ? 'Loading...' : 'Link Account'}</Text>
+              </TouchableOpacity>
+            </View>
           )}
           {/* Transactions Section */}
           <View style={styles.transactionsSection}>
@@ -391,5 +448,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     marginTop: 2,
+  },
+  linkAccountBtn: {
+    marginTop: 24,
+    backgroundColor: PRIMARY,
+    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 36,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  linkAccountBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 17,
+    letterSpacing: 0.2,
   },
 }); 
