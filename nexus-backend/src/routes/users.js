@@ -88,4 +88,32 @@ router.delete('/data-access/:accountId', async (req, res) => {
   }
 });
 
+// --- RESET ALL USER FINANCIAL DATA ---
+router.delete('/data-access/reset', async (req, res) => {
+  let userId = req.query.userId || req.body.userId;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+  userId = parseInt(userId, 10);
+  if (isNaN(userId)) return res.status(400).json({ error: 'Invalid userId: must be an integer' });
+  try {
+    // Delete all recommendations
+    await db.Recommendation.destroy({ where: { user_id: userId } });
+    // Delete all payment history
+    await db.PaymentHistory.destroy({ where: { user_id: userId } });
+    // Delete all transactions (by cards and accounts)
+    const userCards = await db.Card.findAll({ where: { user_id: userId } });
+    const cardIds = userCards.map(card => card.id);
+    if (cardIds.length > 0) {
+      await db.Transaction.destroy({ where: { card_id: cardIds } });
+    }
+    // Delete all accounts (cascade deletes cards, which cascade deletes transactions by account_id)
+    await db.Account.destroy({ where: { user_id: userId } });
+    // Delete all cards (in case any remain)
+    await db.Card.destroy({ where: { user_id: userId } });
+    res.json({ message: 'All user financial data reset.' });
+  } catch (err) {
+    console.error('Error in /data-access/reset (DELETE):', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router; 

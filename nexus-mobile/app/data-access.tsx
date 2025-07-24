@@ -56,18 +56,27 @@ export default function DataAccessScreen() {
     }
   };
 
-  const revokeAllAccess = async () => {
+  // Remove old revokeAllAccess and add new resetAllAccess
+  const resetAllAccess = async () => {
     if (!accounts.length) return;
-    Alert.alert('Revoke All Access', 'Are you sure you want to revoke access for all accounts?', [
+    Alert.alert('Reset All Data', 'Are you sure you want to completely reset all your financial data? This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Revoke All', style: 'destructive', onPress: async () => {
+      { text: 'Reset All', style: 'destructive', onPress: async () => {
         setLoading(true);
         try {
-          for (const acc of accounts) {
-            await fetchWithAuth(`${API_BASE_URL}/api/users/data-access/${acc.id}`, { method: 'DELETE' });
+          const res = await fetchWithAuth(`${API_BASE_URL}/api/users/data-access/reset?userId=1`, { method: 'DELETE' });
+          if (res.status === 401) {
+            Alert.alert('Session expired', 'Please log in again.');
+            router.replace('/login');
+            return;
           }
-          fetchAccounts();
-          Alert.alert('Success', 'All account access revoked');
+          if (res.ok) {
+            setAccounts([]);
+            Alert.alert('Success', 'All financial data reset.');
+          } else {
+            const data = await res.json();
+            Alert.alert('Error', data.error || 'Failed to reset all data');
+          }
         } catch (err) {
           Alert.alert('Error', err.message);
         } finally {
@@ -92,8 +101,8 @@ export default function DataAccessScreen() {
           </View>
           <View style={styles.accountsContainer}>
             {accounts.length > 0 && (
-              <TouchableOpacity style={styles.revokeAllBtnRight} onPress={revokeAllAccess} disabled={loading} activeOpacity={0.8}>
-                <Text style={styles.revokeAllText}>Revoke All</Text>
+              <TouchableOpacity style={styles.revokeAllBtnRight} onPress={resetAllAccess} disabled={loading} activeOpacity={0.8}>
+                <Text style={styles.revokeAllText}>Reset All</Text>
               </TouchableOpacity>
             )}
             {accounts.length === 0 ? (

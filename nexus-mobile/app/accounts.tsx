@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import GreenButton from '../src/components/GreenButton';
 import ExpandableSection from '../src/components/ExpandableSection';
 import BottomNavigation from '../src/components/BottomNavigation';
-import { PRIMARY } from '../src/constants/colors';
+import { PRIMARY, TEXT } from '../src/constants/colors';
 import { Account, Transaction } from '../src/types';
 import AccountHealthBar from '../src/components/AccountHealthBar';
 import BackArrowHeader from '../src/components/BackArrowHeader';
@@ -14,41 +14,77 @@ import BackArrowHeader from '../src/components/BackArrowHeader';
 export default function AccountsScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [sortTx, setSortTx] = useState<'date' | 'amount'>('date');
-  const [filterTx, setFilterTx] = useState<string>('');
+  const [filterTx, setFilterTx] = useState('');
   const router = useRouter();
 
   useEffect(() => {
-    setLoading(true);
-    fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`)
-      .then(res => res.json())
-      .then(data => setAccounts(data || []))
-      .catch(() => setAccounts([]));
-    fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=1`)
-      .then(res => res.json())
-      .then(data => setTransactions(data || []))
-      .catch(() => setTransactions([]))
-      .finally(() => setLoading(false));
+    const fetchAccounts = async () => {
+      try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setAccounts(data);
+        } else {
+          console.error('API did not return an array for accounts:', data);
+          setError('Failed to load accounts. The server returned an unexpected format.');
+          setAccounts([]);
+        }
+      } catch (err) {
+        console.error('Error fetching accounts:', err);
+        setError('An error occurred while fetching your accounts.');
+        setAccounts([]);
+      }
+    };
+    const fetchTransactions = async () => {
+      try {
+        const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=1`);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setTransactions(data);
+        } else {
+          console.error('API did not return an array for transactions:', data);
+          setTransactions([]);
+        }
+      } catch (err) {
+        console.error('Error fetching transactions:', err);
+        setTransactions([]);
+      }
+    };
+    Promise.all([fetchAccounts(), fetchTransactions()]).finally(() => {
+      setLoading(false);
+    });
   }, []);
 
-  // Sorting/filtering logic placeholder
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={PRIMARY} />
+        <Text style={{ marginTop: 10, color: TEXT }}>Loading your financial data...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Text style={{ color: 'red', fontWeight: 'bold' }}>Error</Text>
+        <Text style={{ color: TEXT, textAlign: 'center', marginTop: 10 }}>{error}</Text>
+      </View>
+    );
+  }
+
+  // Sorting/filtering logic
   const sortedTx = [...transactions].sort((a, b) => {
     if (sortTx === 'date') return new Date(b.date) - new Date(a.date);
     if (sortTx === 'amount') return b.amount - a.amount;
     return 0;
-  }).filter(tx => !filterTx || tx.description.toLowerCase().includes(filterTx.toLowerCase()));
+  }).filter(tx => !filterTx || (tx.description && tx.description.toLowerCase().includes(filterTx.toLowerCase())));
 
   // Defensive fallback for accounts
-  let safeAccounts: Account[] = [];
-  if (Array.isArray(accounts)) {
-    safeAccounts = accounts;
-  } else if (accounts && typeof accounts === 'object' && typeof accounts.length === 'number') {
-    // If it's array-like
-    safeAccounts = Array.from(accounts);
-  } else {
-    safeAccounts = [];
-  }
+  const safeAccounts: Account[] = Array.isArray(accounts) ? accounts : [];
   console.log('accounts:', accounts, 'safeAccounts:', safeAccounts, 'type:', typeof accounts);
 
   return (
@@ -66,44 +102,51 @@ export default function AccountsScreen() {
               <Text style={styles.payBtnCardText}>Pay Cards</Text>
             </TouchableOpacity>
           </View>
-          {safeAccounts.length > 0 ? (
+          {accounts.length > 0 ? (
             <ExpandableSection
-              data={safeAccounts}
+              data={accounts}
               initialCount={5}
               title=""
-              renderItem={(item: Account, i) => (
+              renderItem={(item: Account) => (
                 <View key={item.id} style={styles.accountCard}>
                   <View style={styles.accountCardRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.accountName}>{item.name}</Text>
-                      <Text style={styles.accountNumber}>••••{item.last4}</Text>
+                      <Text style={styles.accountNumber}>•••• {item.mask || item.last4 || 'XXXX'}</Text>
                     </View>
                     <Text style={styles.accountBalance}>
                       {typeof item.balance === 'number' ? `$${item.balance.toFixed(2)}` : '--'}
                     </Text>
                   </View>
-                  {item.apr > 0 && (
+                  {(item.type === 'credit' || item.type === 'loan') && item.apr > 0 && (
                     <View style={styles.metricsRow}>
-                      <Text style={styles.metricText}>APR: {typeof item.apr === 'number' ? item.apr : '--'}%</Text>
-                      <Text style={styles.metricText}>Interest: {typeof item.monthlyInterest === 'number' ? `$${item.monthlyInterest.toFixed(2)}` : '--'}</Text>
+                      <Text style={styles.metricText}>APR: {item.apr}%</Text>
                     </View>
                   )}
-                  {item.apr > 0 && (
+                  {item.type === 'credit' && item.creditLimit > 0 && (
                     <View style={styles.healthBarRow}>
-                      <AccountHealthBar value={typeof item.creditHealth === 'number' ? item.creditHealth : 0} />
-                      <Text style={styles.healthLabel}>{typeof item.creditHealth === 'number' ? item.creditHealth : '--'}%</Text>
+                      <AccountHealthBar value={(item.balance / item.creditLimit) * 100} />
+                      <Text style={styles.healthLabel}>{((item.balance / item.creditLimit) * 100).toFixed(0)}% Util.</Text>
                     </View>
                   )}
                 </View>
               )}
             />
           ) : (
-            <Text style={styles.emptyStateText}>No accounts linked to your user. Link an account to get started.</Text>
+            <Text style={styles.emptyStateText}>No accounts found. Link an account to get started.</Text>
           )}
           {/* Transactions Section */}
           <View style={styles.transactionsSection}>
-            <Text style={styles.sectionTitle}>Transactions</Text>
-            {transactions.slice(0, 6).map((tx) => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={styles.sectionTitle}>Transactions</Text>
+              <TouchableOpacity style={[styles.sortBtn, sortTx === 'date' && { backgroundColor: PRIMARY + '22' }]} onPress={() => setSortTx('date')}>
+                <Text style={styles.sortBtnText}>Date</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.sortBtn, sortTx === 'amount' && { backgroundColor: PRIMARY + '22' }]} onPress={() => setSortTx('amount')}>
+                <Text style={styles.sortBtnText}>Amount</Text>
+              </TouchableOpacity>
+            </View>
+            {sortedTx.slice(0, 6).map((tx) => (
               <View key={tx.id} style={styles.transactionRow}>
                 <Text style={styles.txDesc}>{tx.name || tx.description}</Text>
                 <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>${Math.abs(tx.amount).toFixed(2)}</Text>
