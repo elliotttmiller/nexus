@@ -143,6 +143,9 @@ async def interestkiller_v2(req: V2InterestKillerRequest):
             plan_data,
             req.user_context.model_dump()
         )
+        # Patch: Fix invalid \$ escape in AI response before JSON parsing
+        if isinstance(raw_ai_result, str):
+            raw_ai_result = raw_ai_result.replace(r'\\$', '$').replace(r'\$', '$')
         ai_json = json.loads(raw_ai_result)
 
         # Validate that the AI returned the text we need
