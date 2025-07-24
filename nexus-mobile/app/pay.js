@@ -430,12 +430,20 @@ export default function PayScreen() {
                     <Text style={styles.explanationHighlight}>{aiRecommendations.minimize_interest_plan.explanation}</Text>
                     <Text style={[styles.projectedOutcome, { marginTop: 6 }]}>{aiRecommendations.minimize_interest_plan.projected_outcome}</Text>
                     <Text style={[styles.label, { marginTop: 8 }]}>Payment Split:</Text>
-                    {Array.isArray(aiRecommendations.minimize_interest_plan?.split) && aiRecommendations.minimize_interest_plan.split.map((s, i) => (
-                      <View key={i} style={styles.splitRow}>
-                        <Text style={styles.resultText}>Card: {s.card_name}</Text>
-                        <Text style={styles.resultText}>${s.amount.toFixed(2)} ({s.type})</Text>
-                      </View>
-                    ))}
+                    <ScrollView style={{ maxHeight: 180, marginBottom: 8 }} nestedScrollEnabled={true}>
+                      {Array.isArray(aiRecommendations.minimize_interest_plan?.split) && aiRecommendations.minimize_interest_plan.split.map((s, i) => (
+                        <View key={i} style={[styles.splitRow, { flexDirection: 'column', alignItems: 'flex-start' }]}> 
+                          <Text
+                            style={[styles.resultText, { maxWidth: '100%', fontWeight: 'bold' }]} 
+                            numberOfLines={1} 
+                            ellipsizeMode="tail"
+                          >
+                            Card: {s.card_name}
+                          </Text>
+                          <Text style={[styles.resultText, { color: PRIMARY, marginTop: 2 }]}>${s.amount.toFixed(2)} ({s.type})</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
                     <Pressable 
                       style={styles.applyButton} 
                       onPress={() => applyRecommendation(aiRecommendations.minimize_interest_plan, 'MINIMIZE_INTEREST_COST')}>
@@ -450,12 +458,20 @@ export default function PayScreen() {
                     <Text style={styles.explanationHighlight}>{aiRecommendations.maximize_score_plan.explanation}</Text>
                     <Text style={[styles.projectedOutcome, { marginTop: 6 }]}>{aiRecommendations.maximize_score_plan.projected_outcome}</Text>
                     <Text style={[styles.label, { marginTop: 8 }]}>Payment Split:</Text>
-                    {Array.isArray(aiRecommendations.maximize_score_plan?.split) && aiRecommendations.maximize_score_plan.split.map((s, i) => (
-                      <View key={i} style={styles.splitRow}>
-                        <Text style={styles.resultText}>Card: {s.card_name}</Text>
-                        <Text style={styles.resultText}>${s.amount.toFixed(2)} ({s.type})</Text>
-                      </View>
-                    ))}
+                    <ScrollView style={{ maxHeight: 180, marginBottom: 8 }} nestedScrollEnabled={true}>
+                      {Array.isArray(aiRecommendations.maximize_score_plan?.split) && aiRecommendations.maximize_score_plan.split.map((s, i) => (
+                        <View key={i} style={[styles.splitRow, { flexDirection: 'column', alignItems: 'flex-start' }]}> 
+                          <Text
+                            style={[styles.resultText, { maxWidth: '100%', fontWeight: 'bold' }]} 
+                            numberOfLines={1} 
+                            ellipsizeMode="tail"
+                          >
+                            Card: {s.card_name}
+                          </Text>
+                          <Text style={[styles.resultText, { color: PRIMARY, marginTop: 2 }]}>${s.amount.toFixed(2)} ({s.type})</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
                     <Pressable 
                       style={styles.applyButton} 
                       onPress={() => applyRecommendation(aiRecommendations.maximize_score_plan, 'MAXIMIZE_CREDIT_SCORE')}>
