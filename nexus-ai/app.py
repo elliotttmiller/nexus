@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Nexus Cortex AI - Strategist Engine", version="10.0.0-final", lifespan=lifespan)
 
 # --- 3. Import AI Communication Service ---
-from services import interestkiller_ai_hybrid
+from services import interestkiller_ai_hybrid, interestkiller_ai_re_explain
 
 # --- 4. THE MISSING ALGORITHM ---
 def precompute_payment_plans_sophisticated(accounts: list, payment_amount: float) -> dict:
@@ -119,6 +119,19 @@ class V2InterestKillerRequest(BaseModel):
     payment_amount: float
     user_context: UserFinancialContext
 
+# --- NEW Pydantic models for the re-explain endpoint (if not already present) ---
+class CustomSplitItem(BaseModel):
+    card_id: str
+    amount: float
+    type: str
+    card_name: str
+
+class V2ReExplainRequest(BaseModel):
+    accounts: List[Any]
+    optimal_plan: Dict[str, Any]
+    custom_split: List[CustomSplitItem]
+    user_context: Any
+
 # --- 6. API Endpoints ---
 @app.get("/", summary="Health Check")
 def root():
@@ -183,4 +196,31 @@ async def interestkiller_v2(req: V2InterestKillerRequest):
         raise HTTPException(status_code=500, detail=f"AI response failed validation: {e}")
     except Exception as e:
         logger.error(f"An unexpected error occurred in interestkiller_v2: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected internal server error occurred.") 
+
+@app.post('/v2/interestkiller/re-explain')
+async def interestkiller_re_explain_v2(req: V2ReExplainRequest):
+    try:
+        # Call the new, hyper-explicit AI function
+        raw_ai_result = interestkiller_ai_re_explain(
+            app.state.gemini_model,
+            [acc.model_dump() for acc in req.accounts],
+            req.optimal_plan,
+            [item.model_dump() for item in req.custom_split],
+            req.user_context.model_dump()
+        )
+        sanitized_ai_result = raw_ai_result.replace('\\$', '$')
+        ai_json = json.loads(sanitized_ai_result)
+
+        # Guardrail: Check if the AI returned the new explanation
+        if 'new_explanation' not in ai_json or 'new_projected_outcome' not in ai_json:
+            raise ValueError("AI response is missing the required re-explanation fields.")
+
+        return {
+            "explanation": ai_json['new_explanation'],
+            "projected_outcome": ai_json['new_projected_outcome']
+        }
+
+    except Exception as e:
+        logger.error(f"An unexpected error occurred in re-explain endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An unexpected internal server error occurred.") 

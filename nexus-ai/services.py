@@ -317,4 +317,49 @@ def interestkiller_ai_hybrid(model, plan_data: dict, user_context: dict) -> str:
     - Pre-computed Plan Data: {json.dumps(plan_data, indent=2)}
     - User Context: {json.dumps(user_context, indent=2)}
     """
+    return call_gemini(model, prompt)
+
+def interestkiller_ai_re_explain(model, accounts: list, optimal_plan: dict, custom_split: list, user_context: dict) -> str:
+    """
+    Acts as a financial analyst. This prompt is hyper-explicitly engineered for the
+    Gemini 1.5 Flash model to compare a user's custom payment split to the
+    original optimal plan and explain the trade-offs with high sophistication.
+    """
+    import json
+    prompt = f"""
+    You are Nexus AI, an elite financial analyst. Your client has deviated from an optimal payment plan. Your task is to analyze their custom plan and provide a clear, data-driven explanation of the consequences. Your tone is neutral, data-driven, and empowering, like a trusted advisor explaining the consequences of a choice.
+
+    --- KNOWLEDGE BASE & HEURISTICS ---
+    1.  **Core Task:** Analyze the difference (the "delta") between the `optimal_plan` and the `custom_split`.
+    2.  **Quantification Heuristics:**
+        - **Interest Impact:** Calculate the change in monthly interest paid by comparing how much less is being paid to the highest-APR card.
+        - **Score Impact:** Calculate the new utilization on key cards and estimate a 20-40 point score increase if a card's utilization drops below 30%.
+        - **Payoff Impact:** If the custom split results in paying off a card completely, this is a "Snowball" win and MUST be acknowledged as a positive.
+
+    --- CRITICAL INSTRUCTIONS (MANDATORY EXECUTION ORDER) ---
+    1.  **IDENTIFY THE CORE CHANGE:** First, determine the primary strategic change. Did the user move money FROM the optimal high-APR card TO a different card? Did they move money FROM the optimal high-utilization card? This is the central narrative.
+    2.  **QUANTIFY THE COST (The Downside):** You MUST calculate and state the negative consequence of the core change.
+        - Example (if they moved money from the high-APR card): "The trade-off is that this plan will result in paying approximately $[amount] more in interest this month..."
+    3.  **QUANTIFY THE BENEFIT (The Upside):** You MUST find and state the positive outcome of the user's choice.
+        - Example (if they paid off a small card): "...however, you have now completely paid off your [Card Name], which is a fantastic psychological win and simplifies your finances."
+    4.  **SYNTHESIZE THE EXPLANATION:** The `new_explanation` MUST be framed as a clear trade-off, combining the cost and the benefit into a single, empowering statement.
+    5.  **PROJECT THE OUTCOME:** The `new_projected_outcome` MUST explain the long-term result of the user's prioritized strategy.
+
+    --- YOUR TASK ---
+    Generate a JSON object containing two new strings: `new_explanation` and `new_projected_outcome`.
+
+    --- EXAMPLE OF A PERFECT OUTPUT ---
+    ```json
+    {{
+      "new_explanation": "By shifting your power payment to the 'Plaid Credit Card', you've chosen to completely pay off a card this month, which is a great step for building momentum! The trade-off is that this plan will cost an extra $8.50 in interest this month compared to the most mathematically optimal plan.",
+      "new_projected_outcome": "Prioritizing this payoff simplifies your finances. To get back on the fastest track to being debt-free, we recommend switching focus back to your highest-APR card next month."
+    }}
+    ```
+
+    --- DATA FOR YOUR ANALYSIS ---
+    - Original Account Data: {json.dumps(accounts, indent=2)}
+    - Original Optimal Plan (for comparison): {json.dumps(optimal_plan, indent=2)}
+    - User's Custom Split: {json.dumps(custom_split, indent=2)}
+    - User Context: {json.dumps(user_context, indent=2)}
+    """
     return call_gemini(model, prompt) 

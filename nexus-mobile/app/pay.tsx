@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Button, Alert, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Modal, Pressable } from 'react-native';
+import { View, Text, TextInput, Button, Alert, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Modal, Pressable, Keyboard, Animated } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import { BACKGROUND, TEXT, PRIMARY, BORDER, SUBTLE } from '../src/constants/colors';
@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import BackArrowHeader from '../src/components/BackArrowHeader';
 import AccountHealthBar from '../src/components/AccountHealthBar';
+import { AppConfig } from '../src/config';
 
 export default function PayScreen() {
   const scrollViewRef = useRef(null);
@@ -27,21 +28,32 @@ export default function PayScreen() {
   const [paymentContext, setPaymentContext] = useState(null);
   const [usingSuggested, setUsingSuggested] = useState(true);
   const router = useRouter();
+  const [editedSplit, setEditedSplit] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(-1);
+  const [originalSplit, setOriginalSplit] = useState(null);
+  const [splitHighlight, setSplitHighlight] = useState(new Animated.Value(0));
+  // Add state for editing split values as strings for robust input
+  const [splitInputValues, setSplitInputValues] = useState([]);
+  const [splitExplanation, setSplitExplanation] = useState('');
+  const [splitProjectedOutcome, setSplitProjectedOutcome] = useState('');
+  const [splitExplainLoading, setSplitExplainLoading] = useState(false);
+  const [splitExplainHighlight, setSplitExplainHighlight] = useState(false);
 
   useEffect(() => {
     fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`)
       .then(res => res.json())
       .then(data => {
-        console.log('Fetched accounts:', data);
+        console.log('Fetched accounts (raw):', data);
         // Robust filter for credit cards
         const creditCards = data.filter(acc => acc.type && acc.type.toLowerCase().includes('credit'));
+        console.log('Filtered credit cards:', creditCards);
         setCards(creditCards.length > 0 ? creditCards : [
-          // fallback mock card for dev
           { id: 'mock1', name: 'Mock Credit Card', balance: 500, apr: 19.99, creditLimit: 2000, last4: '1234', type: 'credit' }
         ]);
         setFundingAccounts(data.filter(acc => acc.type && !acc.type.toLowerCase().includes('credit')));
       })
-      .catch(() => {
+      .catch((err) => {
+        console.log('Error fetching accounts:', err);
         setCards([
           { id: 'mock1', name: 'Mock Credit Card', balance: 500, apr: 19.99, creditLimit: 2000, last4: '1234', type: 'credit' }
         ]);
@@ -55,7 +67,10 @@ export default function PayScreen() {
         setUsingSuggested(false); // Do not pre-fill amount
         if (ctx && ctx.recommendedFundingAccountId) setSelectedFunding(ctx.recommendedFundingAccountId);
       })
-      .catch(() => setPaymentContext(null));
+      .catch((err) => {
+        console.log('Error fetching payment context:', err);
+        setPaymentContext(null);
+      });
   }, []);
 
   const toggleSelect = (id) => {
@@ -261,35 +276,219 @@ export default function PayScreen() {
     }
   };
 
+  // When a recommendation is applied, store the original split and initialize input values
   const applyRecommendation = (recommendation, newGoal) => {
     if (!recommendation?.split) return;
-    
-    // Auto-select the cards that have a payment amount in the recommendation
     const selectedCardIds = [];
-    recommendation.split.forEach(splitItem => {
+    const filteredSplit = recommendation.split.filter(item => item.amount > 0);
+    filteredSplit.forEach(splitItem => {
       if (splitItem.amount > 0) {
         selectedCardIds.push(splitItem.card_id);
       }
     });
-    
-    // Update the payment amount to the total from the recommendation
-    const totalAmount = recommendation.split.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-    
-    // Set the state
+    const totalAmount = filteredSplit.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
     setSelected(selectedCardIds);
     setAmount(totalAmount.toString());
     setGoal(newGoal);
     setResult({
       ...recommendation,
-      // Make sure the split is in the format expected by the payment execution
-      split: recommendation.split.filter(item => item.amount > 0)
+      split: filteredSplit
     });
+    setEditedSplit(filteredSplit);
+    setOriginalSplit(filteredSplit);
+    setSplitInputValues(filteredSplit.map(item => String(item.amount)));
     setAiModalVisible(false);
-    
-    // Auto-scroll to the payment section
     setTimeout(() => {
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    }, 100);
+      setSplitHighlight(new Animated.Value(1));
+      Animated.timing(splitHighlight, {
+        toValue: 0,
+        duration: 1200,
+        useNativeDriver: false,
+      }).start();
+    }, 300);
+  };
+
+  // Handle input change for split values (just update input value, don't redistribute yet)
+  const handleSplitInputChange = (index, value) => {
+    let newInputs = [...splitInputValues];
+    // Allow only numbers and empty string
+    if (/^\d*(\.\d{0,2})?$/.test(value) || value === '') {
+      newInputs[index] = value;
+      setSplitInputValues(newInputs);
+    }
+  };
+
+  // Helper to build custom split payload for backend
+  const buildCustomSplitPayload = () => {
+    if (!editedSplit) return [];
+    return editedSplit.map((item, i) => ({
+      card_id: item.card_id,
+      amount: parseFloat(splitInputValues[i]) || 0,
+      type: item.type,
+      card_name: item.card_name || item.name || ''
+    }));
+  };
+
+  // Helper to get optimal plan for backend
+  const getOptimalPlan = () => {
+    if (!result) return {};
+    return result;
+  };
+
+  // Helper to get user context for backend
+  const getUserContext = () => {
+    // Use paymentContext or fallback
+    return paymentContext || { primary_goal: goal };
+  };
+
+  // Helper to get accounts for backend
+  const getAccounts = () => {
+    return cards;
+  };
+
+  // Call re-explain endpoint after split edit
+  const fetchReExplanation = async () => {
+    setSplitExplainLoading(true);
+    try {
+      const payload = {
+        accounts: getAccounts(),
+        optimal_plan: getOptimalPlan(),
+        custom_split: buildCustomSplitPayload(),
+        user_context: getUserContext(),
+      };
+      const res = await fetch(`${AppConfig.API_BASE_URL}/v2/interestkiller/re-explain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      setSplitExplanation(data.explanation || '');
+      setSplitProjectedOutcome(data.projected_outcome || '');
+      setSplitExplainHighlight(true);
+      setTimeout(() => setSplitExplainHighlight(false), 1200);
+    } catch (err) {
+      setSplitExplanation('Unable to update explanation.');
+      setSplitProjectedOutcome('');
+    } finally {
+      setSplitExplainLoading(false);
+    }
+  };
+
+  // On blur or enter, trigger redistribution and fetch new explanation
+  const handleSplitInputBlur = (index) => {
+    let newInputs = [...splitInputValues];
+    let newSplit = editedSplit.map((item, i) => ({ ...item }));
+    let value = parseFloat(newInputs[index]);
+    if (isNaN(value) || value < 0) value = 0;
+    const oldValue = parseFloat(newSplit[index].amount) || 0;
+    const originalTotal = originalSplit ? originalSplit.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) : 0;
+    const currentTotal = newSplit.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    let diff = value - oldValue;
+    if (currentTotal + diff > originalTotal) value = oldValue + (originalTotal - currentTotal);
+    newSplit[index].amount = value;
+    newInputs[index] = String(value);
+    // Redistribute the difference
+    let remainingDiff = value - oldValue;
+    let indices = newSplit.map((_, i) => i).filter(i => i !== index);
+    indices.sort((a, b) => {
+      const aAPR = parseFloat(newSplit[a].apr) || 0;
+      const bAPR = parseFloat(newSplit[b].apr) || 0;
+      return bAPR - aAPR;
+    });
+    for (let i of indices) {
+      if (remainingDiff === 0) break;
+      let thisValue = parseFloat(newSplit[i].amount) || 0;
+      let adjust = Math.min(Math.abs(remainingDiff), thisValue);
+      if (remainingDiff > 0) adjust = -adjust;
+      newSplit[i].amount = Math.max(0, thisValue + adjust);
+      newInputs[i] = String(newSplit[i].amount);
+      remainingDiff += adjust;
+    }
+    // Final pass to ensure total matches
+    const finalTotal = newSplit.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    if (finalTotal !== originalTotal) {
+      newSplit[index].amount += (originalTotal - finalTotal);
+      newInputs[index] = String(newSplit[index].amount);
+    }
+    setEditedSplit(newSplit);
+    setSplitInputValues(newInputs);
+    setEditingIndex(-1);
+    // Fetch new explanation
+    fetchReExplanation();
+  };
+
+  // When a recommendation is applied, also fetch initial explanation
+  useEffect(() => {
+    if (result && editedSplit && splitInputValues.length === editedSplit.length) {
+      fetchReExplanation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
+
+  // Cancel recommendation and restore account list
+  const cancelRecommendation = () => {
+    setResult(null);
+    setEditedSplit(null);
+    setOriginalSplit(null);
+    setSplitInputValues([]);
+    setEditingIndex(-1);
+  };
+
+  // Smart redistribution logic (fix input bug)
+  const handleSplitEdit = (index, newValue) => {
+    if (!editedSplit) return;
+    // Allow empty string for input
+    if (newValue === '') {
+      let newSplit = editedSplit.map((item, i) => ({ ...item }));
+      newSplit[index].amount = '';
+      setEditedSplit(newSplit);
+      return;
+    }
+    const oldValue = parseFloat(editedSplit[index].amount) || 0;
+    let value = parseFloat(newValue);
+    if (isNaN(value) || value < 0) value = 0;
+    const diff = value - oldValue;
+    const total = editedSplit.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    const originalTotal = originalSplit ? originalSplit.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) : total;
+    if (total + diff > originalTotal) value = oldValue + (originalTotal - total);
+    let remainingDiff = value - oldValue;
+    let newSplit = editedSplit.map((item, i) => ({ ...item }));
+    newSplit[index].amount = value;
+    let indices = newSplit.map((_, i) => i).filter(i => i !== index);
+    indices.sort((a, b) => {
+      const aAPR = parseFloat(newSplit[a].apr) || 0;
+      const bAPR = parseFloat(newSplit[b].apr) || 0;
+      return bAPR - aAPR;
+    });
+    for (let i of indices) {
+      if (remainingDiff === 0) break;
+      let thisValue = parseFloat(newSplit[i].amount) || 0;
+      let adjust = Math.min(Math.abs(remainingDiff), thisValue);
+      if (remainingDiff > 0) adjust = -adjust;
+      newSplit[i].amount = Math.max(0, thisValue + adjust);
+      remainingDiff += adjust;
+    }
+    const finalTotal = newSplit.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    if (finalTotal !== originalTotal) {
+      newSplit[index].amount += (originalTotal - finalTotal);
+    }
+    setEditedSplit(newSplit);
+  };
+
+  // On blur, treat empty as 0
+  const handleSplitBlur = (index) => {
+    let newSplit = editedSplit.map((item, i) => ({ ...item }));
+    if (newSplit[index].amount === '' || isNaN(parseFloat(newSplit[index].amount))) {
+      newSplit[index].amount = 0;
+      setEditedSplit(newSplit);
+    }
+    setEditingIndex(-1);
+  };
+
+  const resetSplit = () => {
+    setEditedSplit(originalSplit ? originalSplit.map(item => ({ ...item })) : null);
+    setEditingIndex(-1);
   };
 
   return (
@@ -327,34 +526,76 @@ export default function PayScreen() {
             <Feather name="zap" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
-        {usingSuggested && paymentContext && (
-          <Text style={{ color: PRIMARY, fontWeight: 'bold', marginBottom: 8 }}>Suggested</Text>
-        )}
-        <Text style={styles.label}>Optimization Goal:</Text>
+        {/* Removed Optimization Goal selection for cleaner UI */}
+        {/* <Text style={styles.label}>Optimization Goal:</Text>
         <View style={styles.goalRow}>
-          <TouchableOpacity
-            style={[styles.goalButton, goal === 'MINIMIZE_INTEREST_COST' && styles.goalButtonActive]}
-            onPress={() => setGoal('MINIMIZE_INTEREST_COST')}
-          >
-            <Text style={[styles.goalButtonText, goal === 'MINIMIZE_INTEREST_COST' && styles.goalButtonTextActive]}>Minimize Interest</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.goalButton, goal === 'MAXIMIZE_CREDIT_SCORE' && styles.goalButtonActive]}
-            onPress={() => setGoal('MAXIMIZE_CREDIT_SCORE')}
-          >
-            <Text style={[styles.goalButtonText, goal === 'MAXIMIZE_CREDIT_SCORE' && styles.goalButtonTextActive]}>Maximize Score</Text>
-          </TouchableOpacity>
-        </View>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <TouchableOpacity style={styles.payButton} onPress={handlePay} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.payButtonText}>Pay</Text>}
-        </TouchableOpacity>
+          <TouchableOpacity ...>...</TouchableOpacity>
+          <TouchableOpacity ...>...</TouchableOpacity>
+        </View> */}
+        {/* Adjust spacing after removing goal selection */}
+        <View style={{ height: 8 }} />
+        {/* Payment Split section: now above card list, only shown if result && !paymentResults */}
         {result && !paymentResults && (
-          <View style={styles.resultBox}>
+          <Animated.View style={[styles.resultBox, { backgroundColor: splitHighlight.interpolate({ inputRange: [0, 1], outputRange: ['#f8f9fa', '#e0fff3'] }) }]}> 
             <Text style={styles.resultTitle}>Payment Split</Text>
-            {result.split && Array.isArray(result.split) && result.split.map((s, i) => (
-              <Text key={i} style={styles.resultText}>Card {s.card_id}: ${s.amount}</Text>
+            {editedSplit && Array.isArray(editedSplit) && editedSplit.map((s, i) => (
+              <View key={i} style={styles.splitCardContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={styles.splitCardLabel}>
+                    Card: <Text style={styles.splitCardNumber}>••••{(s.card_id || '').slice(-4)}</Text>
+                  </Text>
+                  {editingIndex === i ? (
+                    <TextInput
+                      style={styles.splitCardAmountInput}
+                      value={splitInputValues[i]}
+                      autoFocus
+                      keyboardType="numeric"
+                      onChangeText={val => handleSplitInputChange(i, val)}
+                      onBlur={() => handleSplitInputBlur(i)}
+                      onSubmitEditing={() => handleSplitInputBlur(i)}
+                      returnKeyType="done"
+                      selectTextOnFocus
+                    />
+                  ) : (
+                    <TouchableOpacity onPress={() => setEditingIndex(i)} activeOpacity={0.7}>
+                      <Text style={styles.splitCardAmountDisplay}>${splitInputValues[i]}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <Text style={styles.splitCardType}>{s.type ? s.type.charAt(0).toUpperCase() + s.type.slice(1) : ''}</Text>
+              </View>
             ))}
+            {/* Loading spinner for explanation */}
+            {splitExplainLoading && (
+              <View style={styles.aiLoadingBox}>
+                <ActivityIndicator size="small" color={PRIMARY} />
+                <Text style={styles.aiLoadingText}>Updating explanation...</Text>
+              </View>
+            )}
+            {/* Updated explanation and projected outcome */}
+            {!splitExplainLoading && splitExplanation && (
+              <Animated.View style={{
+                backgroundColor: splitExplainHighlight ? '#e0fff3' : 'transparent',
+                borderRadius: 8,
+                padding: 8,
+                marginTop: 10,
+                marginBottom: 2,
+                transition: 'background-color 0.3s',
+              }}>
+                <Text style={styles.resultExplanation}>{splitExplanation}</Text>
+                {splitProjectedOutcome ? (
+                  <Text style={styles.projectedOutcome}>{splitProjectedOutcome}</Text>
+                ) : null}
+              </Animated.View>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+              <TouchableOpacity style={styles.resetButton} onPress={resetSplit} activeOpacity={0.8}>
+                <Text style={styles.resetButtonText}>Reset to Recommended</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.resetButton, { backgroundColor: '#ffeaea', marginLeft: 8 }]} onPress={cancelRecommendation} activeOpacity={0.8}>
+                <Text style={[styles.resetButtonText, { color: '#d32f2f' }]}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
             {result.explanation && <Text style={styles.resultExplanation}>{result.explanation}</Text>}
             <Text style={[styles.label, { marginTop: 16 }]}>Select Funding Account:</Text>
             {fundingAccounts.length === 0 ? (
@@ -364,19 +605,76 @@ export default function PayScreen() {
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => setSelectedFunding(item.id)}
-                  style={[styles.cardItem, selectedFunding === item.id && styles.cardItemSelected]}
-                  activeOpacity={0.8}
+                  style={[
+                    styles.fundingAccountContainer,
+                    selectedFunding === item.id && styles.fundingAccountSelected
+                  ]}
+                  activeOpacity={0.88}
                 >
-                  <Text style={styles.cardName}>{item.institution || 'Account'} •••• {item.id ? String(item.id).slice(-4) : '----'}</Text>
-                  <Text style={styles.cardDetails}>Balance: ${item.balance}   Type: {item.type}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={styles.fundingAccountLabel}>
+                      {item.institution || 'Account'} <Text style={styles.fundingAccountNumber}>••••{item.id ? String(item.id).slice(-4) : '----'}</Text>
+                    </Text>
+                    <Text style={styles.fundingAccountBalance}>${typeof item.balance === 'number' ? item.balance.toFixed(2) : '--'}</Text>
+                  </View>
+                  <Text style={styles.fundingAccountType}>{item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : ''}</Text>
                 </TouchableOpacity>
               ))
             )}
             <TouchableOpacity style={styles.payButton} onPress={handleExecute} disabled={executing}>
               {executing ? <ActivityIndicator color="#fff" /> : <Text style={styles.payButtonText}>Execute Payment</Text>}
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
+        {/* Card selection list: only show if no recommendation is applied */}
+        {!(result && !paymentResults) && (
+          <>
+            <Text style={styles.label}>Select Credit Card(s):</Text>
+            {cards.length === 0 ? (
+              <Text style={styles.text}>No credit cards found.</Text>
+            ) : (
+              (cards || []).map(item => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => toggleSelect(item.id)}
+                  style={[
+                    styles.cardItemPolished,
+                    selected.includes(item.id) && styles.cardItemSelectedPolished
+                  ]}
+                  activeOpacity={0.92}
+                >
+                  {item.institution && (
+                    <Text style={styles.institutionName}>{item.institution}</Text>
+                  )}
+                  <View style={styles.cardTopRowPolished}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.accountNamePolished}>{item.name}</Text>
+                      <Text style={styles.accountNumberPolished}>••••{item.last4 || String(item.id).slice(-4)}</Text>
+                    </View>
+                    <Text style={styles.accountBalancePolished}>
+                      {typeof item.balance === 'number' ? `$${item.balance.toFixed(2)}` : '--'}
+                    </Text>
+                  </View>
+                  <View style={styles.dividerPolished} />
+                  {item.apr > 0 && (
+                    <View style={styles.metricsRowPolished}>
+                      <Text style={styles.metricTextPolished}>APR: {typeof item.apr === 'number' ? item.apr : '--'}%</Text>
+                      <Text style={styles.metricTextPolished}>Interest: {typeof item.monthlyInterest === 'number' ? `$${item.monthlyInterest.toFixed(2)}` : '--'}</Text>
+                      <View style={styles.healthBarRowPolished}>
+                        <AccountHealthBar value={typeof item.creditHealth === 'number' ? item.creditHealth : 0} />
+                        <Text style={styles.healthLabelPolished}>{typeof item.creditHealth === 'number' ? item.creditHealth : '--'}%</Text>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))
+            )}
+          </>
+        )}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <TouchableOpacity style={styles.payButton} onPress={handlePay} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.payButtonText}>Pay</Text>}
+        </TouchableOpacity>
         {paymentResults && (
           <View style={styles.resultBox}>
             <Text style={styles.resultTitle}>Payment Results</Text>
@@ -460,6 +758,15 @@ export default function PayScreen() {
             </View>
           </View>
         </Modal>
+        {/* AI Recommendation Loading Overlay */}
+        {aiLoading && (
+          <View style={styles.aiLoadingOverlay}>
+            <View style={styles.aiLoadingBox}>
+              <ActivityIndicator size="large" color={PRIMARY} />
+              <Text style={styles.aiLoadingText}>Generating AI Recommendation...</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -691,5 +998,152 @@ const styles = StyleSheet.create({
     color: '#757575',
     marginLeft: 6,
     fontWeight: 'bold',
+  },
+  splitCardContainer: {
+    backgroundColor: '#f4f8f7',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  splitCardLabel: {
+    fontSize: 15,
+    color: '#222',
+    fontWeight: '600',
+  },
+  splitCardNumber: {
+    fontSize: 15,
+    color: PRIMARY,
+    fontWeight: 'bold',
+    letterSpacing: 1.5,
+  },
+  splitCardAmount: {
+    fontSize: 17,
+    color: PRIMARY,
+    fontWeight: 'bold',
+  },
+  splitCardType: {
+    fontSize: 13,
+    color: '#757575',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  fundingAccountContainer: {
+    backgroundColor: '#f7fafd',
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 17,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  fundingAccountSelected: {
+    borderColor: PRIMARY,
+    backgroundColor: PRIMARY + '10',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  fundingAccountLabel: {
+    fontSize: 15,
+    color: '#222',
+    fontWeight: '600',
+  },
+  fundingAccountNumber: {
+    fontSize: 15,
+    color: PRIMARY,
+    fontWeight: 'bold',
+    letterSpacing: 1.5,
+  },
+  fundingAccountBalance: {
+    fontSize: 16,
+    color: PRIMARY,
+    fontWeight: 'bold',
+  },
+  fundingAccountType: {
+    fontSize: 13,
+    color: '#757575',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  splitCardAmountInput: {
+    fontSize: 17,
+    color: PRIMARY,
+    fontWeight: 'bold',
+    borderBottomWidth: 1.5,
+    borderBottomColor: PRIMARY,
+    minWidth: 70,
+    textAlign: 'right',
+    backgroundColor: 'transparent',
+    padding: 0,
+    margin: 0,
+  },
+  splitCardAmountDisplay: {
+    fontSize: 17,
+    color: PRIMARY,
+    fontWeight: 'bold',
+    minWidth: 70,
+    textAlign: 'right',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'transparent',
+    paddingVertical: 2,
+  },
+  resetButton: {
+    backgroundColor: '#f2f2f2',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+    alignSelf: 'flex-end',
+  },
+  resetButtonText: {
+    color: PRIMARY,
+    fontWeight: '600',
+    fontSize: 15,
+    letterSpacing: 0.2,
+  },
+  aiLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  aiLoadingBox: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 32,
+    paddingHorizontal: 36,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  aiLoadingText: {
+    marginTop: 18,
+    fontSize: 16,
+    color: PRIMARY,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
 }); 
