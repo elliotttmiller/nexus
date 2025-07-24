@@ -39,6 +39,18 @@ export default function AccountsScreen() {
     return 0;
   }).filter(tx => !filterTx || tx.description.toLowerCase().includes(filterTx.toLowerCase()));
 
+  // Defensive fallback for accounts
+  let safeAccounts: Account[] = [];
+  if (Array.isArray(accounts)) {
+    safeAccounts = accounts;
+  } else if (accounts && typeof accounts === 'object' && typeof accounts.length === 'number') {
+    // If it's array-like
+    safeAccounts = Array.from(accounts);
+  } else {
+    safeAccounts = [];
+  }
+  console.log('accounts:', accounts, 'safeAccounts:', safeAccounts, 'type:', typeof accounts);
+
   return (
     <>
       <BackArrowHeader />
@@ -46,61 +58,62 @@ export default function AccountsScreen() {
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
           <View style={styles.topRow}>
             <Text style={styles.pageTitle}>Accounts</Text>
-            <GreenButton title="Pay Cards" onPress={() => router.replace('/pay')} style={styles.payBtn} />
+            <TouchableOpacity
+              style={styles.payBtnCard}
+              onPress={() => router.replace('/pay')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.payBtnCardText}>Pay Cards</Text>
+            </TouchableOpacity>
           </View>
-          <ExpandableSection
-            data={accounts}
-            initialCount={5}
-            title="Accounts"
-            renderItem={(item: Account, i) => (
-              <View key={item.id} style={styles.accountCard}>
-                <View style={styles.accountCardRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.accountName}>{item.name}</Text>
-                    <Text style={styles.accountNumber}>••••{item.last4}</Text>
+          {safeAccounts.length > 0 ? (
+            <ExpandableSection
+              data={safeAccounts}
+              initialCount={5}
+              title=""
+              renderItem={(item: Account, i) => (
+                <View key={item.id} style={styles.accountCard}>
+                  <View style={styles.accountCardRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.accountName}>{item.name}</Text>
+                      <Text style={styles.accountNumber}>••••{item.last4}</Text>
+                    </View>
+                    <Text style={styles.accountBalance}>
+                      {typeof item.balance === 'number' ? `$${item.balance.toFixed(2)}` : '--'}
+                    </Text>
                   </View>
-                  <Text style={styles.accountBalance}>
-                    {typeof item.balance === 'number' ? `$${item.balance.toFixed(2)}` : '--'}
-                  </Text>
+                  {item.apr > 0 && (
+                    <View style={styles.metricsRow}>
+                      <Text style={styles.metricText}>APR: {typeof item.apr === 'number' ? item.apr : '--'}%</Text>
+                      <Text style={styles.metricText}>Interest: {typeof item.monthlyInterest === 'number' ? `$${item.monthlyInterest.toFixed(2)}` : '--'}</Text>
+                    </View>
+                  )}
+                  {item.apr > 0 && (
+                    <View style={styles.healthBarRow}>
+                      <AccountHealthBar value={typeof item.creditHealth === 'number' ? item.creditHealth : 0} />
+                      <Text style={styles.healthLabel}>{typeof item.creditHealth === 'number' ? item.creditHealth : '--'}%</Text>
+                    </View>
+                  )}
                 </View>
-                {item.apr > 0 && (
-                  <View style={styles.metricsRow}>
-                    <Text style={styles.metricText}>APR: {typeof item.apr === 'number' ? item.apr : '--'}%</Text>
-                    <Text style={styles.metricText}>Interest: {typeof item.monthlyInterest === 'number' ? `$${item.monthlyInterest.toFixed(2)}` : '--'}</Text>
-                  </View>
-                )}
-                {item.apr > 0 && (
-                  <View style={styles.healthBarRow}>
-                    <AccountHealthBar value={typeof item.creditHealth === 'number' ? item.creditHealth : 0} />
-                    <Text style={styles.healthLabel}>{typeof item.creditHealth === 'number' ? item.creditHealth : '--'}%</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          />
+              )}
+            />
+          ) : (
+            <Text style={styles.emptyStateText}>No accounts linked to your user. Link an account to get started.</Text>
+          )}
           {/* Transactions Section */}
-          <View style={styles.txHeaderRow}>
+          <View style={styles.transactionsSection}>
             <Text style={styles.sectionTitle}>Transactions</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity onPress={() => setSortTx(sortTx === 'date' ? 'amount' : 'date')} style={styles.sortBtn}>
-                <Text style={styles.sortBtnText}>Sort: {sortTx === 'date' ? 'Date' : 'Amount'}</Text>
-              </TouchableOpacity>
-              <Text style={{ marginLeft: 8, color: '#888' }}>Filter:</Text>
-              <TouchableOpacity onPress={() => setFilterTx('')} style={styles.filterBtn}><Text style={styles.filterBtnText}>Clear</Text></TouchableOpacity>
-            </View>
-          </View>
-          <ExpandableSection
-            data={sortedTx}
-            initialCount={7}
-            title=""
-            renderItem={(tx: Transaction, i) => (
-              <View key={tx.id} style={styles.txRow}>
-                <Text style={styles.txDesc}>{tx.description}</Text>
-                <Text style={styles.txAmount}>${tx.amount.toFixed(2)}</Text>
+            {transactions.slice(0, 6).map((tx) => (
+              <View key={tx.id} style={styles.transactionRow}>
+                <Text style={styles.txDesc}>{tx.name || tx.description}</Text>
+                <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>${Math.abs(tx.amount).toFixed(2)}</Text>
                 <Text style={styles.txDate}>{tx.date}</Text>
               </View>
-            )}
-          />
+            ))}
+            <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/transactions')} activeOpacity={0.8}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
         <BottomNavigation />
       </SafeAreaView>
@@ -113,12 +126,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
+    marginTop: 0,
+    paddingHorizontal: 0,
   },
   pageTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: PRIMARY,
+    marginBottom: 0,
+    marginTop: 0,
   },
   payBtn: {
     paddingVertical: 6,
@@ -249,5 +266,82 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'right',
     marginLeft: 8,
+  },
+  transactionsSection: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  transactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  txDesc: {
+    fontSize: 15,
+    color: '#333',
+    flex: 1,
+  },
+  txAmount: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginHorizontal: 8,
+  },
+  txDate: {
+    fontSize: 13,
+    color: '#888',
+    minWidth: 80,
+    textAlign: 'right',
+  },
+  viewAllBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: PRIMARY + '11',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  viewAllText: {
+    color: PRIMARY,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  payBtnCard: {
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: PRIMARY + '11',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+    marginLeft: 8,
+  },
+  payBtnCardText: {
+    color: PRIMARY,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  emptyStateText: {
+    color: '#888',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 32,
+    marginBottom: 24,
   },
 }); 

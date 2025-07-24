@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -7,17 +7,26 @@ import AccountHealthBar from '../src/components/AccountHealthBar';
 import BottomNavigation from '../src/components/BottomNavigation';
 import { LineChart } from 'react-native-chart-kit';
 import * as shape from 'd3-shape';
+import { API_BASE_URL } from '../src/constants/api';
+import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`)
+      .then(res => res.json())
+      .then(data => setAccounts(data || []))
+      .catch(() => setAccounts([]))
+      .finally(() => setLoading(false));
+  }, []);
   // ...fetch accounts, transactions, etc...
   // For demonstration, use mock data:
-  const accounts = [
-    { id: '1', name: 'Plaid Credit Card', last4: '1234', balance: 410, apr: 12.5, monthlyInterest: 20, creditHealth: 85 },
-    { id: '2', name: 'Plaid Business Credit Card', last4: '5678', balance: 5020, apr: 19.99, monthlyInterest: 80, creditHealth: 72 },
-  ];
   const transactions = [
     { id: 't1', description: 'Starbucks', amount: -5.25, date: '2024-07-01' },
     { id: 't2', description: 'Amazon', amount: -120.99, date: '2024-06-30' },
@@ -32,28 +41,39 @@ export default function DashboardScreen() {
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <Text style={styles.header}>Dashboard</Text>
         {/* Account Carousel */}
-        <View style={styles.carouselContainer}>
+        <View style={{ marginBottom: 28 }}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.carouselScroll}
-            snapToAlignment="start"
-            decelerationRate={0.95}
-            snapToInterval={CARD_WIDTH + 16}
-            overScrollMode="always"
+            contentContainerStyle={{
+              flexDirection: 'row',
+              paddingHorizontal: 8,
+              alignItems: 'stretch',
+            }}
           >
-            {accounts.map((acc) => (
-              <TouchableOpacity key={acc.id} style={styles.accountCard} activeOpacity={0.88}>
+            {accounts.map((acc, idx) => (
+              <TouchableOpacity
+                key={acc.id || idx}
+                style={[
+                  styles.accountCard,
+                  { marginRight: idx === accounts.length - 1 ? 0 : 16 }
+                ]}
+                activeOpacity={0.88}
+              >
                 <Text style={styles.accountName}>{acc.name}</Text>
                 <Text style={styles.accountNumber}>••••{acc.last4}</Text>
-                <Text style={styles.accountBalance}>${acc.balance.toFixed(2)}</Text>
+                <Text style={styles.accountBalance}>
+                  {typeof acc.balance === 'number' ? `$${acc.balance.toFixed(2)}` : '--'}
+                </Text>
                 <View style={styles.metricsRow}>
-                  <Text style={styles.metricText}>APR: {acc.apr}%</Text>
-                  <Text style={styles.metricText}>Interest: ${acc.monthlyInterest.toFixed(2)}</Text>
+                  <Text style={styles.metricText}>APR: {typeof acc.apr === 'number' ? acc.apr : '--'}%</Text>
+                  <Text style={styles.metricText}>
+                    Interest: {typeof acc.monthlyInterest === 'number' ? `$${acc.monthlyInterest.toFixed(2)}` : '--'}
+                  </Text>
                 </View>
                 <View style={styles.healthBarRow}>
-                  <AccountHealthBar value={acc.creditHealth} />
-                  <Text style={styles.healthLabel}>{acc.creditHealth}%</Text>
+                  <AccountHealthBar value={typeof acc.creditHealth === 'number' ? acc.creditHealth : 0} />
+                  <Text style={styles.healthLabel}>{typeof acc.creditHealth === 'number' ? acc.creditHealth : '--'}%</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -146,7 +166,7 @@ function AnalysisContainer() {
   );
 }
 
-const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.78, 320); // Premium wide card
+const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.68, 260); // Ensure 2.5–3 cards fit
 const CARD_HEIGHT = 148;
 
 const styles = StyleSheet.create({
@@ -174,7 +194,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingBottom: 2,
     paddingHorizontal: 8,
-    gap: 16,
   },
   accountCard: {
     width: CARD_WIDTH,
@@ -182,7 +201,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 18,
     padding: 18,
-    marginRight: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,

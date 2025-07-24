@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, SafeAreaView, TouchableOpacity, Platform, ScrollView } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import PrimaryButton from '../src/components/PrimaryButton';
 import { BACKGROUND, TEXT, PRIMARY, SUBTLE } from '../src/constants/colors';
+import BackArrowHeader from '../src/components/BackArrowHeader';
+import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 
 export default function DataAccessScreen() {
   const [accounts, setAccounts] = useState([]);
@@ -54,26 +56,61 @@ export default function DataAccessScreen() {
     }
   };
 
+  const revokeAllAccess = async () => {
+    if (!accounts.length) return;
+    Alert.alert('Revoke All Access', 'Are you sure you want to revoke access for all accounts?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Revoke All', style: 'destructive', onPress: async () => {
+        setLoading(true);
+        try {
+          for (const acc of accounts) {
+            await fetchWithAuth(`${API_BASE_URL}/api/users/data-access/${acc.id}`, { method: 'DELETE' });
+          }
+          fetchAccounts();
+          Alert.alert('Success', 'All account access revoked');
+        } catch (err) {
+          Alert.alert('Error', err.message);
+        } finally {
+          setLoading(false);
+        }
+      }}
+    ]);
+  };
+
   useEffect(() => {
     fetchAccounts();
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Data Access & Privacy</Text>
-      <FlatList
-        data={accounts}
-        keyExtractor={item => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.accountItem}>
-            <Text style={styles.accountName}>{item.institution || 'Account'}</Text>
-            <PrimaryButton title="Revoke Access" onPress={() => revokeAccess(item.id)} />
+    <>
+      <BackArrowHeader />
+      <SafeAreaViewContext style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.topBarRow}>
+            <Text style={styles.titleSmall}>Data Access & Privacy</Text>
+            <View style={{ width: 38 }} /> {/* Spacer for symmetry if needed */}
           </View>
-        )}
-        ListEmptyComponent={<Text style={styles.text}>No linked accounts.</Text>}
-      />
-      <PrimaryButton title="Back to Settings" onPress={() => router.push('/settings')} />
-    </View>
+          <View style={styles.accountsContainer}>
+            {accounts.length > 0 && (
+              <TouchableOpacity style={styles.revokeAllBtnRight} onPress={revokeAllAccess} disabled={loading} activeOpacity={0.8}>
+                <Text style={styles.revokeAllText}>Revoke All</Text>
+              </TouchableOpacity>
+            )}
+            {accounts.length === 0 ? (
+              <Text style={styles.text}>No linked accounts.</Text>
+            ) : (
+              accounts.map((item) => (
+                <View key={item.id} style={styles.accountItem}>
+                  <Text style={styles.accountName}>{item.institution || 'Account'}</Text>
+                  <PrimaryButton title="Revoke Access" onPress={() => revokeAccess(item.id)} />
+                </View>
+              ))
+            )}
+          </View>
+          <PrimaryButton title="Back to Settings" onPress={() => router.push('/settings')} style={{ marginTop: 18 }} />
+        </ScrollView>
+      </SafeAreaViewContext>
+    </>
   );
 }
 
@@ -83,4 +120,125 @@ const styles = StyleSheet.create({
   accountItem: { backgroundColor: SUBTLE, padding: 12, borderRadius: 8, marginBottom: 12 },
   accountName: { fontWeight: 'bold', fontSize: 16, color: TEXT },
   text: { color: TEXT },
+  safeArea: { flex: 1, backgroundColor: BACKGROUND },
+  arrowRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    marginTop: Platform.OS === 'ios' ? 2 : 4,
+    marginLeft: 2,
+    marginBottom: 2,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+    marginBottom: 12,
+    paddingHorizontal: 8,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: PRIMARY,
+    marginTop: 2,
+    marginBottom: 0,
+  },
+  revokeAllBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: PRIMARY + '11',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  revokeAllText: {
+    color: PRIMARY,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  scrollContainer: {
+    paddingBottom: 32,
+    paddingHorizontal: 8,
+    paddingTop: 2,
+  },
+  topBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Platform.OS === 'ios' ? 2 : 4,
+    marginBottom: 2,
+    paddingHorizontal: 0,
+    minHeight: 44,
+    position: 'relative',
+  },
+  arrowBtn: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    zIndex: 10,
+    padding: 2,
+    marginLeft: 2,
+    marginTop: 2,
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titleCol: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 0,
+    minHeight: 44,
+  },
+  title: {
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: PRIMARY,
+    marginTop: 0,
+    marginBottom: 0,
+    letterSpacing: 0.1,
+  },
+  accountsContainer: {
+    position: 'relative',
+    marginTop: 2,
+    marginBottom: 8,
+    paddingTop: 2,
+  },
+  revokeAllBtnRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    zIndex: 2,
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: PRIMARY + '11',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  arrowColCentered: {
+    width: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
+  },
+  titleSmall: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: PRIMARY,
+    marginTop: 0,
+    marginBottom: 0,
+    letterSpacing: 0.1,
+  },
 });
