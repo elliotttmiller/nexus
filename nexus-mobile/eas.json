@@ -22,7 +22,8 @@
         "EXPO_PUBLIC_AI_BASE_URL": "https://aiservice-production-acab.up.railway.app"
       },
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "autoIncrement": true
       }
     }
   },
