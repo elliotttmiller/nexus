@@ -19,7 +19,7 @@
     },
     "production": {
       "env": {
-        "API_BASE_URL": "https://nexus-production-2e34.up.railway.app",
+        "EXPO_PUBLIC_API_BASE_URL": "https://nexus-production-2e34.up.railway.app",
         "AI_BASE_URL": "https://aiservice-production-acab.up.railway.app",
         "SENTRY_DSN": "https://6870589f945b88361cbb65079060a3ce@o4509683080822784.ingest.us.sentry.io/4509683186204672",
         "PLAID_CLIENT_ID": "6878c62f8325000026a8eb6f",

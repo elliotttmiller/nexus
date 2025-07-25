@@ -1,51 +1,25 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Image, View } from 'react-native';
+import React, { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
+import { AuthProvider } from '../src/context/AuthContext'; // Import the provider
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const [splashDone, setSplashDone] = React.useState(false);
-
   useEffect(() => {
-    setTimeout(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }).start(async () => {
-        await SplashScreen.hideAsync();
-        setSplashDone(true);
-      });
-    }, 1200);
+    // Hide the splash screen once the layout is mounted.
+    // The AuthProvider will handle showing a loading spinner.
+    SplashScreen.hideAsync();
   }, []);
 
   return (
-    <>
-      {!splashDone && (
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            ...StyleSheet.absoluteFillObject,
-            backgroundColor: '#fff',
-            opacity: fadeAnim,
-            zIndex: 9999,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <Image
-            source={require('../assets/nexus-icon.png')}
-            style={{ width: 120, height: 120, resizeMode: 'contain' }}
-            fadeDuration={300}
-          />
-        </Animated.View>
-      )}
+    <AuthProvider>
       <Stack screenOptions={{ headerShown: false }}>
+        {/* Define your screen layouts here */}
+        <Stack.Screen name="(app)" />
+        <Stack.Screen name="(auth)" />
         <Stack.Screen name="index" />
       </Stack>
-    </>
+    </AuthProvider>
   );
 } 

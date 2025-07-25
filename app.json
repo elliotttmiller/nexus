@@ -11,6 +11,9 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

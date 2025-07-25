@@ -5,6 +5,8 @@
     "scheme": "nexus",
     "version": "1.0.0",
     "sdkVersion": "53.0.0",
+    "jsEngine": "hermes",
+    "plugins": ["expo-router"],
     "platforms": [
       "ios",
       "web"
