@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { PRIMARY } from '../src/constants/colors';
 import AccountHealthBar from '../src/components/AccountHealthBar';
 import BottomNavigation from '../src/components/BottomNavigation';
-import { LineChart } from 'react-native-chart-kit';
+// import { LineChart } from 'react-native-chart-kit'; // Removed
 import * as shape from 'd3-shape';
 import { API_BASE_URL } from '../src/constants/api';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
@@ -130,39 +130,8 @@ function AnalysisContainer() {
     <View style={analysisStyles.container}>
       <Text style={analysisStyles.title}>Spending Analysis</Text>
       <Text style={analysisStyles.subtitle}>Your spending trend this week</Text>
-      <LineChart
-        data={{
-          labels: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
-          datasets: [
-            { data, color: () => PRIMARY, strokeWidth: 3 },
-          ],
-        }}
-        width={SCREEN_WIDTH - 48}
-        height={110}
-        chartConfig={{
-          backgroundColor: '#fff',
-          backgroundGradientFrom: '#fff',
-          backgroundGradientTo: '#fff',
-          decimalPlaces: 0,
-          color: (opacity = 1) => PRIMARY,
-          labelColor: (opacity = 1) => '#888',
-          propsForDots: {
-            r: '4',
-            strokeWidth: '2',
-            stroke: PRIMARY,
-          },
-          propsForBackgroundLines: {
-            stroke: '#e6e9ef',
-            strokeDasharray: '',
-          },
-        }}
-        bezier
-        style={{ borderRadius: 12, marginVertical: 6 }}
-        withInnerLines={true}
-        withOuterLines={false}
-        withVerticalLabels={true}
-        withHorizontalLabels={true}
-      />
+      {/* Chart temporarily unavailable */}
+      <Text style={{ color: '#888', marginVertical: 16 }}>Chart temporarily unavailable</Text>
       <View style={analysisStyles.statsRow}>
         <View style={analysisStyles.statBox}>
           <Text style={analysisStyles.statLabel}>Total Spent</Text>
