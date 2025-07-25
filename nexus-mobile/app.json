@@ -26,7 +26,7 @@
     ],
     "ios": {
       "bundleIdentifier": "app.nexus.ai",
-      "buildNumber": "1",
+      "buildNumber": "9",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -38,9 +38,8 @@
       "iosClientId": "477212096848-5ojo4p71qv85cc23q8lfjkr9q4nc6ljt.apps.googleusercontent.com",
       "router": {},
       "eas": {
-        "projectId": "0ac76880-39e8-4245-a75b-6ac4e9602414"
+        "projectId": "be30e681-1247-49f1-9ea6-ee50b3eb657d"
       }
-    },
-    "owner": "timberpuppies"
+    }
   }
 }
