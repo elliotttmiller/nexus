@@ -4,7 +4,6 @@
     "slug": "nexus-mobile",
     "scheme": "nexus",
     "version": "1.0.0",
-    "sdkVersion": "53.0.0",
     "jsEngine": "hermes",
     "plugins": [
       "expo-router",
@@ -26,10 +25,7 @@
         }
       ]
     ],
-    "platforms": [
-      "ios",
-      "web"
-    ],
+    "platforms": ["ios", "web"],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "splash": {
@@ -39,14 +35,10 @@
     },
     "ios": {
       "bundleIdentifier": "app.nexus.ai",
-      "buildNumber": "17",
-      "supportsTablet": true,
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "buildNumber": "1",
+      "supportsTablet": true
     },
     "extra": {
-      "router": {},
       "eas": {
         "projectId": "bc93e57c-3aa9-43b4-9e55-35296d034b69"
       }
