@@ -15,7 +15,11 @@
           "ios": {
             "infoPlist": {
               "LSApplicationQueriesSchemes": [
-                "plaid", "citi", "chase", "bankofamerica", "wellsfargo"
+                "plaid",
+                "citi",
+                "chase",
+                "bankofamerica",
+                "wellsfargo"
               ]
             }
           }
@@ -36,12 +40,17 @@
     "ios": {
       "bundleIdentifier": "app.nexus.ai",
       "buildNumber": "1",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "be30e681-1247-49f1-9ea6-ee50b3eb657d"
+        "projectId": "bc93e57c-3aa9-43b4-9e55-35296d034b69"
       }
-    }
+    },
+    "owner": "nazreid"
   }
 }
