@@ -14,7 +14,7 @@
           "ios": {
             "infoPlist": {
               "LSApplicationQueriesSchemes": [
-                "citi", "chase", "bankofamerica", "wellsfargo"
+                "plaid", "citi", "chase", "bankofamerica", "wellsfargo"
               ]
             }
           }

@@ -9,7 +9,7 @@ import { PRIMARY, TEXT } from '../src/constants/colors';
 import { Account, Transaction } from '../src/types';
 import AccountHealthBar from '../src/components/AccountHealthBar';
 import BackArrowHeader from '../src/components/BackArrowHeader';
-// import { usePlaidLink } from 'expo-plaid-link';
+import { usePlaidLink } from 'react-native-plaid-link-sdk';
 import { useAuth } from '../src/context/AuthContext';
 
 const formatCurrency = (amount: number = 0) => {
@@ -58,64 +58,62 @@ export default function AccountsScreen() {
     }
   }, [user, fetchAllData]);
 
-  // Temporarily commented out Plaid Link functionality
-  // const { open, ready } = usePlaidLink({
-  //   tokenConfig: {
-  //     token: linkToken,
-  //   },
-  //   onSuccess: async (success) => {
-  //     try {
-  //       await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
-  //         method: 'POST',
-  //         headers: {
-  //           'Content-Type': 'application/json'
-  //         },
-  //         body: JSON.stringify({
-  //           public_token: success.publicToken,
-  //           userId
-  //         }),
-  //       });
-  //       Alert.alert('Success!', 'Your account has been linked.');
-  //       setLinkToken(null);
-  //       fetchAllData();
-  //     } catch (exchangeErr) {
-  //       Alert.alert('Error', 'Could not complete account linking.');
-  //     }
-  //   },
-  //   onExit: (exit) => {
-  //     console.log('Plaid Link exited.');
-  //     setLinkToken(null);
-  //   }
-  // });
+  // Use the correct react-native-plaid-link-sdk hook
+  const { open, ready } = usePlaidLink({
+    token: linkToken,
+    onSuccess: async (success) => {
+      try {
+        await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            public_token: success.publicToken,
+            userId
+          }),
+        });
+        Alert.alert('Success!', 'Your account has been linked.');
+        setLinkToken(null);
+        fetchAllData();
+      } catch (exchangeErr) {
+        Alert.alert('Error', 'Could not complete account linking.');
+      }
+    },
+    onExit: (exit) => {
+      console.log('Plaid Link exited.');
+      setLinkToken(null);
+    }
+  });
 
-  // const openPlaidLink = useCallback(async () => {
-  //   setLinkLoading(true);
-  //   try {
-  //     const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/create_link_token`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json'
-  //       },
-  //       body: JSON.stringify({ userId }),
-  //     });
-  //     const data = await res.json();
-  //     if (data && data.link_token) {
-  //       setLinkToken(data.link_token);
-  //     } else {
-  //       throw new Error(data.error || 'Failed to retrieve Plaid link token.');
-  //     }
-  //   } catch (err) {
-  //     Alert.alert('Error', err.message);
-  //   } finally {
-  //     setLinkLoading(false);
-  //   }
-  // }, [userId]);
+  const openPlaidLink = useCallback(async () => {
+    setLinkLoading(true);
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/create_link_token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (data && data.link_token) {
+        setLinkToken(data.link_token);
+      } else {
+        throw new Error(data.error || 'Failed to retrieve Plaid link token.');
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setLinkLoading(false);
+    }
+  }, [userId]);
 
-  // useEffect(() => {
-  //   if (linkToken && ready) {
-  //     open();
-  //   }
-  // }, [linkToken, ready, open]);
+  useEffect(() => {
+    if (linkToken && ready) {
+      open();
+    }
+  }, [linkToken, ready, open]);
 
   if (loading) {
     return (
@@ -155,12 +153,11 @@ export default function AccountsScreen() {
             </Text>
             <TouchableOpacity 
               style={styles.linkAccountBtn}
-              // onPress={openPlaidLink}
-              // disabled={linkLoading}
+              onPress={openPlaidLink}
+              disabled={linkLoading}
             >
               <Text style={styles.linkAccountBtnText}>
-                {/* {linkLoading ? 'Preparing...' : 'Link Account'} */}
-                Link Account (Coming Soon)
+                {linkLoading ? 'Preparing...' : 'Link Account'}
               </Text>
             </TouchableOpacity>
           </View>
