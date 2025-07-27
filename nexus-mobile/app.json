@@ -39,7 +39,7 @@
     },
     "ios": {
       "bundleIdentifier": "app.nexus.ai",
-      "buildNumber": "1",
+      "buildNumber": "17",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
