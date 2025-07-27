@@ -5,6 +5,9 @@
   },
   "build": {
     "development": {
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.0.106:8080"
+      },
       "developmentClient": true,
       "distribution": "internal",
       "ios": {

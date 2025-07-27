@@ -1,17 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import { API_BASE_URL } from '../../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../../src/constants/fetchWithAuth';
-import GreenButton from '../../src/components/GreenButton';
 import ExpandableSection from '../../src/components/ExpandableSection';
 import BottomNavigation from '../../src/components/BottomNavigation';
 import { PRIMARY, TEXT } from '../../src/constants/colors';
 import { Account, Transaction } from '../../src/types';
 import AccountHealthBar from '../../src/components/AccountHealthBar';
 import BackArrowHeader from '../../src/components/BackArrowHeader';
-import { usePlaidLink } from 'react-native-plaid-link-sdk';
+// --- FIX #1: Import from the new, official Expo library ---
+import { usePlaidLink } from 'expo-plaid-link';
 import { useAuth } from '../../src/context/AuthContext';
+
+const formatCurrency = (amount: number = 0) => {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+};
 
 export default function AccountsScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -24,124 +28,125 @@ export default function AccountsScreen() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
   const { user } = useAuth();
+  const userId = user?.id || 1;
+
+  const fetchAllData = useCallback(async () => {
+    try {
+      const accountsRes = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=${userId}`);
+      const accountsData = await accountsRes.json();
+      setAccounts(Array.isArray(accountsData) ? accountsData : []);
+      const txRes = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=${userId}`);
+      const txData = await txRes.json();
+      setTransactions(Array.isArray(txData) ? txData : []);
+      setError('');
+    } catch (err) {
+      setError('Failed to load accounts or transactions.');
+      setAccounts([]);
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
 
   useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`);
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          console.error('Non-JSON response for accounts:', text);
-          data = [];
-        }
-        setAccounts(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('Error fetching accounts:', err);
-        setAccounts([]);
-      }
-    };
-    const fetchTransactions = async () => {
-      try {
-        const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=1`);
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          console.error('Non-JSON response for transactions:', text);
-          data = [];
-        }
-        setTransactions(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('Error fetching transactions:', err);
-        setTransactions([]);
-      }
-    };
-    Promise.all([fetchAccounts(), fetchTransactions()]).finally(() => {
-      setLoading(false);
-    });
-  }, []);
+    if (user) {
+      setLoading(true);
+      fetchAllData();
+    }
+  }, [user, fetchAllData]);
 
-  // Fetch Plaid Link token
-  const fetchLinkToken = async () => {
+  // --- FIX #2: The usePlaidLink hook is now the correct one ---
+  const { open, ready } = usePlaidLink({
+    tokenConfig: {
+      token: linkToken,
+      // noLoadingState: true // Optional: if you want to manage your own loading spinner
+    },
+    onSuccess: async (success) => {
+      try {
+        await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ public_token: success.publicToken, userId }),
+        });
+        Alert.alert('Success!', 'Your account has been linked.');
+        setLinkToken(null); // Reset token after use
+        fetchAllData(); // Refresh all data
+      } catch (exchangeErr) {
+        Alert.alert('Error', 'Could not complete account linking.');
+      }
+    },
+    onExit: (exit) => {
+      console.log('Plaid Link exited.');
+      setLinkToken(null); // Reset token on exit
+    }
+  });
+
+  // --- FIX #3: Logic to open Plaid ---
+  // We fetch the token, and when it's ready, we open the link.
+  const openPlaidLink = useCallback(async () => {
     setLinkLoading(true);
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/create_link_token`, {
         method: 'POST',
-        body: JSON.stringify({ userId: 1 }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
       });
-      const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        data = {};
+      const data = await res.json();
+      if (data && data.link_token) {
+        setLinkToken(data.link_token);
+      } else {
+        throw new Error(data.error || 'Failed to retrieve Plaid link token.');
       }
-      setLinkToken(data.link_token || null);
     } catch (err) {
-      setLinkToken(null);
+      Alert.alert('Error', err.message);
     } finally {
       setLinkLoading(false);
     }
-  };
+  }, [userId]);
 
-  // Plaid Link hook
-  const { open, ready } = usePlaidLink({
-    token: linkToken || '',
-    onSuccess: async (publicToken, metadata) => {
-      // Exchange public token
-      await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
-        method: 'POST',
-        body: JSON.stringify({ public_token: publicToken, userId: 1 }),
-      });
-      // Refresh accounts
-      fetchAccounts();
-    },
-    onExit: () => {},
-  });
+  useEffect(() => {
+      // This effect will automatically open Plaid once the token is fetched and the hook is ready.
+      if (linkToken && ready) {
+        open();
+      }
+  }, [linkToken, ready, open]);
 
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={PRIMARY} />
-        <Text style={{ marginTop: 10, color: TEXT }}>Loading your financial data...</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-        <Text style={{ color: 'red', fontWeight: 'bold' }}>Error</Text>
-        <Text style={{ color: TEXT, textAlign: 'center', marginTop: 10 }}>{error}</Text>
+      <View style={styles.fullscreenCenter}>
+        <Text style={styles.errorTitle}>Error Loading Data</Text>
+        <Text style={styles.errorMessage}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => router.replace('/')}> 
+          <Text style={styles.retryButtonText}>Go to Home / Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  // Sorting/filtering logic
   const sortedTx = [...transactions].sort((a, b) => {
     if (sortTx === 'date') return new Date(b.date) - new Date(a.date);
     if (sortTx === 'amount') return b.amount - a.amount;
     return 0;
   }).filter(tx => !filterTx || (tx.description && tx.description.toLowerCase().includes(filterTx.toLowerCase())));
 
-  // Defensive fallback for accounts
-  const safeAccounts: Account[] = Array.isArray(accounts) ? accounts : [];
-  console.log('accounts:', accounts, 'safeAccounts:', safeAccounts, 'type:', typeof accounts);
-
   return (
     <>
       <BackArrowHeader />
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
           <View style={styles.topRow}>
             <Text style={styles.pageTitle}>Accounts</Text>
             <TouchableOpacity
               style={styles.payBtnCard}
-              onPress={() => router.replace('/pay')}
+              onPress={() => router.push('/pay')}
               activeOpacity={0.8}
             >
               <Text style={styles.payBtnCardText}>Pay Cards</Text>
@@ -157,24 +162,20 @@ export default function AccountsScreen() {
                   <View style={styles.accountCardRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.accountName}>{item.name}</Text>
-                      <Text style={styles.accountNumber}>•••• {item.mask || item.last4 || 'XXXX'}</Text>
-                      <Text style={styles.accountTypeLabel}>{item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Account'}</Text>
+                      <Text style={styles.accountNumber}>•••• {item.last4 || 'XXXX'}</Text>
+                      {/* If you want to show type, add a type property to Account or remove this line */}
                     </View>
                     <Text style={styles.accountBalance}>
-                      {typeof item.balance === 'number' ? `$${item.balance.toFixed(2)}` : '--'}
+                      {typeof item.balance === 'number' ? formatCurrency(item.balance) : '--'}
                     </Text>
                   </View>
-                  {(item.type === 'credit' || item.type === 'loan') && item.apr > 0 && (
+                  {/* If you want to show APR, check if it's a number and > 0 */}
+                  {typeof item.apr === 'number' && item.apr > 0 && (
                     <View style={styles.metricsRow}>
                       <Text style={styles.metricText}>APR: {item.apr}%</Text>
                     </View>
                   )}
-                  {item.type === 'credit' && item.creditLimit > 0 && (
-                    <View style={styles.healthBarRow}>
-                      <AccountHealthBar value={(item.balance / item.creditLimit) * 100} />
-                      <Text style={styles.healthLabel}>{((item.balance / item.creditLimit) * 100).toFixed(0)}% Util.</Text>
-                    </View>
-                  )}
+                  {/* If you want to show utilization, add creditLimit to Account type or remove this block */}
                 </View>
               )}
             />
@@ -183,38 +184,39 @@ export default function AccountsScreen() {
               <Text style={styles.emptyStateText}>No accounts found. Link an account to get started.</Text>
               <TouchableOpacity
                 style={styles.linkAccountBtn}
-                onPress={() => {
-                  if (!linkToken) fetchLinkToken();
-                  else open();
-                }}
-                activeOpacity={0.85}
-                disabled={linkLoading || (!linkToken && !ready)}
+                onPress={openPlaidLink} // <-- This is the only change in the JSX
+                disabled={linkLoading}
               >
-                <Text style={styles.linkAccountBtnText}>{linkLoading ? 'Loading...' : 'Link Account'}</Text>
+                <Text style={styles.linkAccountBtnText}>{linkLoading ? 'Preparing...' : 'Link Account'}</Text>
               </TouchableOpacity>
             </View>
           )}
-          {/* Transactions Section */}
           <View style={styles.transactionsSection}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Transactions</Text>
-              <TouchableOpacity style={[styles.sortBtn, sortTx === 'date' && { backgroundColor: PRIMARY + '22' }]} onPress={() => setSortTx('date')}>
-                <Text style={styles.sortBtnText}>Date</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.sortBtn, sortTx === 'amount' && { backgroundColor: PRIMARY + '22' }]} onPress={() => setSortTx('amount')}>
-                <Text style={styles.sortBtnText}>Amount</Text>
-              </TouchableOpacity>
+              <View style={styles.sortFilterContainer}>
+                <TouchableOpacity style={[styles.sortBtn, sortTx === 'date' && styles.sortBtnActive]} onPress={() => setSortTx('date')}>
+                  <Text style={styles.sortBtnText}>Date</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.sortBtn, sortTx === 'amount' && styles.sortBtnActive]} onPress={() => setSortTx('amount')}>
+                  <Text style={styles.sortBtnText}>Amount</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            {sortedTx.slice(0, 6).map((tx) => (
+            {sortedTx.length > 0 ? sortedTx.slice(0, 6).map((tx) => (
               <View key={tx.id} style={styles.transactionRow}>
-                <Text style={styles.txDesc}>{tx.name || tx.description}</Text>
-                <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>${Math.abs(tx.amount).toFixed(2)}</Text>
+                <Text style={styles.txDesc} numberOfLines={1} ellipsizeMode="tail">{tx.description || 'Unknown Transaction'}</Text>
+                <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>{formatCurrency(Math.abs(tx.amount))}</Text>
                 <Text style={styles.txDate}>{tx.date}</Text>
               </View>
-            ))}
-            <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/transactions')} activeOpacity={0.8}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
+            )) : (
+              <Text style={styles.emptyStateText}>No recent transactions to display.</Text>
+            )}
+            {transactions.length > 6 && (
+              <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/transactions')} activeOpacity={0.8}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
         <BottomNavigation />
@@ -323,6 +325,9 @@ const styles = StyleSheet.create({
     color: PRIMARY,
     fontWeight: 'bold',
   },
+  sortBtnActive: {
+    backgroundColor: PRIMARY + '22',
+  },
   transactionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -370,5 +375,52 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  scrollViewContent: {
+    padding: 16,
+    paddingBottom: 80,
+  },
+  fullscreenCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: TEXT,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  errorMessage: {
+    fontSize: 16,
+    color: '#555',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: PRIMARY,
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sortFilterContainer: {
+    flexDirection: 'row',
   },
 }); 
