@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import BackArrowHeader from '../src/components/BackArrowHeader';
 import AccountHealthBar from '../src/components/AccountHealthBar';
 import { AppConfig } from '../src/config';
+import { useAuth } from '../src/context/AuthContext';
 
 export default function PayScreen() {
   const scrollViewRef = useRef(null);
@@ -28,6 +29,8 @@ export default function PayScreen() {
   const [paymentContext, setPaymentContext] = useState(null);
   const [usingSuggested, setUsingSuggested] = useState(true);
   const router = useRouter();
+  const { user } = useAuth();
+  const userId = user?.id || 1;
   const [editedSplit, setEditedSplit] = useState(null);
   const [editingIndex, setEditingIndex] = useState(-1);
   const [originalSplit, setOriginalSplit] = useState(null);
@@ -40,7 +43,7 @@ export default function PayScreen() {
   const [splitExplainHighlight, setSplitExplainHighlight] = useState(false);
 
   useEffect(() => {
-    fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`)
+    fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=${userId}`)
       .then(res => res.json())
       .then(data => {
         console.log('Fetched accounts (raw):', data);
@@ -60,7 +63,7 @@ export default function PayScreen() {
         setFundingAccounts([]);
       });
     // Fetch safe payment context
-    fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts/payment-context?userId=1`)
+    fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts/payment-context?userId=${userId}`)
       .then(res => res.json())
       .then(ctx => {
         setPaymentContext(ctx);

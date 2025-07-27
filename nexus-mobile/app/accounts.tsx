@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
@@ -10,7 +10,9 @@ import { PRIMARY, TEXT } from '../src/constants/colors';
 import { Account, Transaction } from '../src/types';
 import AccountHealthBar from '../src/components/AccountHealthBar';
 import BackArrowHeader from '../src/components/BackArrowHeader';
-import { usePlaidLink } from 'react-native-plaid-link-sdk';
+// --- FIX: Import from the new, official Expo library ---
+import { usePlaidLink } from 'expo-plaid-link';
+import { useAuth } from '../src/context/AuthContext';
 
 export default function AccountsScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -22,84 +24,104 @@ export default function AccountsScreen() {
   const router = useRouter();
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
+  const { user } = useAuth();
+  const userId = user?.id || 1;
 
-  useEffect(() => {
-    const fetchAccounts = async () => {
-      try {
-        const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`);
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          console.error('Non-JSON response for accounts:', text);
-          data = [];
-        }
-        setAccounts(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('Error fetching accounts:', err);
-        setAccounts([]);
-      }
-    };
-    const fetchTransactions = async () => {
-      try {
-        const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=1`);
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          console.error('Non-JSON response for transactions:', text);
-          data = [];
-        }
-        setTransactions(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('Error fetching transactions:', err);
-        setTransactions([]);
-      }
-    };
-    Promise.all([fetchAccounts(), fetchTransactions()]).finally(() => {
-      setLoading(false);
-    });
-  }, []);
-
-  // Fetch Plaid Link token
-  const fetchLinkToken = async () => {
-    setLinkLoading(true);
+  const fetchAccounts = useCallback(async () => {
     try {
-      const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/create_link_token`, {
-        method: 'POST',
-        body: JSON.stringify({ userId: 1 }),
-      });
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=${userId}`);
       const text = await res.text();
       let data;
       try {
         data = JSON.parse(text);
       } catch (e) {
-        data = {};
+        console.error('Non-JSON response for accounts:', text);
+        data = [];
       }
-      setLinkToken(data.link_token || null);
+      setAccounts(Array.isArray(data) ? data : []);
     } catch (err) {
-      setLinkToken(null);
+      console.error('Error fetching accounts:', err);
+      setAccounts([]);
+    }
+  }, [userId]);
+
+  const fetchTransactions = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=${userId}`);
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('Non-JSON response for transactions:', text);
+        data = [];
+      }
+      setTransactions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+      setTransactions([]);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    Promise.all([fetchAccounts(), fetchTransactions()]).finally(() => {
+      setLoading(false);
+    });
+  }, [fetchAccounts, fetchTransactions]);
+
+  // --- FIX: The usePlaidLink hook is now the correct one ---
+  const { open, ready } = usePlaidLink({
+    tokenConfig: {
+      token: linkToken,
+    },
+    onSuccess: async (success) => {
+      try {
+        await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ public_token: success.publicToken, userId }),
+        });
+        Alert.alert('Success!', 'Your account has been linked.');
+        setLinkToken(null); // Reset token after use
+        fetchAccounts(); // Refresh accounts
+      } catch (exchangeErr) {
+        Alert.alert('Error', 'Could not complete account linking.');
+      }
+    },
+    onExit: (exit) => {
+      console.log('Plaid Link exited.');
+      setLinkToken(null); // Reset token on exit
+    }
+  });
+
+  // --- FIX: Logic to open Plaid ---
+  const openPlaidLink = useCallback(async () => {
+    setLinkLoading(true);
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/create_link_token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (data && data.link_token) {
+        setLinkToken(data.link_token);
+      } else {
+        throw new Error(data.error || 'Failed to retrieve Plaid link token.');
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message);
     } finally {
       setLinkLoading(false);
     }
-  };
+  }, [userId]);
 
-  // Plaid Link hook
-  const { open, ready } = usePlaidLink({
-    token: linkToken || '',
-    onSuccess: async (publicToken, metadata) => {
-      // Exchange public token
-      await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
-        method: 'POST',
-        body: JSON.stringify({ public_token: publicToken, userId: 1 }),
-      });
-      // Refresh accounts
-      fetchAccounts();
-    },
-    onExit: () => {},
-  });
+  useEffect(() => {
+    // This effect will automatically open Plaid once the token is fetched and the hook is ready.
+    if (linkToken && ready) {
+      open();
+    }
+  }, [linkToken, ready, open]);
 
   if (loading) {
     return (
@@ -182,7 +204,7 @@ export default function AccountsScreen() {
               <TouchableOpacity
                 style={styles.linkAccountBtn}
                 onPress={() => {
-                  if (!linkToken) fetchLinkToken();
+                  if (!linkToken) openPlaidLink();
                   else open();
                 }}
                 activeOpacity={0.85}

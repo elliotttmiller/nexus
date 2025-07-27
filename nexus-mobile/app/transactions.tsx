@@ -6,6 +6,7 @@ import { BACKGROUND, TEXT, PRIMARY, SUBTLE, BORDER } from '../src/constants/colo
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import BackArrowHeader from '../src/components/BackArrowHeader';
+import { useAuth } from '../src/context/AuthContext';
 
 export default function TransactionsScreen() {
   const [transactions, setTransactions] = useState([]);
@@ -13,11 +14,13 @@ export default function TransactionsScreen() {
   const [loading, setLoading] = useState({ transactions: true, payments: true });
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
+  const userId = user?.id || 1;
 
   useEffect(() => {
     // Load transactions
     setLoading(prev => ({ ...prev, transactions: true }));
-    fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=1`)
+    fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=${userId}`)
       .then(res => res.json())
       .then(data => setTransactions(data))
       .catch(() => setTransactions([]))
@@ -25,7 +28,7 @@ export default function TransactionsScreen() {
 
     // Load payment history
     setLoading(prev => ({ ...prev, payments: true }));
-    fetchWithAuth(`${API_BASE_URL}/api/interestkiller/payment-history?userId=1`)
+    fetchWithAuth(`${API_BASE_URL}/api/interestkiller/payment-history?userId=${userId}`)
       .then(async (res) => {
         if (!res.ok) {
           const error = await res.json().catch(() => ({}));
