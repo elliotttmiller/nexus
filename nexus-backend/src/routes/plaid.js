@@ -379,4 +379,106 @@ router.post('/add-mock-cards', async (req, res) => {
   }
 });
 
+// Clear all accounts endpoint
+router.post('/clear-accounts', async (req, res) => {
+  try {
+    console.log('🗑️ Clearing all accounts...');
+    
+    const deletedAccounts = await Account.destroy({
+      where: { user_id: 1 }
+    });
+    
+    console.log(`✅ Deleted ${deletedAccounts} accounts`);
+    
+    res.json({
+      success: true,
+      message: `Successfully cleared ${deletedAccounts} accounts`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error clearing accounts:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Clear all cards endpoint
+router.post('/clear-cards', async (req, res) => {
+  try {
+    console.log('🗑️ Clearing all cards...');
+    
+    const deletedCards = await Card.destroy({
+      where: { user_id: 1 }
+    });
+    
+    console.log(`✅ Deleted ${deletedCards} cards`);
+    
+    res.json({
+      success: true,
+      message: `Successfully cleared ${deletedCards} cards`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error clearing cards:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Clear all transactions endpoint
+router.post('/clear-transactions', async (req, res) => {
+  try {
+    console.log('🗑️ Clearing all transactions...');
+    
+    const deletedTransactions = await Transaction.destroy({
+      where: { user_id: 1 }
+    });
+    
+    console.log(`✅ Deleted ${deletedTransactions} transactions`);
+    
+    res.json({
+      success: true,
+      message: `Successfully cleared ${deletedTransactions} transactions`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error clearing transactions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Clear all data endpoint (comprehensive)
+router.post('/clear-all-data', async (req, res) => {
+  try {
+    console.log('🧹 Clearing all data for fresh start...');
+    
+    const [deletedAccounts, deletedCards, deletedTransactions] = await Promise.all([
+      Account.destroy({ where: { user_id: 1 } }),
+      Card.destroy({ where: { user_id: 1 } }),
+      Transaction.destroy({ where: { user_id: 1 } })
+    ]);
+    
+    console.log(`✅ Deleted ${deletedAccounts} accounts, ${deletedCards} cards, ${deletedTransactions} transactions`);
+    
+    res.json({
+      success: true,
+      message: `Successfully cleared all data: ${deletedAccounts} accounts, ${deletedCards} cards, ${deletedTransactions} transactions`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error clearing all data:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router; 
