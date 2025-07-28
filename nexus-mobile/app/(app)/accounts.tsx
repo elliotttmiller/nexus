@@ -145,22 +145,28 @@ export default function AccountsScreen() {
   // --- Loading and Error States ---
   if (loading) {
     return (
-      <View style={styles.fullscreenCenter}>
-        <ActivityIndicator size="large" color={PRIMARY} />
-        <Text style={styles.loadingText}>Loading your financial data...</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <BackArrowHeader title="Accounts" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={PRIMARY} />
+          <Text style={styles.loadingText}>Loading your financial data...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.fullscreenCenter}>
-        <Text style={styles.errorTitle}>Error Loading Data</Text>
-        <Text style={styles.errorMessage}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => router.replace('/')}>
-          <Text style={styles.retryButtonText}>Go to Home / Retry</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <BackArrowHeader title="Accounts" />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Error Loading Data</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => router.replace('/')}>
+            <Text style={styles.retryButtonText}>Go to Home / Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -172,363 +178,408 @@ export default function AccountsScreen() {
   }).filter(tx => !filterTx || (tx.description && tx.description.toLowerCase().includes(filterTx.toLowerCase())));
 
   return (
-    <>
-      <BackArrowHeader />
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-        <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          <View style={styles.topRow}>
-            <Text style={styles.pageTitle}>Accounts</Text>
-            <View style={styles.topRowButtons}>
-              <TouchableOpacity
-                style={styles.refreshButton}
-                onPress={() => {
-                  setLoading(true);
-                  Promise.all([fetchAccountsData(), fetchTransactionsData()]).finally(() => {
-                    setLoading(false);
-                  });
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.refreshButtonText}>Refresh</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.payBtnCard}
-                onPress={() => router.push('/pay')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.payBtnCardText}>Pay Cards</Text>
-              </TouchableOpacity>
-            </View>
+    <SafeAreaView style={styles.container}>
+      <BackArrowHeader title="Accounts" />
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {accounts.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>No Accounts Found</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              Link your first bank account to get started
+            </Text>
+            <TouchableOpacity
+              style={styles.linkAccountBtn}
+              onPress={() => {
+                if (!linkToken) fetchLinkToken(); // Fetch token if not already fetched
+                else if (ready) open(); // Open Link only if token is ready
+                else Alert.alert('Plaid Link not ready', 'Please wait or try again.');
+              }}
+              activeOpacity={0.85}
+              disabled={linkLoading || (!linkToken && !ready)}
+            >
+              <Text style={styles.linkAccountBtnText}>
+                {linkLoading ? 'Generating Link...' : (!linkToken ? 'Link Account' : (ready ? 'Open Plaid Link' : 'Plaid Not Ready'))}
+              </Text>
+            </TouchableOpacity>
           </View>
-          
-          {accounts.length > 0 ? (
-            <ExpandableSection
-              data={accounts}
-              initialCount={5}
-              title=""
-              renderItem={(item: Account) => (
-                <View key={item.id} style={styles.accountCard}>
-                  <View style={styles.accountCardRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.accountName}>{item.name}</Text>
-                      <Text style={styles.accountNumber}>•••• {item.mask || (item.account_id ? String(item.account_id).slice(-4) : 'XXXX')}</Text> {/* Using item.account_id as fallback for mask */}
-                      <Text style={styles.accountTypeLabel}>{item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Account'}</Text>
-                    </View>
-                    <Text style={styles.accountBalance}>
-                      {formatCurrency(item.balance)}
-                    </Text>
+        ) : (
+          <ExpandableSection
+            data={accounts}
+            initialCount={5}
+            title=""
+            renderItem={(item: Account) => (
+              <View key={item.id} style={styles.accountCard}>
+                <View style={styles.accountCardRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.accountName}>{item.name}</Text>
+                    <Text style={styles.accountNumber}>•••• {item.mask || (item.account_id ? String(item.account_id).slice(-4) : 'XXXX')}</Text> {/* Using item.account_id as fallback for mask */}
+                    <Text style={styles.accountTypeLabel}>{item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Account'}</Text>
                   </View>
-                  {(item.type === 'credit' || item.type === 'loan') && typeof item.apr === 'number' && item.apr > 0 && (
-                    <View style={styles.metricsRow}>
-                      <Text style={styles.metricText}>APR: {item.apr}%</Text>
-                    </View>
-                  )}
-                  {item.type === 'credit' && typeof item.creditLimit === 'number' && item.creditLimit > 0 && (
-                    <View style={styles.healthBarRow}>
-                      {/* Ensure utilization calculation is safe */}
-                      <AccountHealthBar value={(item.balance / item.creditLimit) * 100} />
-                      <Text style={styles.healthLabel}>{((item.balance / item.creditLimit) * 100).toFixed(0)}% Util.</Text>
-                    </View>
-                  )}
+                  <Text style={styles.accountBalance}>
+                    {formatCurrency(item.balance)}
+                  </Text>
                 </View>
-              )}
-            />
-          ) : (
-            <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateText}>No accounts found. Link an account to get started.</Text>
-              <TouchableOpacity
-                style={styles.linkAccountBtn}
-                onPress={() => {
-                  if (!linkToken) fetchLinkToken(); // Fetch token if not already fetched
-                  else if (ready) open(); // Open Link only if token is ready
-                  else Alert.alert('Plaid Link not ready', 'Please wait or try again.');
-                }}
-                activeOpacity={0.85}
-                disabled={linkLoading || (!linkToken && !ready)}
-              >
-                <Text style={styles.linkAccountBtnText}>
-                  {linkLoading ? 'Generating Link...' : (!linkToken ? 'Link Account' : (ready ? 'Open Plaid Link' : 'Plaid Not Ready'))}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {/* Transactions Section */}
-          <View style={styles.transactionsSection}>
+                {(item.type === 'credit' || item.type === 'loan') && typeof item.apr === 'number' && item.apr > 0 && (
+                  <View style={styles.metricsRow}>
+                    <Text style={styles.metricText}>APR: {item.apr}%</Text>
+                  </View>
+                )}
+                {item.type === 'credit' && typeof item.creditLimit === 'number' && item.creditLimit > 0 && (
+                  <View style={styles.healthBarRow}>
+                    {/* Ensure utilization calculation is safe */}
+                    <AccountHealthBar value={(item.balance / item.creditLimit) * 100} />
+                    <Text style={styles.healthLabel}>{((item.balance / item.creditLimit) * 100).toFixed(0)}% Util.</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          />
+        )}
+        
+        {/* Pay Cards Section */}
+        {accounts.some(acc => acc.type === 'credit') && (
+          <View style={styles.payCardsSection}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Transactions</Text>
-              <View style={styles.sortFilterContainer}>
-                <TouchableOpacity style={[styles.sortBtn, sortTx === 'date' && styles.sortBtnActive]} onPress={() => setSortTx('date')}>
-                  <Text style={styles.sortBtnText}>Date</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.sortBtn, sortTx === 'amount' && styles.sortBtnActive]} onPress={() => setSortTx('amount')}>
-                  <Text style={styles.sortBtnText}>Amount</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.sectionTitle}>Pay Credit Cards</Text>
             </View>
-            {sortedTx.length > 0 ? sortedTx.slice(0, 6).map((tx) => (
-              <View key={tx.id} style={styles.transactionRow}>
-                <Text style={styles.txDesc} numberOfLines={1} ellipsizeMode="tail">{tx.name || tx.description || 'Unknown Transaction'}</Text>
-                <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>{formatCurrency(Math.abs(tx.amount))}</Text>
-                <Text style={styles.txDate}>{tx.date}</Text>
+            <TouchableOpacity 
+              style={styles.payCardsButton} 
+              onPress={() => router.push('/pay')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.payCardsButtonContent}>
+                <Text style={styles.payCardsButtonText}>Pay Cards with AI</Text>
+                <Text style={styles.payCardsButtonSubtext}>Get AI-powered payment recommendations</Text>
               </View>
-            )) : (
-              <Text style={styles.emptyStateText}>No recent transactions to display.</Text>
-            )}
-            {transactions.length > 6 && (
-              <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/transactions')} activeOpacity={0.8}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            )}
+              <Feather name="zap" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-        <BottomNavigation />
-      </SafeAreaView>
-    </>
+        )}
+        
+        {/* Transactions Section */}
+        <View style={styles.transactionsSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Transactions</Text>
+            <View style={styles.sortFilterContainer}>
+              <TouchableOpacity style={[styles.sortBtn, sortTx === 'date' && styles.sortBtnActive]} onPress={() => setSortTx('date')}>
+                <Text style={styles.sortBtnText}>Date</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.sortBtn, sortTx === 'amount' && styles.sortBtnActive]} onPress={() => setSortTx('amount')}>
+                <Text style={styles.sortBtnText}>Amount</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          {sortedTx.length > 0 ? sortedTx.slice(0, 6).map((tx) => (
+            <View key={tx.id} style={styles.transactionRow}>
+              <Text style={styles.txDesc} numberOfLines={1} ellipsizeMode="tail">{tx.name || tx.description || 'Unknown Transaction'}</Text>
+              <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>{formatCurrency(Math.abs(tx.amount))}</Text>
+              <Text style={styles.txDate}>{tx.date}</Text>
+            </View>
+          )) : (
+            <Text style={styles.emptyStateText}>No recent transactions to display.</Text>
+          )}
+          {transactions.length > 6 && (
+            <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/transactions')} activeOpacity={0.8}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
+      <BottomNavigation />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollViewContent: {
-    padding: 16,
-    paddingBottom: 80, // Space for bottom navigation
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
   },
-  fullscreenCenter: {
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
   loadingText: {
-    marginTop: 10,
-    color: TEXT,
+    marginTop: 16,
     fontSize: 16,
+    color: TEXT,
   },
-  errorTitle: {
-    color: 'red',
-    fontWeight: 'bold',
-    fontSize: 20,
-    marginBottom: 10,
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#dc3545',
+    textAlign: 'center',
+    marginBottom: 16,
   },
   errorMessage: {
-    color: TEXT,
+    fontSize: 14,
+    color: '#6c757d',
     textAlign: 'center',
-    fontSize: 15,
-    marginHorizontal: 20,
+    marginBottom: 24,
   },
   retryButton: {
-    marginTop: 20,
     backgroundColor: PRIMARY,
+    paddingHorizontal: 24,
     paddingVertical: 12,
-    paddingHorizontal: 20,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: 'white',
     fontSize: 16,
+    fontWeight: '600',
   },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingVertical: 64,
   },
-  pageTitle: {
-    fontSize: 28,
+  emptyStateTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: PRIMARY,
+    color: TEXT,
+    marginBottom: 8,
   },
-  payBtnCard: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-  },
-  payBtnCardText: {
-    color: '#fff',
+  emptyStateSubtitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: '#6c757d',
+    textAlign: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 32,
   },
-  accountCard: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
+  linkAccountBtn: {
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  linkAccountBtnText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  accountsContainer: {
+    paddingVertical: 16,
+  },
+  accountRight: {
+    alignItems: 'flex-end',
+  },
+  accountBalance: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: TEXT,
+    marginBottom: 4,
+  },
+  accountDetails: {
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: '#6c757d',
+  },
+  balanceValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TEXT,
+  },
+  accountCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   accountCardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   accountName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: PRIMARY,
+    color: TEXT,
   },
   accountNumber: {
     fontSize: 14,
-    color: '#666',
+    color: '#6c757d',
     marginTop: 2,
   },
   accountTypeLabel: {
-    fontSize: 12,
-    color: '#888',
+    fontSize: 14,
+    color: '#6c757d',
     marginTop: 2,
-  },
-  accountBalance: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: PRIMARY,
   },
   metricsRow: {
     flexDirection: 'row',
-    marginTop: 5,
-    gap: 12, // Added gap for spacing
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
   },
   metricText: {
     fontSize: 14,
-    color: PRIMARY,
-    fontWeight: 'bold',
+    color: '#6c757d',
   },
   healthBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5,
-    gap: 8, // Added gap for spacing
+    marginTop: 8,
   },
   healthLabel: {
     fontSize: 12,
-    color: PRIMARY,
-    marginLeft: 5,
+    color: '#6c757d',
+    marginLeft: 8,
   },
   transactionsSection: {
-    marginTop: 20,
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    marginTop: 24,
+    backgroundColor: 'white',
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 18,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 1,
+    elevation: 2,
   },
-  sectionHeaderRow: { // New style for header with sort buttons
+  sectionHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  sortFilterContainer: {
-    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: PRIMARY,
-    marginRight: 10, // Added margin
+    color: TEXT,
+  },
+  sortFilterContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#e9ecef',
+    borderRadius: 20,
+    padding: 4,
   },
   sortBtn: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#eee',
-    marginLeft: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
   },
-  sortBtnActive: { // Style for active sort button
-    backgroundColor: PRIMARY + '22',
-    borderColor: PRIMARY,
-    borderWidth: 1,
+  sortBtnActive: {
+    backgroundColor: PRIMARY,
+    color: 'white',
   },
   sortBtnText: {
     fontSize: 14,
-    color: PRIMARY,
-    fontWeight: 'bold',
+    color: '#6c757d',
   },
   transactionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   txDesc: {
     flex: 1,
     fontSize: 16,
-    color: '#333', // Adjusted color for better contrast
+    color: TEXT,
+    marginRight: 10,
   },
   txAmount: {
     fontSize: 16,
-    fontWeight: 'bold',
-    marginHorizontal: 8,
+    fontWeight: '600',
   },
   txDate: {
-    fontSize: 13, // Slightly smaller for subtlety
-    color: '#888',
-    minWidth: 80,
-    textAlign: 'right',
+    fontSize: 12,
+    color: '#6c757d',
+    marginLeft: 10,
   },
   viewAllBtn: {
-    marginTop: 15,
-    alignItems: 'center',
-    alignSelf: 'flex-start', // Adjusted for better alignment
-    paddingVertical: 4,
-    paddingHorizontal: 14,
+    marginTop: 16,
+    alignSelf: 'center',
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: PRIMARY + '11',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
   },
   viewAllText: {
-    color: PRIMARY,
+    color: 'white',
+    fontSize: 16,
     fontWeight: '600',
-    fontSize: 14,
-  },
-  emptyStateContainer: {
-    alignItems: 'center',
-    marginTop: 48,
-    marginBottom: 48, // Added for better spacing if no accounts
   },
   emptyStateText: {
-    fontSize: 18,
-    color: '#555',
+    fontSize: 16,
+    color: '#6c757d',
     textAlign: 'center',
-    marginBottom: 20,
+    marginTop: 16,
   },
-  linkAccountBtn: {
+  payCardsSection: {
+    marginTop: 24,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  payCardsButton: {
     backgroundColor: PRIMARY,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
+    borderRadius: 12,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  linkAccountBtnText: {
-    color: '#fff',
+  payCardsButtonContent: {
+    flex: 1,
+  },
+  payCardsButtonText: {
+    color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 4,
   },
-  topRowButtons: {
-    flexDirection: 'row',
-    gap: 10, // Added gap between buttons
-  },
-  refreshButton: {
-    backgroundColor: '#eee',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  refreshButtonText: {
+  payCardsButtonSubtext: {
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
-    color: PRIMARY,
-    fontWeight: 'bold',
+    fontWeight: '500',
   },
 }); 

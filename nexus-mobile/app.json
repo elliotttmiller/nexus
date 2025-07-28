@@ -47,7 +47,8 @@
     "extra": {
       "eas": {
         "projectId": "bc93e57c-3aa9-43b4-9e55-35296d034b69"
-      }
+      },
+      "API_BASE_URL": "https://nexus-production-2e34.up.railway.app"
     },
     "owner": "nazreid"
   }
