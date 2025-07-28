@@ -274,7 +274,7 @@ router.post('/add-mock-cards', async (req, res) => {
     const mockCards = [
       {
         user_id: 1,
-        account_id: 1,
+        account_id: 101, // Changed from 1 to avoid conflicts
         card_name: 'Chase Sapphire Preferred',
         apr: 21.49,
         balance: 5000.00,
@@ -288,7 +288,7 @@ router.post('/add-mock-cards', async (req, res) => {
       },
       {
         user_id: 1,
-        account_id: 2,
+        account_id: 102, // Changed from 2
         card_name: 'American Express Gold',
         apr: 18.99,
         balance: 3000.00,
@@ -302,7 +302,7 @@ router.post('/add-mock-cards', async (req, res) => {
       },
       {
         user_id: 1,
-        account_id: 3,
+        account_id: 103, // Changed from 3
         card_name: 'Citi Double Cash',
         apr: 22.99,
         balance: 7500.00,
@@ -316,7 +316,7 @@ router.post('/add-mock-cards', async (req, res) => {
       },
       {
         user_id: 1,
-        account_id: 4,
+        account_id: 104, // Changed from 4
         card_name: 'Discover it Cash Back',
         apr: 16.99,
         balance: 1200.00,
@@ -334,17 +334,33 @@ router.post('/add-mock-cards', async (req, res) => {
     
     for (const cardData of mockCards) {
       try {
-        const card = await Card.create(cardData);
-        createdCards.push(card);
-        console.log(`✅ Added: ${card.card_name} - $${card.balance} balance, ${card.apr}% APR`);
+        // First, try to find existing card with same account_id
+        const existingCard = await Card.findOne({ 
+          where: { 
+            user_id: cardData.user_id, 
+            account_id: cardData.account_id 
+          } 
+        });
+        
+        if (existingCard) {
+          console.log(`⚠️ Card ${cardData.card_name} already exists, updating...`);
+          await existingCard.update(cardData);
+          createdCards.push(existingCard);
+        } else {
+          console.log(`✅ Creating new card: ${cardData.card_name}`);
+          const card = await Card.create(cardData);
+          createdCards.push(card);
+        }
+        
+        console.log(`✅ Added/Updated: ${cardData.card_name} - $${cardData.balance} balance, ${cardData.apr}% APR`);
       } catch (error) {
-        console.log(`⚠️ Card ${cardData.card_name} might already exist: ${error.message}`);
+        console.log(`❌ Error with ${cardData.card_name}: ${error.message}`);
       }
     }
 
     res.json({
       success: true,
-      message: `Successfully added ${createdCards.length} mock credit cards`,
+      message: `Successfully added/updated ${createdCards.length} mock credit cards`,
       cards: createdCards.map(card => ({
         id: card.id,
         name: card.card_name,
