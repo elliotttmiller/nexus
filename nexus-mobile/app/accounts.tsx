@@ -236,6 +236,26 @@ export default function AccountsScreen() {
           />
         )}
         
+        {/* Pay Cards Section */}
+        {accounts.some(acc => acc.type === 'credit') && (
+          <View style={styles.payCardsSection}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Pay Credit Cards</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.payCardsButton} 
+              onPress={() => router.push('/pay')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.payCardsButtonContent}>
+                <Text style={styles.payCardsButtonText}>Pay Cards with AI</Text>
+                <Text style={styles.payCardsButtonSubtext}>Get AI-powered payment recommendations</Text>
+              </View>
+              <Feather name="zap" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
+        
         {/* Transactions Section */}
         <View style={styles.transactionsSection}>
           <View style={styles.sectionHeaderRow}>
@@ -523,5 +543,43 @@ const styles = StyleSheet.create({
     color: '#6c757d',
     textAlign: 'center',
     marginTop: 16,
+  },
+  payCardsSection: {
+    marginTop: 24,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  payCardsButton: {
+    backgroundColor: PRIMARY,
+    borderRadius: 12,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  payCardsButtonContent: {
+    flex: 1,
+  },
+  payCardsButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  payCardsButtonSubtext: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    fontWeight: '500',
   },
 }); 
