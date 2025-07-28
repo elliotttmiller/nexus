@@ -93,13 +93,12 @@ export default function PayScreen() {
     setLoading(true);
     const accounts = cards.filter(c => selected.includes(c.id));
     try {
-      const res = await fetchWithAuth(`${API_BASE_URL}/api/pay`, {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/pay/ai-recommendation`, {
         method: 'POST',
         body: JSON.stringify({
           userId: 1,
           accounts,
-          payment_amount: Number(amount),
-          optimization_goal: goal
+          payment_amount: Number(amount)
         })
       });
       const data = await res.json();
