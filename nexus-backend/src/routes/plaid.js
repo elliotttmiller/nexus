@@ -336,7 +336,281 @@ router.get('/transactions', async (req, res) => {
   if (!userId) return res.status(400).json({ error: 'userId required' });
   try {
     const account = await Account.findOne({ where: { user_id: userId } });
-    if (!account) return res.json([]); // Return empty array if no account found
+    if (!account) {
+      console.log('[Plaid] No account found, returning mock transactions');
+      
+      // Return mock transactions when no real account is found
+      const mockTransactions = [
+        {
+          id: 'mock_tx_1',
+          account_id: 'mock_chase_1',
+          amount: 89.50,
+          date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          name: 'Amazon.com',
+          merchant_name: 'Amazon.com',
+          category: ['shopping', 'online'],
+          category_id: '22016000',
+          pending: false,
+          account_owner: null,
+          iso_currency_code: 'USD',
+          unofficial_currency_code: null,
+          payment_channel: 'online',
+          payment_processor_id: null,
+          reference_number: null,
+          by_order_of: null,
+          payee: null,
+          payer: null,
+          type: 'special',
+          subcategory: ['online'],
+          check_number: null,
+          date_transacted: null,
+          location: {
+            address: null,
+            city: null,
+            region: null,
+            country: null,
+            lat: null,
+            lon: null,
+            store_number: null,
+            postal_code: null
+          },
+          payment_meta: {
+            by_order_of: null,
+            payee: null,
+            payer: null,
+            payment_method: null,
+            payment_processor: null,
+            ppd_id: null,
+            reason: null,
+            reference_number: null
+          }
+        },
+        {
+          id: 'mock_tx_2',
+          account_id: 'mock_amex_1',
+          amount: 156.78,
+          date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          name: 'Whole Foods Market',
+          merchant_name: 'Whole Foods Market',
+          category: ['food_and_drink', 'groceries'],
+          category_id: '22009000',
+          pending: false,
+          account_owner: null,
+          iso_currency_code: 'USD',
+          unofficial_currency_code: null,
+          payment_channel: 'in store',
+          payment_processor_id: null,
+          reference_number: null,
+          by_order_of: null,
+          payee: null,
+          payer: null,
+          type: 'place',
+          subcategory: ['groceries'],
+          check_number: null,
+          date_transacted: null,
+          location: {
+            address: '123 Main St',
+            city: 'New York',
+            region: 'NY',
+            country: 'US',
+            lat: 40.7128,
+            lon: -74.0060,
+            store_number: '1234',
+            postal_code: '10001'
+          },
+          payment_meta: {
+            by_order_of: null,
+            payee: null,
+            payer: null,
+            payment_method: null,
+            payment_processor: null,
+            ppd_id: null,
+            reason: null,
+            reference_number: null
+          }
+        },
+        {
+          id: 'mock_tx_3',
+          account_id: 'mock_citi_1',
+          amount: 45.20,
+          date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          name: 'Shell Gas Station',
+          merchant_name: 'Shell',
+          category: ['food_and_drink', 'gas_stations'],
+          category_id: '22009000',
+          pending: false,
+          account_owner: null,
+          iso_currency_code: 'USD',
+          unofficial_currency_code: null,
+          payment_channel: 'in store',
+          payment_processor_id: null,
+          reference_number: null,
+          by_order_of: null,
+          payee: null,
+          payer: null,
+          type: 'place',
+          subcategory: ['gas_stations'],
+          check_number: null,
+          date_transacted: null,
+          location: {
+            address: '456 Oak Ave',
+            city: 'New York',
+            region: 'NY',
+            country: 'US',
+            lat: 40.7589,
+            lon: -73.9851,
+            store_number: '5678',
+            postal_code: '10002'
+          },
+          payment_meta: {
+            by_order_of: null,
+            payee: null,
+            payer: null,
+            payment_method: null,
+            payment_processor: null,
+            ppd_id: null,
+            reason: null,
+            reference_number: null
+          }
+        },
+        {
+          id: 'mock_tx_4',
+          account_id: 'mock_discover_1',
+          amount: 234.99,
+          date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          name: 'Target',
+          merchant_name: 'Target',
+          category: ['shopping', 'department_stores'],
+          category_id: '22016000',
+          pending: false,
+          account_owner: null,
+          iso_currency_code: 'USD',
+          unofficial_currency_code: null,
+          payment_channel: 'in store',
+          payment_processor_id: null,
+          reference_number: null,
+          by_order_of: null,
+          payee: null,
+          payer: null,
+          type: 'place',
+          subcategory: ['department_stores'],
+          check_number: null,
+          date_transacted: null,
+          location: {
+            address: '789 Pine St',
+            city: 'New York',
+            region: 'NY',
+            country: 'US',
+            lat: 40.7505,
+            lon: -73.9934,
+            store_number: '9012',
+            postal_code: '10003'
+          },
+          payment_meta: {
+            by_order_of: null,
+            payee: null,
+            payer: null,
+            payment_method: null,
+            payment_processor: null,
+            ppd_id: null,
+            reason: null,
+            reference_number: null
+          }
+        },
+        {
+          id: 'mock_tx_5',
+          account_id: 'mock_chase_1',
+          amount: 67.89,
+          date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          name: 'Starbucks',
+          merchant_name: 'Starbucks',
+          category: ['food_and_drink', 'restaurants'],
+          category_id: '22009000',
+          pending: false,
+          account_owner: null,
+          iso_currency_code: 'USD',
+          unofficial_currency_code: null,
+          payment_channel: 'in store',
+          payment_processor_id: null,
+          reference_number: null,
+          by_order_of: null,
+          payee: null,
+          payer: null,
+          type: 'place',
+          subcategory: ['restaurants'],
+          check_number: null,
+          date_transacted: null,
+          location: {
+            address: '321 Coffee Blvd',
+            city: 'New York',
+            region: 'NY',
+            country: 'US',
+            lat: 40.7614,
+            lon: -73.9776,
+            store_number: '3456',
+            postal_code: '10004'
+          },
+          payment_meta: {
+            by_order_of: null,
+            payee: null,
+            payer: null,
+            payment_method: null,
+            payment_processor: null,
+            ppd_id: null,
+            reason: null,
+            reference_number: null
+          }
+        },
+        {
+          id: 'mock_tx_6',
+          account_id: 'mock_amex_1',
+          amount: 189.99,
+          date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          name: 'Uber',
+          merchant_name: 'Uber',
+          category: ['travel', 'taxi'],
+          category_id: '22016000',
+          pending: false,
+          account_owner: null,
+          iso_currency_code: 'USD',
+          unofficial_currency_code: null,
+          payment_channel: 'online',
+          payment_processor_id: null,
+          reference_number: null,
+          by_order_of: null,
+          payee: null,
+          payer: null,
+          type: 'special',
+          subcategory: ['taxi'],
+          check_number: null,
+          date_transacted: null,
+          location: {
+            address: null,
+            city: null,
+            region: null,
+            country: null,
+            lat: null,
+            lon: null,
+            store_number: null,
+            postal_code: null
+          },
+          payment_meta: {
+            by_order_of: null,
+            payee: null,
+            payer: null,
+            payment_method: null,
+            payment_processor: null,
+            ppd_id: null,
+            reason: null,
+            reference_number: null
+          }
+        }
+      ];
+      
+      console.log(`[Plaid] Returning ${mockTransactions.length} mock transactions`);
+      return res.json(mockTransactions);
+    }
+    
     const today = new Date();
     const start = start_date || new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()).toISOString().slice(0, 10);
     const end = end_date || today.toISOString().slice(0, 10);
