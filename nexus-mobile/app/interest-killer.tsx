@@ -28,13 +28,17 @@ export default function InterestKillerScreen() {
       const data = await res.json();
       if (res.ok && data.suggestion) {
         setSuggestion(
-          data.suggestion.map((s, i) => `${s.amount} to ${s.card} (${s.apr}% APR)`).join('\n')
+          data.suggestion.map((s: any, i: number) => `${s.amount} to ${s.card} (${s.apr}% APR)`).join('\n')
         );
       } else {
         Alert.alert('Error', data.error || 'No suggestion');
       }
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        Alert.alert('Error', err.message);
+      } else {
+        Alert.alert('Error', 'An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -51,10 +55,10 @@ export default function InterestKillerScreen() {
         keyboardType="numeric"
         placeholderTextColor="#888"
       />
-      <PrimaryButton title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} />
+      <PrimaryButton title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} style={{}} />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {suggestion ? <Text style={styles.suggestion}>{suggestion}</Text> : null}
-      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
+      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{}} />
     </View>
   );
 }

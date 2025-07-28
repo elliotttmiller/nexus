@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } fr
 import { useRouter } from 'expo-router';
 import PrimaryButton from '../../src/components/PrimaryButton';
 import BackArrowHeader from '../../src/components/BackArrowHeader';
+import BottomNavigation from '../../src/components/BottomNavigation';
 import { BACKGROUND, TEXT, SUBTLE, BORDER } from '../../src/constants/colors';
 
 export default function SettingsScreen() {
@@ -20,9 +21,9 @@ export default function SettingsScreen() {
           <View style={styles.section}><Text style={styles.sectionText}>Profile Info</Text></View>
           <View style={styles.section}><Text style={styles.sectionText}>2FA Management</Text></View>
           <View style={styles.section}><Text style={styles.sectionText}>Data Access & Privacy</Text></View>
-          <PrimaryButton title="Edit Profile" onPress={() => router.push('/profile')} />
-          <PrimaryButton title="Manage Data Access" onPress={() => router.push('/data-access')} />
-          <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
+          <PrimaryButton title="Edit Profile" onPress={() => router.push('/profile')} style={{ marginBottom: 12 }} />
+          <PrimaryButton title="Manage Data Access" onPress={() => router.push('/data-access')} style={{ marginBottom: 12 }} />
+          <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{ marginBottom: 12 }} />
         </ScrollView>
       </KeyboardAvoidingView>
       <BottomNavigation />

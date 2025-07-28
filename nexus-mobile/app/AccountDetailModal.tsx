@@ -26,12 +26,12 @@ export default function AccountDetailModal({ visible, account, onClose, onPay }:
           </View>
           <Text style={styles.balance}>${account.balance.toFixed(2)}</Text>
           <View style={styles.metricsBar}>
-            <AccountHealthBar value={account.creditHealth} />
-            <Text style={styles.healthLabel}>{account.creditHealth}%</Text>
+            <AccountHealthBar value={account.credit_health ?? 0} />
+            <Text style={styles.healthLabel}>{account.credit_health ?? '--'}%</Text>
           </View>
           <View style={styles.financialDetails}>
             <Text style={styles.detailText}>APR: {account.apr}%</Text>
-            <Text style={styles.detailText}>Monthly Interest: ${account.monthlyInterest.toFixed(2)}</Text>
+            <Text style={styles.detailText}>Monthly Interest: ${account.monthly_interest?.toFixed(2) ?? '--'}</Text>
           </View>
           <GreenButton title="Pay Card" onPress={() => onPay(account)} style={styles.payBtn} />
         </View>

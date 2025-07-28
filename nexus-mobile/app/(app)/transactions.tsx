@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, ScrollView, Modal, Pressable, Alert } from 'react-native';
 import { API_BASE_URL } from '../../src/constants/api';
 import { fetchWithAuth } from '../../src/constants/fetchWithAuth';
 import { BACKGROUND, TEXT, PRIMARY, SUBTLE, BORDER } from '../../src/constants/colors';
@@ -7,14 +7,17 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import BackArrowHeader from '../../src/components/BackArrowHeader';
 import { useAuth } from '../../src/context/AuthContext';
+import BottomNavigation from '../../src/components/BottomNavigation';
+import { Transaction } from '../../src/types';
 
 export default function TransactionsScreen() {
-  const [transactions, setTransactions] = useState([]);
-  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState({ transactions: true, payments: true });
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const userId = user?.id || 1;
 
   useEffect(() => {
@@ -47,12 +50,12 @@ export default function TransactionsScreen() {
       .finally(() => setLoading(prev => ({ ...prev, payments: false })));
   }, []);
 
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  const renderPaymentItem = ({ item }) => {
+  const renderPaymentItem = ({ item }: { item: Transaction }) => {
     // Ensure we have valid data
     if (!item) return null;
     
@@ -61,7 +64,7 @@ export default function TransactionsScreen() {
         <View style={styles.paymentHeader}>
           <Text style={styles.paymentAmount}>${(item.amount || 0).toFixed(2)}</Text>
           <Text style={styles.paymentDate}>
-            {item.timestamp ? formatDate(item.timestamp) : 'Unknown date'}
+            {item.timestamp ? formatDate(item.timestamp) : formatDate(item.date) || 'Unknown date'}
           </Text>
         </View>
         <Text style={styles.paymentStatus}>
@@ -118,7 +121,7 @@ export default function TransactionsScreen() {
             renderItem={({ item }) => (
               <View style={styles.txItem}>
                 <View style={styles.txHeader}>
-                  <Text style={styles.txName}>{item.name || item.merchant || 'Transaction'}</Text>
+                  <Text style={styles.txName}>{item.name || item.description || 'Unknown Transaction'}</Text>
                   <Text style={[styles.txAmount, { color: item.amount < 0 ? '#4CAF50' : TEXT }]}>
                     ${Math.abs(item.amount).toFixed(2)}
                   </Text>

@@ -24,8 +24,12 @@ export default function TwoFAScreen() {
       } else {
         Alert.alert('Error', data.error || '2FA verification failed');
       }
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        Alert.alert('Error', err.message);
+      } else {
+        Alert.alert('Error', 'An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }

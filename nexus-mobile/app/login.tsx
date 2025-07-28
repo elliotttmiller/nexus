@@ -39,8 +39,12 @@ export default function LoginScreen() {
         await removeRefreshToken();
         Alert.alert('Error', data.error || 'Login failed');
       }
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        Alert.alert('Error', err.message);
+      } else {
+        Alert.alert('Error', 'An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -70,8 +74,8 @@ export default function LoginScreen() {
           onChangeText={setPassword}
           secureTextEntry
         />
-        <PrimaryButton title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} />
-        <PrimaryButton title="Register" onPress={() => router.replace('/register')} />
+        <PrimaryButton title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} style={{}} />
+        <PrimaryButton title="Register" onPress={() => router.replace('/register')} style={{}} />
       </View>
     </>
   );

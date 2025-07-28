@@ -34,8 +34,12 @@ export default function RegisterScreen() {
       } else {
         Alert.alert('Error', data.error || 'Registration failed');
       }
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        Alert.alert('Error', err.message);
+      } else {
+        Alert.alert('Error', 'An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -63,8 +67,8 @@ export default function RegisterScreen() {
           onChangeText={setPassword}
           secureTextEntry
         />
-        <PrimaryButton title={loading ? 'Registering...' : 'Register'} onPress={handleRegister} disabled={loading} />
-        <PrimaryButton title="Back to Login" onPress={() => router.replace('/login')} />
+        <PrimaryButton title={loading ? 'Registering...' : 'Register'} onPress={handleRegister} disabled={loading} style={{}} />
+        <PrimaryButton title="Back to Login" onPress={() => router.replace('/login')} style={{}} />
       </View>
     </>
   );

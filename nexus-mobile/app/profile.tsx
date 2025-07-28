@@ -27,8 +27,12 @@ export default function ProfileScreen() {
       } else {
         Alert.alert('Error', data.error || 'Failed to fetch profile');
       }
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        Alert.alert('Error', err.message);
+      } else {
+        Alert.alert('Error', 'An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -52,8 +56,12 @@ export default function ProfileScreen() {
       } else {
         Alert.alert('Error', data.error || 'Update failed');
       }
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        Alert.alert('Error', err.message);
+      } else {
+        Alert.alert('Error', 'An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -81,8 +89,8 @@ export default function ProfileScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
           />
-          <PrimaryButton title={loading ? 'Saving...' : 'Save'} onPress={updateProfile} disabled={loading} />
-          <PrimaryButton title="Back to Settings" onPress={() => router.push('/settings')} />
+          <PrimaryButton title={loading ? 'Saving...' : 'Save'} onPress={updateProfile} disabled={loading} style={{}} />
+          <PrimaryButton title="Back to Settings" onPress={() => router.push('/settings')} style={{}} />
         </ScrollView>
       </KeyboardAvoidingView>
     </>

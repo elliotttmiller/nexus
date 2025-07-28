@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, SafeAreaView, TouchableOpacity, Platform, ScrollView } from 'react-native';
-import { API_BASE_URL } from '../src/constants/api';
+import { View, Text, StyleSheet, FlatList, Alert, SafeAreaView, TouchableOpacity, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { API_BASE_URL } from '../../src/constants/api';
 import { useRouter } from 'expo-router';
-import { fetchWithAuth } from '../src/constants/fetchWithAuth';
-import PrimaryButton from '../src/components/PrimaryButton';
-import { BACKGROUND, TEXT, PRIMARY, SUBTLE } from '../src/constants/colors';
-import BackArrowHeader from '../src/components/BackArrowHeader';
+import { fetchWithAuth } from '../../src/constants/fetchWithAuth';
+import PrimaryButton from '../../src/components/PrimaryButton';
+import { BACKGROUND, TEXT, PRIMARY, SUBTLE } from '../../src/constants/colors';
+import BackArrowHeader from '../../src/components/BackArrowHeader';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
+import { Account } from '../../src/types';
 
 export default function DataAccessScreen() {
-  const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -24,14 +25,18 @@ export default function DataAccessScreen() {
       }
       const data = await res.json();
       setAccounts(data);
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        Alert.alert('Error', err.message);
+      } else {
+        Alert.alert('Error', 'An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const revokeAccess = async (accountId) => {
+  const revokeAccess = async (accountId: string) => {
     setLoading(true);
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/users/data-access/${accountId}`, {
@@ -49,8 +54,12 @@ export default function DataAccessScreen() {
       } else {
         Alert.alert('Error', data.error || 'Failed to revoke access');
       }
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        Alert.alert('Error', err.message);
+      } else {
+        Alert.alert('Error', 'An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -77,8 +86,12 @@ export default function DataAccessScreen() {
             const data = await res.json();
             Alert.alert('Error', data.error || 'Failed to reset all data');
           }
-        } catch (err) {
-          Alert.alert('Error', err.message);
+        } catch (err: unknown) {
+          if (err instanceof Error) {
+            Alert.alert('Error', err.message);
+          } else {
+            Alert.alert('Error', 'An unknown error occurred.');
+          }
         } finally {
           setLoading(false);
         }
@@ -96,7 +109,7 @@ export default function DataAccessScreen() {
       <SafeAreaViewContext style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           <View style={styles.topBarRow}>
-            <Text style={styles.titleSmall}>Data Access & Privacy</Text>
+            <Text style={styles.title}>Data Access & Privacy</Text>
             <View style={{ width: 38 }} /> {/* Spacer for symmetry if needed */}
           </View>
           <View style={styles.accountsContainer}>
@@ -111,7 +124,7 @@ export default function DataAccessScreen() {
               accounts.map((item) => (
                 <View key={item.id} style={styles.accountItem}>
                   <Text style={styles.accountName}>{item.institution || 'Account'}</Text>
-                  <PrimaryButton title="Revoke Access" onPress={() => revokeAccess(item.id)} />
+                  <PrimaryButton title="Revoke Access" onPress={() => revokeAccess(item.id)} style={{ marginTop: 12 }} />
                 </View>
               ))
             )}
@@ -145,13 +158,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 12,
     paddingHorizontal: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: PRIMARY,
-    marginTop: 2,
-    marginBottom: 0,
   },
   revokeAllBtn: {
     paddingVertical: 4,
@@ -196,22 +202,6 @@ const styles = StyleSheet.create({
     height: 38,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  titleCol: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 0,
-    minHeight: 44,
-  },
-  title: {
-    textAlign: 'center',
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: PRIMARY,
-    marginTop: 0,
-    marginBottom: 0,
-    letterSpacing: 0.1,
   },
   accountsContainer: {
     position: 'relative',

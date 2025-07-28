@@ -32,8 +32,12 @@ export default function CardRankScreen() {
       } else {
         Alert.alert('Error', data.error || 'No recommendation');
       }
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        Alert.alert('Error', err.message);
+      } else {
+        Alert.alert('Error', 'An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -56,10 +60,10 @@ export default function CardRankScreen() {
         onChangeText={setCategory}
         placeholderTextColor="#888"
       />
-      <PrimaryButton title={loading ? 'Loading...' : 'Get Recommendation'} onPress={handleRecommend} disabled={loading} />
+      <PrimaryButton title={loading ? 'Loading...' : 'Get Recommendation'} onPress={handleRecommend} disabled={loading} style={{}} />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {recommendation ? <Text style={styles.recommendation}>{recommendation}</Text> : null}
-      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} />
+      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{}} />
     </View>
   );
 }

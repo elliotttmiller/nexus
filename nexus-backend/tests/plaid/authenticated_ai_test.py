@@ -121,29 +121,23 @@ def test_ai_recommendation_with_auth(token, user_id):
 
 def test_card_rank_with_auth(token, user_id):
     """Test card ranking with authentication using real user data"""
-    print("🏆 Testing Card Rank with Authentication...")
-    
-    # First, get the user's actual accounts to see if they have cards
+    print("\n🏆 Testing Card Rank with Authentication...")
     print("📊 Fetching user's actual accounts for card ranking...")
     try:
         headers = {"Authorization": f"Bearer {token}"}
         accounts_response = requests.get(f"{API_BASE_URL}/plaid/accounts?userId={user_id}", headers=headers)
-        
+        print(f"[DEBUG] /plaid/accounts status: {accounts_response.status_code}")
+        print(f"[DEBUG] /plaid/accounts response: {accounts_response.text}")
         if accounts_response.status_code == 200:
             accounts = accounts_response.json()
             print(f"✅ Retrieved {len(accounts)} accounts from user's data")
-            
-            # Show all account details to see what we actually have
             print(f"📊 All accounts details:")
             for i, acc in enumerate(accounts):
                 print(f"  Account {i+1}: {acc.get('name', 'Unknown')} - Type: {acc.get('type', 'unknown')} - Subtype: {acc.get('subtype', 'unknown')}")
-            
-            # Check if user has any credit cards - check both type and subtype
             credit_cards = [acc for acc in accounts if acc.get('type') == 'credit' or acc.get('subtype') == 'credit card']
-            print(f"💳 Found {len(credit_cards)} credit cards")
-            
+            print(f"💳 Found {len(credit_cards)} credit cards (type/subtype filter)")
+            print(f"[DEBUG] Credit card details: {json.dumps(credit_cards, indent=2)}")
             if len(credit_cards) > 0:
-                # Use real data for card ranking
                 request_data = {
                     "userId": user_id,
                     "merchant": "Amazon",
@@ -152,17 +146,14 @@ def test_card_rank_with_auth(token, user_id):
                     "location": "Online",
                     "primaryGoal": "maximize_rewards"
                 }
-                
                 print(f"📤 Using real user data for card ranking")
                 print(f"📤 Request data: {json.dumps(request_data, indent=2)}")
                 print(f"🌐 Making POST request to: {API_BASE_URL}/cardrank/recommend")
-                
-                r = requests.post(f"{API_BASE_URL}/cardrank/recommend", 
-                                 json=request_data, headers=headers)
-                
+                r = requests.post(f"{API_BASE_URL}/cardrank/recommend", json=request_data, headers=headers)
+                print(f"[DEBUG] /cardrank/recommend status: {r.status_code}")
+                print(f"[DEBUG] /cardrank/recommend response: {r.text}")
                 print(f"📥 Response status: {r.status_code}")
                 print(f"📥 Response headers: {dict(r.headers)}")
-                
                 if r.status_code == 200:
                     data = r.json()
                     print("✅ Card ranking working")
@@ -174,9 +165,9 @@ def test_card_rank_with_auth(token, user_id):
                     print(f"❌ Response headers: {dict(r.headers)}")
                     return False
             else:
-                print("⚠️ No credit cards found in user's accounts")
+                print("⚠️ No credit cards found in user's accounts (type/subtype filter)")
                 print("📊 Available account types: " + ", ".join(set([acc.get('type', 'unknown') for acc in accounts])))
-                return True  # Not a failure, just no credit cards to test
+                return True
         else:
             print(f"❌ Failed to fetch accounts: {accounts_response.status_code}")
             print(f"❌ Response text: {accounts_response.text}")
@@ -190,45 +181,36 @@ def test_card_rank_with_auth(token, user_id):
 
 def test_interest_killer_with_auth(token, user_id):
     """Test interest killer with authentication using real user data"""
-    print("💸 Testing Interest Killer with Authentication...")
-    
-    # First, get the user's actual accounts to see if they have credit cards
+    print("\n💸 Testing Interest Killer with Authentication...")
     print("📊 Fetching user's actual accounts for interest killer...")
     try:
         headers = {"Authorization": f"Bearer {token}"}
         accounts_response = requests.get(f"{API_BASE_URL}/plaid/accounts?userId={user_id}", headers=headers)
-        
+        print(f"[DEBUG] /plaid/accounts status: {accounts_response.status_code}")
+        print(f"[DEBUG] /plaid/accounts response: {accounts_response.text}")
         if accounts_response.status_code == 200:
             accounts = accounts_response.json()
             print(f"✅ Retrieved {len(accounts)} accounts from user's data")
-            
-            # Show all account details to see what we actually have
             print(f"📊 All accounts details:")
             for i, acc in enumerate(accounts):
                 print(f"  Account {i+1}: {acc.get('name', 'Unknown')} - Type: {acc.get('type', 'unknown')} - Subtype: {acc.get('subtype', 'unknown')}")
-            
-            # Check if user has any credit cards - check both type and subtype
             credit_cards = [acc for acc in accounts if acc.get('type') == 'credit' or acc.get('subtype') == 'credit card']
-            print(f"💳 Found {len(credit_cards)} credit cards")
-            
+            print(f"💳 Found {len(credit_cards)} credit cards (type/subtype filter)")
+            print(f"[DEBUG] Credit card details: {json.dumps(credit_cards, indent=2)}")
             if len(credit_cards) > 0:
-                # Use real data for interest killer
                 request_data = {
                     "userId": user_id, 
                     "amount": 500, 
                     "optimizationGoal": "minimize_interest"
                 }
-                
                 print(f"📤 Using real user data for interest killer")
                 print(f"📤 Request data: {json.dumps(request_data, indent=2)}")
                 print(f"🌐 Making POST request to: {API_BASE_URL}/interestkiller/suggest")
-                
-                r = requests.post(f"{API_BASE_URL}/interestkiller/suggest", 
-                                 json=request_data, headers=headers)
-                
+                r = requests.post(f"{API_BASE_URL}/interestkiller/suggest", json=request_data, headers=headers)
+                print(f"[DEBUG] /interestkiller/suggest status: {r.status_code}")
+                print(f"[DEBUG] /interestkiller/suggest response: {r.text}")
                 print(f"📥 Response status: {r.status_code}")
                 print(f"📥 Response headers: {dict(r.headers)}")
-                
                 if r.status_code == 200:
                     data = r.json()
                     print("✅ Interest killer working")
@@ -240,9 +222,9 @@ def test_interest_killer_with_auth(token, user_id):
                     print(f"❌ Response headers: {dict(r.headers)}")
                     return False
             else:
-                print("⚠️ No credit cards found in user's accounts")
+                print("⚠️ No credit cards found in user's accounts (type/subtype filter)")
                 print("📊 Available account types: " + ", ".join(set([acc.get('type', 'unknown') for acc in accounts])))
-                return True  # Not a failure, just no credit cards to test
+                return True
         else:
             print(f"❌ Failed to fetch accounts: {accounts_response.status_code}")
             print(f"❌ Response text: {accounts_response.text}")

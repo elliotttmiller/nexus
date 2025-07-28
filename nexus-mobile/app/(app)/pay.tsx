@@ -10,33 +10,35 @@ import AccountHealthBar from '../../src/components/AccountHealthBar';
 import { AppConfig } from '../../src/config';
 import { useAuth } from '../../src/context/AuthContext';
 import BottomNavigation from '../../src/components/BottomNavigation';
+import { Account } from '../../src/types';
 
 export default function PayScreen() {
-  const scrollViewRef = useRef(null);
-  const [cards, setCards] = useState([]);
-  const [selected, setSelected] = useState([]);
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const [cards, setCards] = useState<Account[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
   const [amount, setAmount] = useState('');
   const [goal, setGoal] = useState('MINIMIZE_INTEREST_COST');
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [fundingAccounts, setFundingAccounts] = useState([]);
+  const [fundingAccounts, setFundingAccounts] = useState<Account[]>([]);
   const [selectedFunding, setSelectedFunding] = useState('');
   const [executing, setExecuting] = useState(false);
-  const [paymentResults, setPaymentResults] = useState(null);
+  const [paymentResults, setPaymentResults] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiRecommendations, setAiRecommendations] = useState(null);
+  const [aiRecommendations, setAiRecommendations] = useState<any>(null);
   const [aiModalVisible, setAiModalVisible] = useState(false);
-  const [paymentContext, setPaymentContext] = useState(null);
+  const [paymentContext, setPaymentContext] = useState<any>(null);
   const [usingSuggested, setUsingSuggested] = useState(true);
   const router = useRouter();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const userId = user?.id || 1;
-  const [editedSplit, setEditedSplit] = useState(null);
+  const [editedSplit, setEditedSplit] = useState<any>(null);
   const [editingIndex, setEditingIndex] = useState(-1);
-  const [originalSplit, setOriginalSplit] = useState(null);
+  const [originalSplit, setOriginalSplit] = useState<any>(null);
   const [splitHighlight, setSplitHighlight] = useState(new Animated.Value(0));
-  const [splitInputValues, setSplitInputValues] = useState([]);
+  const [splitInputValues, setSplitInputValues] = useState<string[]>([]);
   const [splitExplanation, setSplitExplanation] = useState('');
   const [splitProjectedOutcome, setSplitProjectedOutcome] = useState('');
   const [splitExplainLoading, setSplitExplainLoading] = useState(false);
@@ -47,12 +49,12 @@ export default function PayScreen() {
       .then(res => res.json())
       .then(data => {
         console.log('Fetched accounts (raw):', data);
-        const creditCards = data.filter(acc => acc.type && acc.type.toLowerCase().includes('credit'));
+        const creditCards = data.filter((acc: Account) => acc.type && acc.type.toLowerCase().includes('credit'));
         console.log('Filtered credit cards:', creditCards);
         setCards(creditCards.length > 0 ? creditCards : [
           { id: 'mock1', name: 'Mock Credit Card', balance: 500, apr: 19.99, creditLimit: 2000, last4: '1234', type: 'credit' }
         ]);
-        setFundingAccounts(data.filter(acc => acc.type && !acc.type.toLowerCase().includes('credit')));
+        setFundingAccounts(data.filter((acc: Account) => acc.type && !acc.type.toLowerCase().includes('credit')));
       })
       .catch((err) => {
         console.log('Error fetching accounts:', err);
@@ -75,7 +77,7 @@ export default function PayScreen() {
       });
   }, []);
 
-  const toggleSelect = (id) => {
+  const toggleSelect = (id: string) => {
     setSelected(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
   };
 
@@ -83,7 +85,7 @@ export default function PayScreen() {
     setError('');
     setResult(null);
     if (selected.length === 0) return setError('Select at least one card.');
-    if (!amount || isNaN(amount) || Number(amount) <= 0) return setError('Enter a valid amount.');
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return setError('Enter a valid amount.');
     if (paymentContext && Number(amount) > paymentContext.maxSafePayment) {
       setError(`Payment amount exceeds your safe maximum of $${paymentContext.maxSafePayment.toFixed(2)}.`);
       Alert.alert('Payment Too High', `Your safe maximum payment is $${paymentContext.maxSafePayment.toFixed(2)}. Please enter a lower amount.`);
@@ -103,8 +105,12 @@ export default function PayScreen() {
       const data = await res.json();
       if (data.error) setError(data.error);
       else setResult(data);
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(`An error occurred: ${err.message || 'Unknown error'}`);
+      } else {
+        setError('An error occurred. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -141,7 +147,7 @@ export default function PayScreen() {
         body: JSON.stringify({
           userId: 1,
           funding_account_id: selectedFunding,
-          split: result.split.map(item => ({
+          split: result.split.map((item: any) => ({
             card_id: item.card_id,
             amount: parseFloat(item.amount) || 0
           }))
@@ -168,10 +174,10 @@ export default function PayScreen() {
             userId: 1,
             amount: parseFloat(amount),
             status: 'success',
-            cards: result.split.map(item => ({
+            cards: result.split.map((item: any) => ({
               card_id: item.card_id,
               amount: parseFloat(item.amount),
-              last4: cards.find(c => c.id === item.card_id)?.last4 || '••••'
+              last4: cards.find((c: Account) => c.id === item.card_id)?.last4 || '••••'
             }))
           })
         });
@@ -206,9 +212,12 @@ export default function PayScreen() {
         { cancelable: false }
       );
       
-    } catch (err) {
-      console.error('Payment execution error:', err);
-      setError(`Payment execution failed: ${err.message || 'Unknown error'}`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(`Payment execution failed: ${err.message || 'Unknown error'}`);
+      } else {
+        setError('Payment execution failed: Unknown error');
+      }
     } finally {
       setExecuting(false);
     }
@@ -218,28 +227,24 @@ export default function PayScreen() {
     setAiLoading(true);
     setAiRecommendations(null);
     setError('');
-    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       setError('Enter a valid amount first.');
       setAiLoading(false);
       return;
     }
     
-    let accounts = (selected.length > 0 ? cards.filter(c => selected.includes(c.id)) : cards)
-      .map(c => ({
+    let accounts = (selected.length > 0 ? cards.filter((c: Account) => selected.includes(c.id)) : cards)
+      .map((c: Account) => ({
         id: c.id || '',
         name: c.name || c.card_name || 'Card',
         balance: typeof c.balance === 'number' ? c.balance : parseFloat(c.balance) || 0,
-        apr: typeof c.apr === 'number' ? c.apr : parseFloat(c.apr) || 0,
-        creditLimit: typeof c.creditLimit === 'number'
-          ? c.creditLimit
-          : (typeof c.credit_limit === 'number'
-            ? c.credit_limit
-            : parseFloat(c.creditLimit || c.credit_limit) || 0),
+        apr: typeof c.apr === 'number' ? c.apr : (typeof c.apr === 'string' ? parseFloat(c.apr) : 0),
+        creditLimit: typeof c.creditLimit === 'number' ? c.creditLimit : (typeof c.creditLimit === 'string' ? parseFloat(c.creditLimit) : (typeof c.credit_limit === 'string' ? parseFloat(c.credit_limit) : 0)),
         promo_apr_expiry_date: c.promo_apr_expiry_date || null,
         type: c.type || 'credit'
       }));
     
-    const validAccounts = accounts.filter(acc =>
+    const validAccounts = accounts.filter((acc: Account) =>
       acc.id && typeof acc.balance === 'number' && !isNaN(acc.balance) &&
       typeof acc.apr === 'number' && !isNaN(acc.apr) &&
       typeof acc.creditLimit === 'number' && !isNaN(acc.creditLimit)
@@ -268,23 +273,27 @@ export default function PayScreen() {
       const data = await res.json();
       setAiRecommendations(data);
       setAiModalVisible(true);
-    } catch (err) {
-      setError('Failed to get AI recommendations.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError('Failed to get AI recommendations.');
+      } else {
+        setError('Failed to get AI recommendations.');
+      }
     } finally {
       setAiLoading(false);
     }
   };
 
-  const applyRecommendation = (recommendation, newGoal) => {
+  const applyRecommendation = (recommendation: any, newGoal: string) => {
     if (!recommendation?.split) return;
-    const selectedCardIds = [];
-    const filteredSplit = recommendation.split.filter(item => item.amount > 0);
-    filteredSplit.forEach(splitItem => {
+    const selectedCardIds: string[] = [];
+    const filteredSplit = recommendation.split.filter((item: any) => item.amount > 0);
+    filteredSplit.forEach((splitItem: any) => {
       if (splitItem.amount > 0) {
         selectedCardIds.push(splitItem.card_id);
       }
     });
-    const totalAmount = filteredSplit.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    const totalAmount = filteredSplit.reduce((sum: number, item: any) => sum + (parseFloat(item.amount) || 0), 0);
     setSelected(selectedCardIds);
     setAmount(totalAmount.toString());
     setGoal(newGoal);
@@ -294,7 +303,7 @@ export default function PayScreen() {
     });
     setEditedSplit(filteredSplit);
     setOriginalSplit(filteredSplit);
-    setSplitInputValues(filteredSplit.map(item => String(item.amount)));
+    setSplitInputValues(filteredSplit.map((item: any) => String(item.amount)));
     setAiModalVisible(false);
     setTimeout(() => {
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
@@ -307,7 +316,7 @@ export default function PayScreen() {
     }, 300);
   };
 
-  const handleSplitInputChange = (index, value) => {
+  const handleSplitInputChange = (index: number, value: string) => {
     let newInputs = [...splitInputValues];
     if (/^\d*(\.\d{0,2})?$/.test(value) || value === '') {
       newInputs[index] = value;
@@ -317,7 +326,7 @@ export default function PayScreen() {
 
   const buildCustomSplitPayload = () => {
     if (!editedSplit) return [];
-    return editedSplit.map((item, i) => ({
+    return editedSplit.map((item: any, i: number) => ({
       card_id: item.card_id,
       amount: parseFloat(splitInputValues[i]) || 0,
       type: item.type,
@@ -357,9 +366,14 @@ export default function PayScreen() {
       setSplitProjectedOutcome(data.projected_outcome || '');
       setSplitExplainHighlight(true);
       setTimeout(() => setSplitExplainHighlight(false), 1200);
-    } catch (err) {
-      setSplitExplanation('Unable to update explanation.');
-      setSplitProjectedOutcome('');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setSplitExplanation('Unable to update explanation.');
+        setSplitProjectedOutcome('');
+      } else {
+        setSplitExplanation('Unable to update explanation.');
+        setSplitProjectedOutcome('');
+      }
     } finally {
       setSplitExplainLoading(false);
     }
@@ -380,7 +394,7 @@ export default function PayScreen() {
   };
 
   const resetSplit = () => {
-    setEditedSplit(originalSplit ? originalSplit.map(item => ({ ...item })) : null);
+    setEditedSplit(originalSplit ? originalSplit.map((item: any) => ({ ...item })) : null);
     setEditingIndex(-1);
   };
 
@@ -427,7 +441,7 @@ export default function PayScreen() {
           {result && !paymentResults && (
             <Animated.View style={[styles.resultBox, { backgroundColor: splitHighlight.interpolate({ inputRange: [0, 1], outputRange: ['#f8f9fa', '#e0fff3'] }) }]}> 
               <Text style={styles.resultTitle}>Payment Split</Text>
-              {editedSplit && Array.isArray(editedSplit) && editedSplit.map((s, i) => (
+              {editedSplit && Array.isArray(editedSplit) && editedSplit.map((s: any, i: number) => (
                 <View key={i} style={styles.splitCardContainer}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={styles.splitCardLabel}>
@@ -478,7 +492,7 @@ export default function PayScreen() {
               {fundingAccounts.length === 0 ? (
                 <Text style={styles.text}>No funding accounts found.</Text>
               ) : (
-                (fundingAccounts || []).map(item => (
+                (fundingAccounts || []).map((item: Account) => (
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => setSelectedFunding(item.id)}
@@ -511,7 +525,7 @@ export default function PayScreen() {
               {cards.length === 0 ? (
                 <Text style={styles.text}>No credit cards found.</Text>
               ) : (
-                (cards || []).map(item => (
+                (cards || []).map((item: Account) => (
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => toggleSelect(item.id)}
@@ -534,9 +548,9 @@ export default function PayScreen() {
                       </Text>
                     </View>
                     <View style={styles.dividerPolished} />
-                    {item.apr > 0 && (
+                    {typeof item.apr === 'number' && item.apr > 0 && (
                       <View style={styles.metricsRowPolished}>
-                        <Text style={styles.metricTextPolished}>APR: {typeof item.apr === 'number' ? item.apr : '--'}%</Text>
+                        <Text style={styles.metricTextPolished}>APR: {item.apr}%</Text>
                         <Text style={styles.metricTextPolished}>Interest: {typeof item.monthlyInterest === 'number' ? `$${item.monthlyInterest.toFixed(2)}` : '--'}</Text>
                         <View style={styles.healthBarRowPolished}>
                           <AccountHealthBar value={typeof item.creditHealth === 'number' ? item.creditHealth : 0} />
@@ -559,7 +573,7 @@ export default function PayScreen() {
           {paymentResults && (
             <View style={styles.resultBox}>
               <Text style={styles.resultTitle}>Payment Results</Text>
-              {Array.isArray(paymentResults) && paymentResults.map((p, i) => (
+              {Array.isArray(paymentResults) && paymentResults.map((p: any, i: number) => (
                 <Text key={i} style={styles.resultText}>Card {p.card_id}: ${p.amount} - {p.status} ({p.message})</Text>
               ))}
               <TouchableOpacity style={[styles.payButton, { marginTop: 16 }]} onPress={() => { setResult(null); setPaymentResults(null); setSelected([]); setAmount(''); setSelectedFunding(''); }}>
@@ -582,7 +596,7 @@ export default function PayScreen() {
                       <Text style={[styles.projectedOutcome, { marginTop: 6 }]}>{aiRecommendations.minimize_interest_plan.projected_outcome}</Text>
                       <Text style={[styles.label, { marginTop: 8 }]}>Payment Split:</Text>
                       <ScrollView style={{ maxHeight: 180, marginBottom: 8 }} nestedScrollEnabled={true}>
-                        {Array.isArray(aiRecommendations.minimize_interest_plan?.split) && aiRecommendations.minimize_interest_plan.split.map((s, i) => (
+                        {Array.isArray(aiRecommendations.minimize_interest_plan?.split) && aiRecommendations.minimize_interest_plan.split.map((s: any, i: number) => (
                           <View key={i} style={[styles.splitRow, { flexDirection: 'column', alignItems: 'flex-start' }]}> 
                             <Text style={[styles.resultText, { maxWidth: '100%', fontWeight: 'bold' }]} numberOfLines={1} ellipsizeMode="tail">
                               Card: {s.card_name}
@@ -606,7 +620,7 @@ export default function PayScreen() {
                       <Text style={[styles.projectedOutcome, { marginTop: 6 }]}>{aiRecommendations.maximize_score_plan.projected_outcome}</Text>
                       <Text style={[styles.label, { marginTop: 8 }]}>Payment Split:</Text>
                       <ScrollView style={{ maxHeight: 180, marginBottom: 8 }} nestedScrollEnabled={true}>
-                        {Array.isArray(aiRecommendations.maximize_score_plan?.split) && aiRecommendations.maximize_score_plan.split.map((s, i) => (
+                        {Array.isArray(aiRecommendations.maximize_score_plan?.split) && aiRecommendations.maximize_score_plan.split.map((s: any, i: number) => (
                           <View key={i} style={[styles.splitRow, { flexDirection: 'column', alignItems: 'flex-start' }]}> 
                             <Text style={[styles.resultText, { maxWidth: '100%', fontWeight: 'bold' }]} numberOfLines={1} ellipsizeMode="tail">
                               Card: {s.card_name}

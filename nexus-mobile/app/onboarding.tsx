@@ -10,7 +10,7 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to Nexus</Text>
       <Text style={styles.subtitle}>Your Credit Autopilot</Text>
-      <PrimaryButton title="Get Started" onPress={() => router.replace('/dashboard')} />
+      <PrimaryButton title="Get Started" onPress={() => router.replace('/dashboard')} style={{}} />
     </View>
   );
 }
