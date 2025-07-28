@@ -3,7 +3,7 @@
     "name": "Nexus Mobile",
     "slug": "nexus-mobile",
     "scheme": "nexus",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "jsEngine": "hermes",
     "plugins": [
       "expo-router",
