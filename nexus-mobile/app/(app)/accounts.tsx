@@ -9,8 +9,7 @@ import { PRIMARY, TEXT } from '../../src/constants/colors';
 import { Account, Transaction } from '../../src/types';
 import AccountHealthBar from '../../src/components/AccountHealthBar';
 import BackArrowHeader from '../../src/components/BackArrowHeader';
-// --- FIX #1: Import from the new, official Expo library ---
-import { usePlaidLink } from 'expo-plaid-link';
+import { usePlaidLink } from 'react-native-plaid-link-sdk';
 import { useAuth } from '../../src/context/AuthContext';
 
 const formatCurrency = (amount: number = 0) => {
@@ -55,12 +54,9 @@ export default function AccountsScreen() {
     }
   }, [user, fetchAllData]);
 
-  // --- FIX #2: The usePlaidLink hook is now the correct one ---
+  // Use the correct react-native-plaid-link-sdk hook
   const { open, ready } = usePlaidLink({
-    tokenConfig: {
-      token: linkToken,
-      // noLoadingState: true // Optional: if you want to manage your own loading spinner
-    },
+    token: linkToken,
     onSuccess: async (success) => {
       try {
         await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
@@ -69,20 +65,18 @@ export default function AccountsScreen() {
           body: JSON.stringify({ public_token: success.publicToken, userId }),
         });
         Alert.alert('Success!', 'Your account has been linked.');
-        setLinkToken(null); // Reset token after use
-        fetchAllData(); // Refresh all data
+        setLinkToken(null);
+        fetchAllData();
       } catch (exchangeErr) {
         Alert.alert('Error', 'Could not complete account linking.');
       }
     },
     onExit: (exit) => {
       console.log('Plaid Link exited.');
-      setLinkToken(null); // Reset token on exit
+      setLinkToken(null);
     }
   });
 
-  // --- FIX #3: Logic to open Plaid ---
-  // We fetch the token, and when it's ready, we open the link.
   const openPlaidLink = useCallback(async () => {
     setLinkLoading(true);
     try {
@@ -105,10 +99,9 @@ export default function AccountsScreen() {
   }, [userId]);
 
   useEffect(() => {
-      // This effect will automatically open Plaid once the token is fetched and the hook is ready.
-      if (linkToken && ready) {
-        open();
-      }
+    if (linkToken && ready) {
+      open();
+    }
   }, [linkToken, ready, open]);
 
   if (loading) {
