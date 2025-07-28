@@ -106,7 +106,7 @@ export default function AccountsScreen() {
   }, [user]); // Re-fetch link token if user changes
 
   // --- CRITICAL FIX: Conditionally initialize usePlaidLink ---
-  // Only initialize this hook if linkToken is actually available.
+  // Only call usePlaidLink when we have a valid token
   const plaidLinkConfig = React.useMemo(() => {
     if (linkToken) {
       return {
@@ -138,7 +138,9 @@ export default function AccountsScreen() {
     return null; // Don't return config if no token
   }, [linkToken, user, fetchAccountsData]); // Recreate config if linkToken changes
 
-  const { open, ready } = usePlaidLink(plaidLinkConfig); // Pass the config object directly
+  // Only call usePlaidLink when we have a valid config
+  const plaidLinkHook = linkToken ? usePlaidLink(plaidLinkConfig) : { open: () => {}, ready: false };
+  const { open, ready } = plaidLinkHook;
 
   // --- Loading and Error States ---
   if (loading) {
