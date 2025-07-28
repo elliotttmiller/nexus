@@ -1,5 +1,5 @@
 {
-  "name": "nexus-mobile",
+  "name": "nexus-mobile-app",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "private": true,
@@ -19,7 +19,6 @@
     "expo-router": "~5.1.4",
     "expo-secure-store": "~14.2.3",
     "expo-splash-screen": "~0.30.10",
-    "nexus-mobile": "file:..",
     "react": "19.0.0",
     "react-native": "0.79.5",
     "react-native-plaid-link-sdk": "^12.3.0",
