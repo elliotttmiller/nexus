@@ -4,6 +4,7 @@
     "slug": "nexus-mobile",
     "scheme": "nexus",
     "version": "1.0.1",
+    "sdkVersion": "53.0.0",
     "jsEngine": "hermes",
     "plugins": [
       "expo-router",
@@ -39,17 +40,12 @@
     "ios": {
       "bundleIdentifier": "app.nexus.ai",
       "buildNumber": "1",
-      "supportsTablet": true,
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "supportsTablet": true
     },
     "extra": {
       "eas": {
-        "projectId": "bc93e57c-3aa9-43b4-9e55-35296d034b69"
-      },
-      "API_BASE_URL": "https://nexus-production-2e34.up.railway.app"
-    },
-    "owner": "nazreid"
+        "projectId": "be30e681-1247-49f1-9ea6-ee50b3eb657d"
+      }
+    }
   }
 }

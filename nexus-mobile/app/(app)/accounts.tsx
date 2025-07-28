@@ -105,8 +105,7 @@ export default function AccountsScreen() {
     }
   }, [user]); // Re-fetch link token if user changes
 
-  // --- CRITICAL FIX: Conditionally initialize usePlaidLink ---
-  // Only call usePlaidLink when we have a valid token
+  // --- Plaid Link config: only create if linkToken is available ---
   const plaidLinkConfig = React.useMemo(() => {
     if (linkToken) {
       return {
@@ -116,10 +115,10 @@ export default function AccountsScreen() {
             await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ public_token: publicToken, userId: user?.id || 1 }), // Use authenticated userId
+              body: JSON.stringify({ public_token: publicToken, userId: user?.id || 1 }),
             });
             Alert.alert('Success', 'Account linked successfully!');
-            fetchAccountsData(); // Refresh accounts after linking
+            fetchAccountsData();
           } catch (exchangeErr) {
             console.error('Error exchanging public token:', exchangeErr);
             Alert.alert('Error', 'Failed to link account. Please try again.');
@@ -128,19 +127,18 @@ export default function AccountsScreen() {
         onExit: (error, metadata) => {
           if (error != null) {
             console.error('Plaid Link exited with error:', error, metadata);
-            // Alert.alert('Plaid Link Error', error.message || 'Plaid Link failed.');
           } else {
             console.log('Plaid Link exited without error:', metadata);
           }
         },
       };
     }
-    return null; // Don't return config if no token
-  }, [linkToken, user, fetchAccountsData]); // Recreate config if linkToken changes
+    return null;
+  }, [linkToken, user, fetchAccountsData]);
 
-  // Only call usePlaidLink when we have a valid config
-  const plaidLinkHook = linkToken ? usePlaidLink(plaidLinkConfig) : { open: () => {}, ready: false };
-  const { open, ready } = plaidLinkHook;
+  // Only call usePlaidLink if config is not null
+  const plaidLink = plaidLinkConfig ? usePlaidLink(plaidLinkConfig) : { open: () => {}, ready: false };
+  const { open, ready } = plaidLink;
 
   // --- Loading and Error States ---
   if (loading) {
