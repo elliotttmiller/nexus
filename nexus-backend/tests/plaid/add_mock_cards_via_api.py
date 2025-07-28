@@ -36,9 +36,9 @@ def add_mock_cards_via_api():
     
     print("\n🌐 Calling API to add mock credit cards...")
     
-    # Call the add mock cards endpoint
+    # Call the add mock cards endpoint (using plaid route)
     add_cards_response = requests.post(
-        "https://nexus-production-2e34.up.railway.app/api/test/add-mock-cards",
+        "https://nexus-production-2e34.up.railway.app/api/plaid/add-mock-cards",
         headers=headers
     )
     
