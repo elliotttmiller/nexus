@@ -5,15 +5,17 @@ import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import PrimaryButton from '../src/components/PrimaryButton';
 import { BACKGROUND, TEXT, PRIMARY, BORDER } from '../src/constants/colors';
+import useLoading from '../src/hooks/useLoading';
+import useError from '../src/hooks/useError';
 
 export default function InterestKillerScreen() {
   const [amount, setAmount] = useState('');
   const [suggestion, setSuggestion] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, withLoading] = useLoading();
+  const [error, setError, withError] = useError();
   const router = useRouter();
 
-  const handleSuggest = async () => {
-    setLoading(true);
+  const handleSuggest = () => withError(() => withLoading(async () => {
     setSuggestion('');
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/suggest`, {
@@ -21,7 +23,7 @@ export default function InterestKillerScreen() {
         body: JSON.stringify({ userId: 1, amount })
       });
       if (res.status === 401) {
-        Alert.alert('Session expired', 'Please log in again.');
+        setError('Session expired. Please log in again.');
         router.replace('/login');
         return;
       }
@@ -30,19 +32,18 @@ export default function InterestKillerScreen() {
         setSuggestion(
           data.suggestion.map((s: any, i: number) => `${s.amount} to ${s.card} (${s.apr}% APR)`).join('\n')
         );
+        setError(null);
       } else {
-        Alert.alert('Error', data.error || 'No suggestion');
+        setError(data.error || 'No suggestion');
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        Alert.alert('Error', err.message);
+        setError(err.message);
       } else {
-        Alert.alert('Error', 'An unknown error occurred.');
+        setError('An unknown error occurred.');
       }
-    } finally {
-      setLoading(false);
     }
-  };
+  }));
 
   return (
     <View style={styles.container}>
@@ -58,6 +59,7 @@ export default function InterestKillerScreen() {
       <PrimaryButton title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} style={{}} />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {suggestion ? <Text style={styles.suggestion}>{suggestion}</Text> : null}
+      {error && <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>}
       <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{}} />
     </View>
   );

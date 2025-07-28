@@ -6,49 +6,41 @@ import { saveToken, saveRefreshToken, removeToken, removeRefreshToken } from '..
 import PrimaryButton from '../src/components/PrimaryButton';
 import { BACKGROUND, TEXT, PRIMARY, BORDER } from '../src/constants/colors';
 import BackArrowHeader from '../src/components/BackArrowHeader';
+import useLoading from '../src/hooks/useLoading';
+import useError from '../src/hooks/useError';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, withLoading] = useLoading();
+  const [error, setError, withError] = useError();
   const router = useRouter();
 
   // TEMP: Log API_BASE_URL for debugging
   console.log('API_BASE_URL at runtime:', API_BASE_URL);
 
-  const handleLogin = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      console.log('Login response:', data);
-      if (res.ok) {
-        if (data.twofa_required) {
-          router.replace('/twofa');
-        } else if (data.token && data.refreshToken) {
-          await saveToken(data.token);
-          await saveRefreshToken(data.refreshToken);
-          router.replace('/dashboard');
-        }
-      } else {
-        await removeToken();
-        await removeRefreshToken();
-        Alert.alert('Error', data.error || 'Login failed');
+  const handleLogin = () => withError(() => withLoading(async () => {
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    console.log('Login response:', data);
+    if (res.ok) {
+      if (data.twofa_required) {
+        router.replace('/twofa');
+      } else if (data.token && data.refreshToken) {
+        await saveToken(data.token);
+        await saveRefreshToken(data.refreshToken);
+        router.replace('/dashboard');
       }
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        Alert.alert('Error', err.message);
-      } else {
-        Alert.alert('Error', 'An unknown error occurred.');
-      }
-    } finally {
-      setLoading(false);
+    } else {
+      await removeToken();
+      await removeRefreshToken();
+      setError(data.error || 'Login failed');
     }
-  };
+  }));
 
   return (
     <>
@@ -76,6 +68,7 @@ export default function LoginScreen() {
         />
         <PrimaryButton title={loading ? 'Logging in...' : 'Login'} onPress={handleLogin} disabled={loading} style={{}} />
         <PrimaryButton title="Register" onPress={() => router.replace('/register')} style={{}} />
+        {error && <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>}
       </View>
     </>
   );

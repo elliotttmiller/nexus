@@ -4,6 +4,7 @@ const { getCardRank } = require('../../aiService');
 const db = require('../models');
 const Card = db.Card;
 const UserEvent = db.UserEvent;
+const { z } = require('zod');
 
 // Helper to calculate utilization
 function calcUtilization(balance, creditLimit) {
@@ -12,12 +13,29 @@ function calcUtilization(balance, creditLimit) {
 }
 
 router.post('/recommend', async (req, res) => {
-  const { userId, merchant, category, amount, location, primaryGoal, creditScoreInfo } = req.body;
+  const schema = z.object({
+    userId: z.union([z.string(), z.number()]),
+    merchant: z.string().optional(),
+    category: z.string().optional(),
+    amount: z.number().positive().optional(),
+    location: z.string().optional(),
+    primaryGoal: z.string().optional(),
+    creditScoreInfo: z.any().optional()
+  });
+  const parseResult = schema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: 'Invalid input', details: parseResult.error.errors });
+  }
+  const { userId, merchant, category, amount, location, primaryGoal, creditScoreInfo } = parseResult.data;
   if (!userId || (!merchant && !category)) return res.status(400).json({ error: 'userId and merchant/category required' });
   try {
     // Fetch all cards for the user
     let cards = await Card.findAll({ where: { user_id: userId } });
     if (!cards || cards.length === 0) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('CRITICAL: Attempted to use mock cards in production for userId:', userId);
+        return res.status(500).json({ error: 'Internal server error. No cards found for user.' });
+      }
       // Fallback to mock cards if none found (for testing/demo)
       cards = [
         {

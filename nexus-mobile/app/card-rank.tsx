@@ -5,16 +5,18 @@ import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
 import PrimaryButton from '../src/components/PrimaryButton';
 import { BACKGROUND, TEXT, PRIMARY, BORDER } from '../src/constants/colors';
+import useLoading from '../src/hooks/useLoading';
+import useError from '../src/hooks/useError';
 
 export default function CardRankScreen() {
   const [merchant, setMerchant] = useState('');
   const [category, setCategory] = useState('');
   const [recommendation, setRecommendation] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, withLoading] = useLoading();
+  const [error, setError, withError] = useError();
   const router = useRouter();
 
-  const handleRecommend = async () => {
-    setLoading(true);
+  const handleRecommend = () => withError(() => withLoading(async () => {
     setRecommendation('');
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/cardrank/recommend`, {
@@ -22,26 +24,27 @@ export default function CardRankScreen() {
         body: JSON.stringify({ userId: 1, merchant, category })
       });
       if (res.status === 401) {
-        Alert.alert('Session expired', 'Please log in again.');
+        setError('Session expired. Please log in again.');
         router.replace('/login');
         return;
       }
       const data = await res.json();
       if (res.ok && data.recommendation) {
         setRecommendation(data.recommendation.card_name || JSON.stringify(data.recommendation));
+        setError(null);
       } else {
-        Alert.alert('Error', data.error || 'No recommendation');
+        setError(data.error || 'No recommendation');
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
-        Alert.alert('Error', err.message);
+        setError(err.message);
       } else {
-        Alert.alert('Error', 'An unknown error occurred.');
+        setError('An unknown error occurred.');
       }
     } finally {
-      setLoading(false);
+      // setLoading(false); // This is now handled by withLoading
     }
-  };
+  }));
 
   return (
     <View style={styles.container}>
@@ -63,6 +66,7 @@ export default function CardRankScreen() {
       <PrimaryButton title={loading ? 'Loading...' : 'Get Recommendation'} onPress={handleRecommend} disabled={loading} style={{}} />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {recommendation ? <Text style={styles.recommendation}>{recommendation}</Text> : null}
+      {error && <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>}
       <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{}} />
     </View>
   );

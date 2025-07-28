@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
@@ -193,10 +194,10 @@ async def interestkiller_v2(req: V2InterestKillerRequest):
 
     except (json.JSONDecodeError, ValueError) as e:
         logger.error(f"AI response failed validation: {e}. Raw response: {raw_ai_result}")
-        raise HTTPException(status_code=500, detail=f"AI response failed validation: {e}")
+        return JSONResponse(status_code=500, content={"error": {"type": "ai_response_validation", "detail": str(e)}})
     except Exception as e:
         logger.error(f"An unexpected error occurred in interestkiller_v2: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="An unexpected internal server error occurred.") 
+        return JSONResponse(status_code=500, content={"error": {"type": "internal_server_error", "detail": str(e)}}) 
 
 @app.post('/v2/interestkiller/re-explain')
 async def interestkiller_re_explain_v2(req: V2ReExplainRequest):
@@ -223,4 +224,4 @@ async def interestkiller_re_explain_v2(req: V2ReExplainRequest):
 
     except Exception as e:
         logger.error(f"An unexpected error occurred in re-explain endpoint: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="An unexpected internal server error occurred.") 
+        return JSONResponse(status_code=500, content={"error": {"type": "internal_server_error", "detail": str(e)}}) 

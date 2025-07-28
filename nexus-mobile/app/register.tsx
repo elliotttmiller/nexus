@@ -6,44 +6,36 @@ import { saveToken } from '../src/constants/token';
 import PrimaryButton from '../src/components/PrimaryButton';
 import { BACKGROUND, TEXT, PRIMARY, BORDER } from '../src/constants/colors';
 import BackArrowHeader from '../src/components/BackArrowHeader';
+import useLoading from '../src/hooks/useLoading';
+import useError from '../src/hooks/useError';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, withLoading] = useLoading();
+  const [error, setError, withError] = useError();
   const router = useRouter();
 
-  const handleRegister = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        if (data.token) {
-          await saveToken(data.token);
-          Alert.alert('Success', 'Registration complete! Please log in.');
-          router.replace('/login');
-        } else {
-          Alert.alert('Success', 'Registration complete! Please log in.');
-          router.replace('/login');
-        }
+  const handleRegister = () => withError(() => withLoading(async () => {
+    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (data.token) {
+        await saveToken(data.token);
+        Alert.alert('Success', 'Registration complete! Please log in.');
+        router.replace('/login');
       } else {
-        Alert.alert('Error', data.error || 'Registration failed');
+        Alert.alert('Success', 'Registration complete! Please log in.');
+        router.replace('/login');
       }
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        Alert.alert('Error', err.message);
-      } else {
-        Alert.alert('Error', 'An unknown error occurred.');
-      }
-    } finally {
-      setLoading(false);
+    } else {
+      setError(data.error || 'Registration failed');
     }
-  };
+  }));
 
   return (
     <>
@@ -69,6 +61,7 @@ export default function RegisterScreen() {
         />
         <PrimaryButton title={loading ? 'Registering...' : 'Register'} onPress={handleRegister} disabled={loading} style={{}} />
         <PrimaryButton title="Back to Login" onPress={() => router.replace('/login')} style={{}} />
+        {error && <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>}
       </View>
     </>
   );

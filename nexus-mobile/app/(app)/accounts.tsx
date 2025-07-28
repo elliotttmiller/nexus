@@ -38,6 +38,8 @@ export default function AccountsScreen() {
     } catch (err) {
       setAccounts([]);
       setTransactions([]);
+    } finally {
+      setLoading(false);
     }
   }, [userId]);
 

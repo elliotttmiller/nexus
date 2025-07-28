@@ -6,6 +6,7 @@ const db = require('../models');
 const Card = db.Card;
 const UserEvent = db.UserEvent;
 const PaymentHistory = db.PaymentHistory;
+const { z } = require('zod');
 
 // Helper to calculate utilization
 function calcUtilization(balance, creditLimit) {
@@ -36,12 +37,25 @@ function calculateUtilizationImprovement(split, cards) {
 }
 
 router.post('/suggest', async (req, res) => {
-  const { userId, amount, optimizationGoal } = req.body;
+  const schema = z.object({
+    userId: z.union([z.string(), z.number()]),
+    amount: z.number().positive(),
+    optimizationGoal: z.string().optional()
+  });
+  const parseResult = schema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: 'Invalid input', details: parseResult.error.errors });
+  }
+  const { userId, amount, optimizationGoal } = parseResult.data;
   if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required' });
   try {
     // Fetch all cards for the user
     let cards = await Card.findAll({ where: { user_id: userId } });
     if (!cards || cards.length === 0) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('CRITICAL: Attempted to use mock cards in production for userId:', userId);
+        return res.status(500).json({ error: 'Internal server error. No cards found for user.' });
+      }
       // Fallback to mock cards if none found (for testing/demo)
       cards = [
         {
@@ -120,7 +134,17 @@ router.post('/suggest', async (req, res) => {
 });
 
 router.post('/pay', async (req, res) => {
-  const { userId, accounts, payment_amount, optimization_goal } = req.body;
+  const schema = z.object({
+    userId: z.union([z.string(), z.number()]),
+    accounts: z.array(z.any()).min(1),
+    payment_amount: z.number().positive(),
+    optimization_goal: z.string().optional()
+  });
+  const parseResult = schema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: 'Invalid input', details: parseResult.error.errors });
+  }
+  const { userId, accounts, payment_amount, optimization_goal } = parseResult.data;
   if (!userId || !accounts || !Array.isArray(accounts) || accounts.length === 0) {
     return res.status(400).json({ error: 'Please select at least one card to pay.' });
   }
