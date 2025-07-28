@@ -41,6 +41,22 @@ router.post('/suggest', async (req, res) => {
   try {
     // Fetch all cards for the user
     const cards = await Card.findAll({ where: { user_id: userId } });
+    
+    // If no cards found in database, return a helpful message
+    if (!cards || cards.length === 0) {
+      return res.status(400).json({ 
+        error: 'No credit cards found for this user. Please link your credit cards through Plaid first.',
+        suggestion: {
+          message: 'To get personalized payment recommendations, please connect your credit cards through the Plaid integration.',
+          next_steps: [
+            'Link your credit cards through the Plaid connection',
+            'Once connected, you can get AI-powered payment optimization',
+            'The system will analyze your APR, balances, and credit limits'
+          ]
+        }
+      });
+    }
+    
     // You may need to fetch credit limits and promo info from another model if not present
     const accounts = cards.map(card => {
       // Placeholder: you may want to fetch creditLimit, promoAPR, promoEndDate from another model/table
@@ -54,14 +70,22 @@ router.post('/suggest', async (req, res) => {
         promoEndDate: null // TODO: Replace with real value if available
       };
     });
+    
     const user_context = { primary_goal: 'minimize_interest' };
     const split = await getInterestKillerSplit(accounts, parseFloat(amount), user_context);
-    // Log event
-    await UserEvent.create({
-      user_id: userId,
-      event_type: 'interestkiller_suggestion',
-      event_data: { request: { amount, optimizationGoal }, suggestion: split }
-    });
+    
+    // Log event (with error handling for database issues)
+    try {
+      await UserEvent.create({
+        user_id: userId,
+        event_type: 'interestkiller_suggestion',
+        data: { request: { amount, optimizationGoal }, suggestion: split }
+      });
+    } catch (logError) {
+      console.warn('Failed to log user event:', logError);
+      // Don't fail the request if logging fails
+    }
+    
     res.json({ suggestion: split });
   } catch (err) {
     console.error('Error in /suggest:', err);

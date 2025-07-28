@@ -82,17 +82,29 @@ module.exports = (sequelize, DataTypes) => {
     try {
       const { ip, userAgent, transaction } = options;
       
-      return await this.create({
+      // Create event data with only the fields that exist in the database
+      const eventData = {
         user_id: userId,
         event_type: eventType,
-        event_subtype: options.eventSubtype,
         data,
-        ip_address: ip,
-        user_agent: userAgent,
-      }, { transaction });
+      };
+      
+      // Only add optional fields if they exist in the database schema
+      if (options.eventSubtype) {
+        eventData.event_subtype = options.eventSubtype;
+      }
+      if (ip) {
+        eventData.ip_address = ip;
+      }
+      if (userAgent) {
+        eventData.user_agent = userAgent;
+      }
+      
+      return await this.create(eventData, { transaction });
     } catch (error) {
       console.error('Error logging user event:', error);
-      throw error;
+      // Don't throw error to prevent breaking the main functionality
+      return null;
     }
   };
 
