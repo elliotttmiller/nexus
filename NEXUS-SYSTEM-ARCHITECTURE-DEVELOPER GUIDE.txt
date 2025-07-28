@@ -1,0 +1,293 @@
+============================================================
+PROJECT NEXUS: SYSTEM ARCHITECTURE & DEVELOPER GUIDE
+============================================================
+Last Updated: July 28, 2025
+
+PURPOSE: This document provides a comprehensive overview of the Project Nexus application for developers and AI assistants to quickly understand the system architecture, technology stack, key files, and historical context.
+
+---
+### 1. HIGH-LEVEL PROJECT OVERVIEW
+---
+
+Project Nexus is a sophisticated personal finance mobile application for iOS designed to provide users with intelligent, AI-driven insights. The core functionality involves linking to users' real financial accounts via Plaid, analyzing their financial data, and offering personalized recommendations for debt management and spending habits.
+
+---
+### 2. CORE TECHNOLOGY STACK
+---
+
+The system is a modern, multi-service application.
+
+*   **Mobile Frontend (`nexus-mobile`):**
+    *   **Framework:** React Native with **Expo SDK 51 (Stable)**
+    *   **JavaScript Engine:** Hermes
+    *   **Navigation:** Expo Router
+    *   **UI/State:** React 18.2.0, TypeScript
+    *   **Build/Deploy:** EAS Build & Submit to TestFlight
+
+*   **Backend For Frontend (`nexus-backend`):**
+    *   **Runtime:** Node.js with Express.js
+    *   **Database:** PostgreSQL
+    *   **ORM:** Sequelize (with migrations)
+    *   **Caching:** Redis (for Plaid API calls)
+
+*   **AI Service (`nexus-ai`):**
+    *   **Framework:** Python with FastAPI
+    *   **AI Model:** Google Gemini 1.5 Flash
+    *   **Validation:** Pydantic
+
+*   **Primary Integrations:**
+    *   **Bank Linking:** Plaid (via `react-native-plaid-link-sdk`)
+    *   **Deployment:** All services are hosted on Railway.
+
+---
+### 3. SYSTEM ARCHITECTURE & "HYBRID AI" PHILOSOPHY
+---
+
+The system operates on a three-tier model:
+
+`[nexus-mobile]` <--> `[nexus-backend]` <--> `[nexus-ai]`
+
+*   **`nexus-mobile`:** The user-facing client. It is only for UI and state management.
+*   **`nexus-backend`:** The central business logic hub. It handles users, authentication, database interactions, and acts as a secure proxy to the AI service. **All secret keys live here ONLY.**
+*   **`nexus-ai`:** A specialized microservice for AI inference.
+
+**CRITICAL - The "Hybrid AI" Philosophy:**
+This system is NOT a "pure AI" model. It follows a robust, production-grade hybrid pattern:
+
+1.  **Algorithms Handle Math:** All deterministic calculations (payment splits, utilization percentages, finding the highest APR card) are performed in the Python `app.py` file using standard algorithms. This guarantees 100% mathematical accuracy, speed, and reliability.
+2.  **AI Handles Communication:** The AI's primary role is to act as an "expert communicator." It receives the perfect, pre-computed data from the algorithms and its sole job is to craft the sophisticated, user-friendly `explanation` and `projected_outcome` text.
+
+This architecture uses each component for its core strength: Python for perfect math, and the AI for nuanced, human-like language generation.
+
+---
+### 4. DETAILED DIRECTORY & FILE GUIDE
+---
+
+This section outlines the purpose of the most critical files in the `nexus-mobile` project.
+
+#### A. `nexus-mobile` (The Frontend)
+
+*   **`package.json`**:
+    *   **PURPOSE:** Defines all JavaScript dependencies.
+    *   **CRITICAL CONTEXT:** This file has been meticulously curated to align with **Expo SDK 51**. All `expo-*`, `react-native-*`, and `react` versions are locked to this stable ecosystem. This was the solution to a long series of native crashes. **Do not upgrade packages without running `npx expo install --fix`**.
+
+*   **`app.json`**:
+    *   **PURPOSE:** The "blueprint" for the native app build.
+    *   **CRITICAL CONTEXT:**
+        *   **`jsEngine: "hermes"`**: The modern JavaScript engine is enabled.
+        *   **`plugins: ["expo-router", "expo-secure-store", ["expo-build-properties", ...]]`**: This is a critical section. The plugins enable file-based routing, grant native permissions for Keychain access (`expo-secure-store`), and configure the native iOS `Info.plist` for the Plaid SDK (`expo-build-properties`). **A missing plugin was the cause of many previous crashes.**
+
+*   **`eas.json`**:
+    *   **PURPOSE:** Configures EAS Build & Submit.
+    *   **CRITICAL CONTEXT:** The `production` profile's `env` block defines the `EXPO_PUBLIC_API_BASE_URL`. The `EXPO_PUBLIC_` prefix is essential for the variable to be accessible in the app's JavaScript code.
+
+*   **`app/_layout.tsx`**:
+    *   **PURPOSE:** The root layout of the entire application.
+    *   **CRITICAL CONTEXT:** This file wraps the application in the `AuthProvider`. This is the primary defense against startup race conditions. It ensures that no authenticated API calls or sensitive native modules are used until the user's session is safely loaded from storage. It also manages the splash screen transition.
+
+*   **`src/context/AuthContext.tsx`**:
+    *   **PURPOSE:** The heart of the user session and authentication state.
+    *   **CRITICAL CONTEXT:** It uses `expo-secure-store` to safely load the auth token on app startup. It provides a `useAuth()` hook that components use to access user state and `login`/`logout` functions. It handles all redirects between public (`/auth`) and private (`/app`) routes.
+
+*   **`app/(app)/accounts.tsx`**:
+    *   **PURPOSE:** A key protected screen that displays user accounts and initiates the Plaid Link flow.
+    *   **CRITICAL CONTEXT:** This file uses the **`usePlaidLink` hook from `react-native-plaid-link-sdk`**. The implementation is specifically designed to be crash-free by only initializing the hook with a valid `linkToken` after it has been fetched from the backend. This solved a major native crash issue.
+
+#### B. `nexus-backend` & `nexus-ai` (Brief Summary)
+
+*   **`nexus-backend`:** The `routes/` and `controllers/` directories contain the API logic. The `models/` and `migrations/` directories define the database schema. **The primary source of truth for the database schema is always the migration files.**
+*   **`nexus-ai`:** The `app.py` file contains the FastAPI endpoints and the critical **pre-computation algorithms**. The `services.py` file contains the **prompts** and the `call_gemini` function.
+
+---
+### 5. PROJECT HEALTH & HISTORICAL CONTEXT
+---
+
+This project has successfully overcome a series of complex, production-stopping issues. Understanding this history is crucial to prevent re-introducing bugs.
+
+*   **RESOLVED - Native Crashes (`SIGABRT`, `SIGSEGV`):** The app suffered from persistent native crashes on TestFlight.
+    *   **Root Cause:** A combination of mismatched dependencies (React 19 vs. React 18, Expo SDK 53 vs 51), missing native plugin configurations in `app.json` (for `expo-secure-store` and Plaid), and a startup race condition.
+    *   **Solution:** The project was stabilized by migrating to Expo SDK 51, correcting the `package.json`, implementing the `AuthProvider` pattern in the root layout, and correctly configuring all plugins in `app.json`.
+
+*   **RESOLVED - Build Failures (`expo doctor`, Metro):** The EAS Build process was failing due to corrupted dependencies.
+    *   **Root Cause:** The `package-lock.json` had locked in ancient, incompatible versions of `metro` and `unimodules` pulled in by a faulty third-party library.
+    *   **Solution:** A "Clean Slate" rebuild (`rm -rf node_modules`, `rm yarn.lock`, `npx expo install --fix`) and replacing the faulty library resolved these issues.
+
+*   **RESOLVED - AI Reliability Issues:** The AI was initially prone to mathematical errors and returning malformed JSON.
+    *   **Root Cause:** The AI was tasked with performing complex arithmetic and adhering to a rigid JSON structure, which are not its core strengths.
+    *   **Solution:** The system was migrated to the **Hybrid AI Model**. A deterministic Python algorithm now handles all math, and the AI's role has been focused on what it does best: generating high-quality, user-friendly text based on perfect data. This has made the AI features extremely reliable.
+
+Of course. This is an excellent idea. Having a comprehensive, well-structured "Project Brief" is the single most valuable tool for getting fast, accurate, and high-quality help from any developer or AI assistant. It saves time and eliminates guesswork.
+
+Based on our entire debugging journey, I have compiled a complete, in-depth description of your application, architecture, and key files. You can use this as a "golden document" for any future support requests.
+
+Project Nexus: System Architecture & Developer Guide
+1. High-Level Project Overview
+
+Project Nexus is a sophisticated personal finance mobile application designed to provide users with intelligent, AI-driven insights into their spending, budgeting, and debt management. The app connects to users' financial accounts via Plaid and leverages a dedicated AI microservice to deliver personalized recommendations and analysis.
+
+The system is architected as a modern, multi-service application comprising three main components: a React Native mobile frontend, a Node.js backend-for-frontend (BFF), and a Python AI inference service.
+
+2. Core Technologies Stack
+
+Mobile Frontend:
+
+Framework: React Native with Expo SDK 51
+
+JavaScript Engine: Hermes
+
+Navigation: Expo Router
+
+UI/State: React 18.2, TypeScript
+
+Build/Deploy: EAS Build & Submit
+
+Backend (BFF):
+
+Runtime: Node.js with Express.js
+
+Database: PostgreSQL
+
+ORM: Sequelize (with migrations)
+
+Caching: Redis (for Plaid API calls)
+
+AI Service:
+
+Framework: Python with FastAPI
+
+AI Model: Google Gemini 1.5 Flash
+
+Validation: Pydantic
+
+Primary Integrations:
+
+Bank Linking: Plaid
+
+Deployment: Railway
+
+3. System Architecture
+
+The system operates on a three-tier model to separate concerns and ensure scalability and security.
+
+Generated code
++---------------------+      +---------------------+      +-----------------+
+|   nexus-mobile      |      |   nexus-backend     |      |   nexus-ai      |
+| (React Native/Expo) |----->| (Node.js/Express)   |----->| (Python/FastAPI)|
++---------------------+      +---------------------+      +-----------------+
+       |   ^                        |   ^                        |   ^
+       |   |                        |   |                        |   |
+       v   |                        v   |                        v   |
++---------------------+      +---------------------+      +-----------------+
+|  User (on iPhone)   |      |  PostgreSQL & Redis |      | Google Gemini   |
++---------------------+      +---------------------+      +-----------------+
+
+
+nexus-mobile (The Client): The user's interface. It is only responsible for rendering UI and managing local state. It never holds secret keys and only communicates with the nexus-backend.
+
+nexus-backend (The BFF): The central hub. It handles all business logic: user authentication, managing Plaid tokens, interacting with the database (users, accounts), and acting as a secure proxy for all requests to the nexus-ai service. All secret keys (Plaid, Google API, etc.) live here.
+
+nexus-ai (The Brain): A specialized microservice with one job: perform AI inference. It receives pre-processed data from the backend, communicates with the Google Gemini API, and returns structured JSON responses.
+
+4. Detailed File & Directory Guide
+
+This guide explains the purpose of the most critical files and directories within each service.
+
+A. nexus-mobile (The Frontend)
+
+This is your Expo project, structured for navigation and stability.
+
+package.json: Defines all JavaScript dependencies. Crucially, all expo-* and react-native-* packages are aligned with Expo SDK 51 and React 18.2.0. This is the foundation of the app's stability.
+
+app.json: The main configuration file for Expo. It's the "blueprint" for the native app.
+
+jsEngine: "hermes": Enables the modern, high-performance Hermes engine.
+
+plugins: [...]: This is a critical section. It lists the native modules that require special configuration during the build.
+
+"expo-router": Enables file-based routing.
+
+"expo-secure-store": Essential. Gives the app permission to access the iOS Keychain for securely storing auth tokens. A missing entry here causes instant crashes.
+
+"expo-build-properties": Allows for advanced native configuration, such as setting the Info.plist values required by the Plaid SDK.
+
+eas.json: Configures EAS Build.
+
+"appVersionSource": "remote": The modern, recommended way to manage build numbers.
+
+"env": { "EXPO_PUBLIC_API_BASE_URL": "..." }: Essential. This securely injects the backend URL into the app's production build. Any variable needed by the app's JS code MUST be prefixed with EXPO_PUBLIC_.
+
+app/ (Expo Router Directory):
+
+_layout.tsx: The root of the application. This file is critical for stability. It wraps the entire app in the AuthProvider to prevent startup race conditions and manages the splash screen transition.
+
+(auth)/ & (app)/: These are route groups. (auth) contains public screens like login.tsx. (app) contains protected screens like dashboard.tsx and accounts.tsx that can only be accessed after login.
+
+src/ (Source Code):
+
+context/AuthContext.tsx: The heart of the user session. It handles loading the auth token from SecureStore at startup, manages the user state, and provides login/logout functions. Its correct implementation prevents nearly all startup crashes.
+
+constants/api.ts: The single source of truth for the backend URL. It safely reads the environment variable provided by eas.json.
+
+types.ts: Contains the TypeScript interfaces for Account, Transaction, etc. Keeping this up-to-date prevents a huge number of code-level bugs.
+
+components/: Contains reusable React components.
+
+Key Integrations & Files:
+
+Authentication: AuthContext.tsx, expo-secure-store.
+
+Plaid Linking: accounts.tsx, react-native-plaid-link-sdk. The implementation is now a stable, hook-based, one-tap flow.
+
+B. nexus-backend (The BFF - Node.js)
+
+Role: Manages users, accounts, and Plaid items. Proxies requests to the AI service.
+
+src/routes/: Defines the API endpoints (e.g., /api/auth/login, /api/interestkiller/pay/ai-recommendation).
+
+src/controllers/: Contains the business logic for each route. For example, the payController.js would handle the logic for the AI recommendation endpoint.
+
+src/services/: Contains modules that interact with external services (e.g., plaidService.js, aiService.js). The aiService.js is responsible for making the axios call to the Python AI service.
+
+src/models/ & migrations/: These are for Sequelize. The models define the shape of your database tables in code, and the migrations provide a version-controlled history of schema changes. These must always be kept in sync to prevent database errors.
+
+C. nexus-ai (The AI Service - Python)
+
+Role: Purely for AI inference. It has no direct database access.
+
+app.py: The FastAPI server.
+
+Defines Endpoints: e.g., /v2/interestkiller.
+
+Contains Algorithms: This file holds the crucial pre-computation algorithms (like precompute_payment_plans_sophisticated) that perform all deterministic math.
+
+Contains Guardrails: This file is responsible for validating the AI's final output before sending it back.
+
+services.py: The "Brain" of the AI.
+
+Contains Prompts: Holds all the large, detailed "mega-prompts" for each AI feature.
+
+initialize_model(): Sets up the connection to the Google Gemini API.
+
+call_gemini(): A robust function that calls the Gemini API, handles retries, and uses the model's native JSON mode for reliable output.
+
+5. Key Workflow: The "Interest Killer" AI Recommendation
+
+Understanding this data flow is key to understanding the entire system:
+
+Frontend (pay.tsx): The user enters $5000 and clicks "Get Recommendation."
+
+Backend (nexus-backend): The /api/interestkiller/pay/ai-recommendation endpoint is hit. It gathers the user's real account data from the database/cache.
+
+Request to AI Service: The backend sends the list of accounts, the payment amount, and the user's context to the nexus-ai service's /v2/interestkiller endpoint.
+
+Pre-computation (app.py): The precompute_payment_plans_sophisticated algorithm runs. It calculates the mathematically perfect payment splits for both Avalanche and Score Booster methods, handling all edge cases. It creates a "data dossier."
+
+AI Inference (services.py): The data dossier is passed to the interestkiller_ai_hybrid prompt. The Gemini model's only job is to write the expert-level explanation and projected_outcome strings based on these perfect facts.
+
+Assembly & Validation (app.py): The ai service receives the text from Gemini. It combines the algorithm's perfect math with the AI's generated text into the final, rich JSON object. It runs final guardrails to ensure the structure is correct.
+
+Response to Backend: The complete, validated object is sent back to nexus-backend.
+
+Response to Frontend: nexus-backend forwards the successful response to the pay.tsx screen, which then displays the two plans in the modal.
+
+This hybrid approach gives you the mathematical accuracy of deterministic code and the communication prowess of a large language model.
