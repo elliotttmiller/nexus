@@ -71,6 +71,7 @@ router.post('/recommend', async (req, res) => {
       };
     });
     console.log('[DEBUG] userCards for AI:', JSON.stringify(userCards, null, 2));
+    console.log('[DEBUG] FINAL userCards for AI:', JSON.stringify(userCards, null, 2));
     if (!userCards || userCards.length === 0) {
       return res.status(400).json({ error: 'No cards found for this user.' });
     }

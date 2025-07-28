@@ -92,6 +92,7 @@ router.post('/suggest', async (req, res) => {
       };
     });
     console.log('[DEBUG] accounts for AI:', JSON.stringify(accounts, null, 2));
+    console.log('[DEBUG] FINAL accounts for AI:', JSON.stringify(accounts, null, 2));
     if (!accounts || accounts.length === 0) {
       return res.status(400).json({ error: 'No credit cards found for this user.' });
     }

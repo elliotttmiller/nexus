@@ -11,8 +11,8 @@ TEST_USERS = [
     {"desc": "Credit profile good", "username": "user_credit_profile_good", "password": "any"},
 ]
 
-USER_EMAIL = "test_plaid_ai_credit_profiles@example.com"
-USER_PASSWORD = "testpassword"
+USER_EMAIL = "elliotttmiller@hotmail.com"
+USER_PASSWORD = "elliott"
 
 def register_or_login():
     r = requests.post(f"{API_BASE_URL}/auth/register", json={"email": USER_EMAIL, "password": USER_PASSWORD})
