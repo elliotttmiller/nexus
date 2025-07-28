@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
-import Profile from './profile';
-import Settings from './settings';
+import Profile from './(app)/profile';
+import Settings from './(app)/settings';
 
 export default function UnifiedSettingsScreen() {
   return (
