@@ -1,11 +1,11 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
-const TOKEN_KEY = 'nexus_jwt_token';
-const REFRESH_TOKEN_KEY = 'nexus_refresh_token';
+const TOKEN_KEY = 'authToken';
+const REFRESH_TOKEN_KEY = 'refreshToken';
 
 export const saveToken = async (token) => {
   try {
-    await AsyncStorage.setItem(TOKEN_KEY, token);
+    await SecureStore.setItemAsync(TOKEN_KEY, token);
   } catch (e) {
     console.error('Error saving token', e);
   }
@@ -13,7 +13,7 @@ export const saveToken = async (token) => {
 
 export const getToken = async () => {
   try {
-    return await AsyncStorage.getItem(TOKEN_KEY);
+    return await SecureStore.getItemAsync(TOKEN_KEY);
   } catch (e) {
     console.error('Error getting token', e);
     return null;
@@ -22,7 +22,7 @@ export const getToken = async () => {
 
 export const removeToken = async () => {
   try {
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
   } catch (e) {
     console.error('Error removing token', e);
   }
@@ -30,7 +30,7 @@ export const removeToken = async () => {
 
 export const saveRefreshToken = async (token) => {
   try {
-    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, token);
+    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token);
   } catch (e) {
     console.error('Error saving refresh token', e);
   }
@@ -38,7 +38,7 @@ export const saveRefreshToken = async (token) => {
 
 export const getRefreshToken = async () => {
   try {
-    return await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+    return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
   } catch (e) {
     console.error('Error getting refresh token', e);
     return null;
@@ -47,7 +47,7 @@ export const getRefreshToken = async () => {
 
 export const removeRefreshToken = async () => {
   try {
-    await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
   } catch (e) {
     console.error('Error removing refresh token', e);
   }

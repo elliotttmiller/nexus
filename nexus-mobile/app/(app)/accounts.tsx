@@ -178,13 +178,27 @@ export default function AccountsScreen() {
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
           <View style={styles.topRow}>
             <Text style={styles.pageTitle}>Accounts</Text>
-            <TouchableOpacity
-              style={styles.payBtnCard}
-              onPress={() => router.push('/pay')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.payBtnCardText}>Pay Cards</Text>
-            </TouchableOpacity>
+            <View style={styles.topRowButtons}>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={() => {
+                  setLoading(true);
+                  Promise.all([fetchAccountsData(), fetchTransactionsData()]).finally(() => {
+                    setLoading(false);
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.refreshButtonText}>Refresh</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.payBtnCard}
+                onPress={() => router.push('/pay')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.payBtnCardText}>Pay Cards</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           
           {accounts.length > 0 ? (
@@ -500,6 +514,21 @@ const styles = StyleSheet.create({
   linkAccountBtnText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  topRowButtons: {
+    flexDirection: 'row',
+    gap: 10, // Added gap between buttons
+  },
+  refreshButton: {
+    backgroundColor: '#eee',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    color: PRIMARY,
     fontWeight: 'bold',
   },
 }); 
