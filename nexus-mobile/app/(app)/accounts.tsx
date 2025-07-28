@@ -12,8 +12,9 @@ import BackArrowHeader from '../../src/components/BackArrowHeader';
 import { usePlaidLink } from 'react-native-plaid-link-sdk';
 import { useAuth } from '../../src/context/AuthContext';
 
-const formatCurrency = (amount: number = 0) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+// Helper to format currency
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
 };
 
 export default function AccountsScreen() {
@@ -26,124 +27,137 @@ export default function AccountsScreen() {
   const router = useRouter();
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
-  const [isPlaidLinkReady, setIsPlaidLinkReady] = useState(false);
-  const { user } = useAuth();
-  const userId = user?.id || 1;
+  const { user } = useAuth(); // Ensure user is available for authenticated calls
 
-  const fetchAllData = useCallback(async () => {
+  // --- REFACTORED: Memoize fetch functions to avoid re-creation if possible ---
+  const fetchAccountsData = useCallback(async () => {
     try {
-      const accountsRes = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=${userId}`);
-      const accountsData = await accountsRes.json();
-      setAccounts(Array.isArray(accountsData) ? accountsData : []);
-      const txRes = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=${userId}`);
-      const txData = await txRes.json();
-      setTransactions(Array.isArray(txData) ? txData : []);
-      setError('');
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`); // Using userId directly from auth context might be safer if available
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAccounts(data);
+      } else {
+        console.error("API did not return an array for accounts:", data);
+        setError('Failed to load accounts: Unexpected server response.');
+        setAccounts([]);
+      }
     } catch (err) {
-      setError('Failed to load accounts or transactions.');
+      console.error('Error fetching accounts:', err);
+      setError('An error occurred while fetching your accounts.');
       setAccounts([]);
-      setTransactions([]);
-    } finally {
-      setLoading(false);
     }
-  }, [userId]);
+  }, []); // Dependencies might include user.id if you decide to pass it
+
+  const fetchTransactionsData = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=1`); // Using userId directly from auth context
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setTransactions(data);
+      } else {
+        console.error("API did not return an array for transactions:", data);
+        setTransactions([]);
+      }
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+      setTransactions([]);
+    }
+  }, []); // Dependencies might include user.id
 
   useEffect(() => {
-    if (user) {
+    // Only attempt to fetch data if the user is authenticated.
+    // This depends on your AuthContext setting `user` to non-null on success.
+    if (user && user.authenticated) { // Ensure authentication check is complete before fetching
       setLoading(true);
-      fetchAllData();
-    }
-  }, [user, fetchAllData]);
-
-  // Modern Plaid Link implementation using create/open pattern
-  const { open, create, ready } = usePlaidLink({
-    onSuccess: async (success) => {
-      try {
-        setLoading(true);
-        await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ public_token: success.publicToken, userId }),
-        });
-        Alert.alert('Success!', 'Your account has been linked.');
-        setLinkToken(null);
-        setIsPlaidLinkReady(false);
-        await fetchAllData();
-      } catch (exchangeErr) {
-        Alert.alert('Error', 'Could not complete account linking.');
-      } finally {
+      Promise.all([fetchAccountsData(), fetchTransactionsData()]).finally(() => {
         setLoading(false);
-      }
-    },
-    onExit: (exit) => {
-      if (exit.error) {
-        console.log('Plaid Link exited with error:', exit.error);
-      }
-      setLinkToken(null);
-      setIsPlaidLinkReady(false);
+      });
+    } else if (!user) {
+        // If user is explicitly null (not authenticated), stop loading if not already
+        setLoading(false); 
     }
-  });
+  }, [user, fetchAccountsData, fetchTransactionsData]);
 
-  // Preload Plaid Link for better performance
-  const fetchLinkTokenAndPreload = useCallback(async () => {
+  // Fetch Plaid Link token (also `useCallback` for memoization)
+  const fetchLinkToken = useCallback(async () => {
     setLinkLoading(true);
-    setIsPlaidLinkReady(false);
     try {
+      // It's crucial that userId is safely available here.
       const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/create_link_token`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        headers: { 'Content-Type': 'application/json' }, // Explicitly set content type for POST
+        body: JSON.stringify({ userId: user?.id || 1 }), // Use authenticated userId if possible
       });
-      const data = await res.json();
+      const data = await res.json(); // Direct .json() for expected JSON
       if (data && data.link_token) {
         setLinkToken(data.link_token);
-        // Preload Plaid Link in the background for instant opening
-        create({ token: data.link_token });
-        setIsPlaidLinkReady(true);
       } else {
-        throw new Error(data.error || 'Failed to retrieve Plaid link token.');
+        console.error('Failed to get link_token:', data);
+        setError('Failed to generate Plaid Link token. Please try again.');
+        setLinkToken(null);
       }
     } catch (err) {
-      Alert.alert('Error', err.message);
+      console.error('Error fetching link token:', err);
+      setError(`Error fetching link token: ${err.message}`);
+      setLinkToken(null);
     } finally {
       setLinkLoading(false);
     }
-  }, [userId, create]);
+  }, [user]); // Re-fetch link token if user changes
 
-  // Preload Plaid Link when screen loads and no accounts exist
-  useEffect(() => {
-    if (user && accounts.length === 0 && !loading && !isPlaidLinkReady) {
-      fetchLinkTokenAndPreload();
+  // --- CRITICAL FIX: Conditionally initialize usePlaidLink ---
+  // Only initialize this hook if linkToken is actually available.
+  const plaidLinkConfig = React.useMemo(() => {
+    if (linkToken) {
+      return {
+        token: linkToken,
+        onSuccess: async (publicToken, metadata) => {
+          try {
+            await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ public_token: publicToken, userId: user?.id || 1 }), // Use authenticated userId
+            });
+            Alert.alert('Success', 'Account linked successfully!');
+            fetchAccountsData(); // Refresh accounts after linking
+          } catch (exchangeErr) {
+            console.error('Error exchanging public token:', exchangeErr);
+            Alert.alert('Error', 'Failed to link account. Please try again.');
+          }
+        },
+        onExit: (error, metadata) => {
+          if (error != null) {
+            console.error('Plaid Link exited with error:', error, metadata);
+            // Alert.alert('Plaid Link Error', error.message || 'Plaid Link failed.');
+          } else {
+            console.log('Plaid Link exited without error:', metadata);
+          }
+        },
+      };
     }
-  }, [user, accounts, loading, isPlaidLinkReady, fetchLinkTokenAndPreload]);
+    return null; // Don't return config if no token
+  }, [linkToken, user, fetchAccountsData]); // Recreate config if linkToken changes
 
-  const handleOpenPlaidLink = useCallback(() => {
-    if (isPlaidLinkReady && ready) {
-      open();
-    } else if (!isPlaidLinkReady) {
-      // If not preloaded, fetch token and open
-      fetchLinkTokenAndPreload().then(() => {
-        if (ready) {
-          open();
-        }
-      });
-    }
-  }, [isPlaidLinkReady, ready, open, fetchLinkTokenAndPreload]);
+  const { open, ready } = usePlaidLink(plaidLinkConfig); // Pass the config object directly
 
+  // --- Loading and Error States ---
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={styles.fullscreenCenter}>
         <ActivityIndicator size="large" color={PRIMARY} />
-        <Text style={{ marginTop: 10, color: TEXT }}>Loading your financial data...</Text>
+        <Text style={styles.loadingText}>Loading your financial data...</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-        <Text style={{ color: 'red', fontWeight: 'bold' }}>Error</Text>
-        <Text style={{ color: TEXT, textAlign: 'center', marginTop: 10 }}>{error}</Text>
+      <View style={styles.fullscreenCenter}>
+        <Text style={styles.errorTitle}>Error Loading Data</Text>
+        <Text style={styles.errorMessage}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => router.replace('/')}>
+          <Text style={styles.retryButtonText}>Go to Home / Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -155,28 +169,25 @@ export default function AccountsScreen() {
     return 0;
   }).filter(tx => !filterTx || (tx.description && tx.description.toLowerCase().includes(filterTx.toLowerCase())));
 
-  // Defensive fallback for accounts
-  const safeAccounts: Account[] = Array.isArray(accounts) ? accounts : [];
-  console.log('accounts:', accounts, 'safeAccounts:', safeAccounts, 'type:', typeof accounts);
-
   return (
     <>
       <BackArrowHeader />
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
           <View style={styles.topRow}>
             <Text style={styles.pageTitle}>Accounts</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.payBtnCard}
-              onPress={() => router.replace('/pay')}
+              onPress={() => router.push('/pay')}
               activeOpacity={0.8}
             >
               <Text style={styles.payBtnCardText}>Pay Cards</Text>
             </TouchableOpacity>
           </View>
-          {safeAccounts.length > 0 ? (
+          
+          {accounts.length > 0 ? (
             <ExpandableSection
-              data={safeAccounts}
+              data={accounts}
               initialCount={5}
               title=""
               renderItem={(item: Account) => (
@@ -184,20 +195,21 @@ export default function AccountsScreen() {
                   <View style={styles.accountCardRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.accountName}>{item.name}</Text>
-                      <Text style={styles.accountNumber}>•••• {item.mask || item.last4 || 'XXXX'}</Text>
+                      <Text style={styles.accountNumber}>•••• {item.mask || (item.account_id ? String(item.account_id).slice(-4) : 'XXXX')}</Text> {/* Using item.account_id as fallback for mask */}
                       <Text style={styles.accountTypeLabel}>{item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Account'}</Text>
                     </View>
                     <Text style={styles.accountBalance}>
-                      {typeof item.balance === 'number' ? `$${item.balance.toFixed(2)}` : '--'}
+                      {formatCurrency(item.balance)}
                     </Text>
                   </View>
-                  {(item.type === 'credit' || item.type === 'loan') && item.apr > 0 && (
+                  {(item.type === 'credit' || item.type === 'loan') && typeof item.apr === 'number' && item.apr > 0 && (
                     <View style={styles.metricsRow}>
                       <Text style={styles.metricText}>APR: {item.apr}%</Text>
                     </View>
                   )}
-                  {item.type === 'credit' && item.creditLimit > 0 && (
+                  {item.type === 'credit' && typeof item.creditLimit === 'number' && item.creditLimit > 0 && (
                     <View style={styles.healthBarRow}>
+                      {/* Ensure utilization calculation is safe */}
                       <AccountHealthBar value={(item.balance / item.creditLimit) * 100} />
                       <Text style={styles.healthLabel}>{((item.balance / item.creditLimit) * 100).toFixed(0)}% Util.</Text>
                     </View>
@@ -206,41 +218,51 @@ export default function AccountsScreen() {
               )}
             />
           ) : (
-            <View style={{ alignItems: 'center', marginTop: 48 }}>
+            <View style={styles.emptyStateContainer}>
               <Text style={styles.emptyStateText}>No accounts found. Link an account to get started.</Text>
               <TouchableOpacity
-                style={[styles.linkAccountBtn, !isPlaidLinkReady && { backgroundColor: '#ccc' }]}
-                onPress={handleOpenPlaidLink}
+                style={styles.linkAccountBtn}
+                onPress={() => {
+                  if (!linkToken) fetchLinkToken(); // Fetch token if not already fetched
+                  else if (ready) open(); // Open Link only if token is ready
+                  else Alert.alert('Plaid Link not ready', 'Please wait or try again.');
+                }}
                 activeOpacity={0.85}
-                disabled={linkLoading}
+                disabled={linkLoading || (!linkToken && !ready)}
               >
                 <Text style={styles.linkAccountBtnText}>
-                  {linkLoading ? 'Preparing...' : (isPlaidLinkReady ? 'Link Account' : 'Prepare Link...')}
+                  {linkLoading ? 'Generating Link...' : (!linkToken ? 'Link Account' : (ready ? 'Open Plaid Link' : 'Plaid Not Ready'))}
                 </Text>
               </TouchableOpacity>
             </View>
           )}
           {/* Transactions Section */}
           <View style={styles.transactionsSection}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Transactions</Text>
-              <TouchableOpacity style={[styles.sortBtn, sortTx === 'date' && { backgroundColor: PRIMARY + '22' }]} onPress={() => setSortTx('date')}>
-                <Text style={styles.sortBtnText}>Date</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.sortBtn, sortTx === 'amount' && { backgroundColor: PRIMARY + '22' }]} onPress={() => setSortTx('amount')}>
-                <Text style={styles.sortBtnText}>Amount</Text>
-              </TouchableOpacity>
+              <View style={styles.sortFilterContainer}>
+                <TouchableOpacity style={[styles.sortBtn, sortTx === 'date' && styles.sortBtnActive]} onPress={() => setSortTx('date')}>
+                  <Text style={styles.sortBtnText}>Date</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.sortBtn, sortTx === 'amount' && styles.sortBtnActive]} onPress={() => setSortTx('amount')}>
+                  <Text style={styles.sortBtnText}>Amount</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            {sortedTx.slice(0, 6).map((tx) => (
+            {sortedTx.length > 0 ? sortedTx.slice(0, 6).map((tx) => (
               <View key={tx.id} style={styles.transactionRow}>
-                <Text style={styles.txDesc}>{tx.name || tx.description}</Text>
-                <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>${Math.abs(tx.amount).toFixed(2)}</Text>
+                <Text style={styles.txDesc} numberOfLines={1} ellipsizeMode="tail">{tx.name || tx.description || 'Unknown Transaction'}</Text>
+                <Text style={[styles.txAmount, { color: tx.amount < 0 ? '#F44336' : PRIMARY }]}>{formatCurrency(Math.abs(tx.amount))}</Text>
                 <Text style={styles.txDate}>{tx.date}</Text>
               </View>
-            ))}
-            <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/transactions')} activeOpacity={0.8}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
+            )) : (
+              <Text style={styles.emptyStateText}>No recent transactions to display.</Text>
+            )}
+            {transactions.length > 6 && (
+              <TouchableOpacity style={styles.viewAllBtn} onPress={() => router.push('/transactions')} activeOpacity={0.8}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
         <BottomNavigation />
@@ -250,6 +272,45 @@ export default function AccountsScreen() {
 }
 
 const styles = StyleSheet.create({
+  scrollViewContent: {
+    padding: 16,
+    paddingBottom: 80, // Space for bottom navigation
+  },
+  fullscreenCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: TEXT,
+    fontSize: 16,
+  },
+  errorTitle: {
+    color: 'red',
+    fontWeight: 'bold',
+    fontSize: 20,
+    marginBottom: 10,
+  },
+  errorMessage: {
+    color: TEXT,
+    textAlign: 'center',
+    fontSize: 15,
+    marginHorizontal: 20,
+  },
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: PRIMARY,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -312,6 +373,7 @@ const styles = StyleSheet.create({
   metricsRow: {
     flexDirection: 'row',
     marginTop: 5,
+    gap: 12, // Added gap for spacing
   },
   metricText: {
     fontSize: 14,
@@ -322,6 +384,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 5,
+    gap: 8, // Added gap for spacing
   },
   healthLabel: {
     fontSize: 12,
@@ -330,12 +393,30 @@ const styles = StyleSheet.create({
   },
   transactionsSection: {
     marginTop: 20,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  sectionHeaderRow: { // New style for header with sort buttons
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  sortFilterContainer: {
+    flexDirection: 'row',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: PRIMARY,
-    marginBottom: 10,
+    marginRight: 10, // Added margin
   },
   sortBtn: {
     paddingVertical: 5,
@@ -344,13 +425,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#eee',
     marginLeft: 10,
   },
+  sortBtnActive: { // Style for active sort button
+    backgroundColor: PRIMARY + '22',
+    borderColor: PRIMARY,
+    borderWidth: 1,
+  },
   sortBtnText: {
     fontSize: 14,
     color: PRIMARY,
     fontWeight: 'bold',
-  },
-  sortBtnActive: {
-    backgroundColor: PRIMARY + '22',
   },
   transactionRow: {
     flexDirection: 'row',
@@ -363,25 +446,42 @@ const styles = StyleSheet.create({
   txDesc: {
     flex: 1,
     fontSize: 16,
-    color: PRIMARY,
+    color: '#333', // Adjusted color for better contrast
   },
   txAmount: {
     fontSize: 16,
     fontWeight: 'bold',
+    marginHorizontal: 8,
   },
   txDate: {
-    fontSize: 12,
+    fontSize: 13, // Slightly smaller for subtlety
     color: '#888',
-    marginLeft: 10,
+    minWidth: 80,
+    textAlign: 'right',
   },
   viewAllBtn: {
     marginTop: 15,
     alignItems: 'center',
+    alignSelf: 'flex-start', // Adjusted for better alignment
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: PRIMARY + '11',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
   },
   viewAllText: {
-    fontSize: 16,
     color: PRIMARY,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    marginTop: 48,
+    marginBottom: 48, // Added for better spacing if no accounts
   },
   emptyStateText: {
     fontSize: 18,
@@ -399,52 +499,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  scrollViewContent: {
-    padding: 16,
-    paddingBottom: 80,
-  },
-  fullscreenCenter: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: TEXT,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'red',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  errorMessage: {
-    fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: PRIMARY,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  sortFilterContainer: {
-    flexDirection: 'row',
   },
 }); 
