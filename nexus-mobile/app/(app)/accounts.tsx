@@ -38,6 +38,19 @@ export default function AccountsScreen() {
     });
   }, [auth, user, userId]);
 
+  // Safety timeout to prevent infinite loading
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (loading && !user) {
+        console.warn('AccountsScreen - Loading timeout reached, user still not available');
+        setLoading(false);
+        setError('Unable to load user session. Please try logging in again.');
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeoutId);
+  }, [loading, user]);
+
   const fetchAllData = useCallback(async () => {
     if (!userId) {
       console.error('AccountsScreen - No userId available, cannot fetch data');
