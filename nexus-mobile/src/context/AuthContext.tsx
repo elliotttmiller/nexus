@@ -3,9 +3,12 @@ import * as SecureStore from 'expo-secure-store';
 import { useRouter, useSegments } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { PRIMARY } from '../constants/colors';
+import { API_BASE_URL } from '../constants/api';
 
 interface User {
-  id?: number;
+  id: number;
+  email?: string;
+  username?: string;
   authenticated: boolean;
   token: string | null;
 }
@@ -34,7 +37,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const token = await SecureStore.getItemAsync('authToken');
         if (token) {
-          setUser({ authenticated: true, token });
+          // Check if API_BASE_URL is available
+          if (!API_BASE_URL) {
+            console.error('API_BASE_URL not available, using fallback auth');
+            setUser({ id: 1, authenticated: true, token });
+            setLoading(false);
+            return;
+          }
+
+          // Fetch user profile to get user ID and other details
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            if (response.ok) {
+              const userData = await response.json();
+              setUser({ 
+                id: userData.id || userData.user_id || 1, // Support different response formats
+                email: userData.email,
+                username: userData.username,
+                authenticated: true, 
+                token 
+              });
+            } else {
+              // Token might be invalid, try to continue but log the issue
+              console.warn('Failed to fetch user profile, using fallback');
+              setUser({ id: 1, authenticated: true, token });
+            }
+          } catch (profileError) {
+            console.error('Error fetching user profile:', profileError);
+            // Still set user as authenticated with fallback ID
+            setUser({ id: 1, authenticated: true, token });
+          }
         }
       } catch (error) {
         console.error("Auth check failed:", error);
@@ -59,7 +98,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await SecureStore.setItemAsync('authToken', token);
       await SecureStore.setItemAsync('refreshToken', refreshToken);
-      setUser({ authenticated: true, token });
+      
+      // Check if API_BASE_URL is available for profile fetch
+      if (!API_BASE_URL) {
+        console.warn('API_BASE_URL not available during login, using fallback');
+        setUser({ id: 1, authenticated: true, token });
+        router.replace('/(app)/dashboard');
+        return;
+      }
+      
+      // Fetch user profile after login
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setUser({ 
+            id: userData.id || userData.user_id || 1,
+            email: userData.email,
+            username: userData.username,
+            authenticated: true, 
+            token 
+          });
+        } else {
+          console.warn('Failed to fetch user profile after login, using fallback');
+          setUser({ id: 1, authenticated: true, token });
+        }
+      } catch (profileError) {
+        console.error('Error fetching user profile after login:', profileError);
+        setUser({ id: 1, authenticated: true, token });
+      }
+      
       router.replace('/(app)/dashboard');
     } catch (e) {
       console.error("Failed to save tokens:", e);

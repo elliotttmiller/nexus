@@ -25,32 +25,81 @@ export default function AccountsScreen() {
   const [linkLoading, setLinkLoading] = useState(false);
   const auth = useAuth();
   const user = auth?.user;
-  const userId = user?.id || 1;
+  const userId = user?.id;
+
+  // Debug logging for production troubleshooting
+  useEffect(() => {
+    console.log('AccountsScreen - Auth state:', {
+      hasAuth: !!auth,
+      hasUser: !!user,
+      userId: userId,
+      userAuthenticated: user?.authenticated,
+      API_BASE_URL: API_BASE_URL
+    });
+  }, [auth, user, userId]);
+
+  // Safety timeout to prevent infinite loading
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (loading && !user) {
+        console.warn('AccountsScreen - Loading timeout reached, user still not available');
+        setLoading(false);
+        setError('Unable to load user session. Please try logging in again.');
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeoutId);
+  }, [loading, user]);
 
   const fetchAllData = useCallback(async () => {
+    if (!userId) {
+      console.error('AccountsScreen - No userId available, cannot fetch data');
+      setLoading(false);
+      setError('User not properly authenticated');
+      return;
+    }
+
     try {
+      console.log('AccountsScreen - Fetching data for userId:', userId);
       const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=${userId}`);
       const data = await res.json();
+      console.log('AccountsScreen - Accounts response:', { status: res.status, dataLength: Array.isArray(data) ? data.length : 'not array' });
       setAccounts(Array.isArray(data) ? data : []);
+      
       const txRes = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=${userId}`);
       const txData = await txRes.json();
+      console.log('AccountsScreen - Transactions response:', { status: txRes.status, dataLength: Array.isArray(txData) ? txData.length : 'not array' });
       setTransactions(Array.isArray(txData) ? txData : []);
+      
+      setError(''); // Clear any previous errors
     } catch (err) {
+      console.error('AccountsScreen - Error fetching data:', err);
       setAccounts([]);
       setTransactions([]);
+      setError('Failed to load financial data');
     } finally {
       setLoading(false);
     }
   }, [userId]);
 
   useEffect(() => {
-    if (user) {
+    if (user?.authenticated) {
       fetchAllData();
+    } else if (user?.authenticated === false) {
+      // User is explicitly not authenticated
+      console.log('AccountsScreen - User not authenticated, stopping loading');
+      setLoading(false);
+      setError('Please log in to view your accounts');
     }
+    // If user is null, keep loading while AuthContext initializes
   }, [user, fetchAllData]);
 
-  // --- DEFINITIVE FIX: The Imperative Plaid Link Flow ---
   const handleLinkAccountPress = useCallback(async () => {
+    if (!userId) {
+      Alert.alert('Error', 'User not properly authenticated. Please log in again.');
+      return;
+    }
+    
     setLinkLoading(true);
     try {
       // 1. Fetch the link_token from your backend
@@ -95,13 +144,20 @@ export default function AccountsScreen() {
     } finally {
       setLinkLoading(false);
     }
-  }, [userId]);
+  }, [userId, fetchAllData]);
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
         <ActivityIndicator size="large" color={PRIMARY} />
-        <Text style={{ marginTop: 10, color: TEXT }}>Loading your financial data...</Text>
+        <Text style={{ marginTop: 10, color: TEXT, textAlign: 'center' }}>
+          Loading your financial data...
+        </Text>
+        {error && (
+          <Text style={{ marginTop: 10, color: 'red', textAlign: 'center', fontSize: 14 }}>
+            {error}
+          </Text>
+        )}
       </View>
     );
   }
@@ -154,16 +210,35 @@ export default function AccountsScreen() {
             />
           ) : (
             <View style={{ alignItems: 'center', marginTop: 48 }}>
-              <Text style={styles.emptyStateText}>No accounts linked. Link an account to get started.</Text>
-              <TouchableOpacity
-                style={styles.linkAccountBtn}
-                onPress={handleLinkAccountPress}
-                disabled={linkLoading}
-              >
-                <Text style={styles.linkAccountBtnText}>
-                  {linkLoading ? 'Preparing...' : 'Link Account'}
-                </Text>
-              </TouchableOpacity>
+              {error ? (
+                <>
+                  <Text style={styles.emptyStateText}>{error}</Text>
+                  <TouchableOpacity
+                    style={styles.linkAccountBtn}
+                    onPress={() => {
+                      setError('');
+                      if (user?.authenticated && userId) {
+                        fetchAllData();
+                      }
+                    }}
+                  >
+                    <Text style={styles.linkAccountBtnText}>Retry</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.emptyStateText}>No accounts linked. Link an account to get started.</Text>
+                  <TouchableOpacity
+                    style={styles.linkAccountBtn}
+                    onPress={handleLinkAccountPress}
+                    disabled={linkLoading || !userId}
+                  >
+                    <Text style={styles.linkAccountBtnText}>
+                      {linkLoading ? 'Preparing...' : 'Link Account'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           )}
         </ScrollView>
