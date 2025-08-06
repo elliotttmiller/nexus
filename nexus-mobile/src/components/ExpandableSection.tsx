@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { PRIMARY } from '../constants/colors';
 
@@ -9,7 +9,7 @@ interface ExpandableSectionProps<T> {
   renderItem: (item: T, index: number) => React.ReactNode;
 }
 
-export default function ExpandableSection<T extends { id?: string }>({ data, initialCount, title, renderItem }: ExpandableSectionProps<T>) {
+function ExpandableSectionComponent<T extends { id?: string }>({ data, initialCount, title, renderItem }: ExpandableSectionProps<T>) {
   const [expanded, setExpanded] = useState(false);
   const itemsToShow = expanded ? data : data.slice(0, initialCount);
 
@@ -35,6 +35,10 @@ export default function ExpandableSection<T extends { id?: string }>({ data, ini
     </View>
   );
 }
+
+const ExpandableSection = memo(ExpandableSectionComponent) as typeof ExpandableSectionComponent;
+
+export default ExpandableSection;
 
 const styles = StyleSheet.create({
   sectionContainer: {

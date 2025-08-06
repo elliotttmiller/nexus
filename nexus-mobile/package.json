@@ -6,9 +6,14 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
-    "ios": "expo start --ios",
+    "ios": "expo start --ios", 
     "web": "expo start --web",
-    "test": "jest"
+    "build": "NODE_ENV=production expo export",
+    "build:android": "NODE_ENV=production eas build --platform android",
+    "build:ios": "NODE_ENV=production eas build --platform ios",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
