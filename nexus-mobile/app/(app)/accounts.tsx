@@ -58,7 +58,6 @@ export default function AccountsScreen() {
   const [error, setError] = useState('');
   const router = useRouter();
   const [linkLoading, setLinkLoading] = useState(false);
-  const [plaidInitialized, setPlaidInitialized] = useState(false);
   const auth = useAuth();
   const user = auth?.user;
   const userId = user?.id;
@@ -141,7 +140,6 @@ export default function AccountsScreen() {
       // 2. Create Plaid session with proper error handling
       try {
         await PlaidLink.create({ token: data.link_token });
-        setPlaidInitialized(true);
       } catch (createError) {
         throw new Error(`Failed to initialize Plaid Link: ${createError}`);
       }
