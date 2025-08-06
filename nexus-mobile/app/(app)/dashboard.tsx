@@ -15,15 +15,12 @@ export default function DashboardScreen() {
   const router = useRouter();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
     fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=1`)
       .then(res => res.json())
       .then(data => setAccounts(data || []))
-      .catch(() => setAccounts([]))
-      .finally(() => setLoading(false));
+      .catch(() => setAccounts([]));
     fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=1`)
       .then(res => res.json())
       .then(data => setTransactions(Array.isArray(data) ? data : []))

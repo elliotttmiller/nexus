@@ -1,28 +1,64 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Platform } from 'react-native';
 import { API_BASE_URL } from '../../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../../src/constants/fetchWithAuth';
 import ExpandableSection from '../../src/components/ExpandableSection';
 import BottomNavigation from '../../src/components/BottomNavigation';
 import { PRIMARY, TEXT } from '../../src/constants/colors';
-import { Account, Transaction } from '../../src/types';
+import { Account } from '../../src/types';
 import AccountHealthBar from '../../src/components/AccountHealthBar';
 import BackArrowHeader from '../../src/components/BackArrowHeader';
-import PlaidLink from 'react-native-plaid-link-sdk';
+import PlaidErrorBoundary from '../../src/components/PlaidErrorBoundary';
 import { useAuth } from '../../src/context/AuthContext';
+
+// Lazy load PlaidLink to avoid native module crashes during app initialization
+const PlaidLink = Platform.OS === 'ios' ? require('react-native-plaid-link-sdk').default : null;
 
 const formatCurrency = (amount: number = 0) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 };
 
+interface PlaidLinkSuccessMetadata {
+  publicToken: string;
+  metadata: {
+    institution?: {
+      name?: string;
+      institution_id?: string;
+    };
+    accounts?: Array<{
+      id: string;
+      name: string;
+      mask: string;
+      type: string;
+      subtype: string;
+    }>;
+  };
+}
+
+interface PlaidLinkExitMetadata {
+  error?: {
+    error_code?: string;
+    error_message?: string;
+    error_type?: string;
+  };
+  metadata: {
+    institution?: {
+      name?: string;
+      institution_id?: string;
+    };
+    request_id?: string;
+    link_session_id?: string;
+  };
+}
+
 export default function AccountsScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const router = useRouter();
   const [linkLoading, setLinkLoading] = useState(false);
+  const [plaidInitialized, setPlaidInitialized] = useState(false);
   const auth = useAuth();
   const user = auth?.user;
   const userId = user?.id;
@@ -51,15 +87,11 @@ export default function AccountsScreen() {
       const data = await res.json();
       setAccounts(Array.isArray(data) ? data : []);
       
-      const txRes = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=${userId}`);
-      const txData = await txRes.json();
-      setTransactions(Array.isArray(txData) ? txData : []);
-      
       setError(''); // Clear any previous errors
-    } catch (err) {
+    } catch (error) {
       setAccounts([]);
-      setTransactions([]);
       setError('Failed to load financial data');
+      console.warn('Failed to fetch account data:', error);
     } finally {
       setLoading(false);
     }
@@ -81,48 +113,93 @@ export default function AccountsScreen() {
       Alert.alert('Error', 'User not properly authenticated. Please log in again.');
       return;
     }
+
+    // Check if we're on iOS and PlaidLink is available
+    if (Platform.OS !== 'ios' || !PlaidLink) {
+      Alert.alert('Error', 'Plaid Link is currently only supported on iOS devices.');
+      return;
+    }
     
     setLinkLoading(true);
     try {
-      // 1. Fetch the link_token from your backend
+      // 1. Fetch the link_token from your backend with better error handling
       const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/create_link_token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
       });
+      
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status} ${res.statusText}`);
+      }
+      
       const data = await res.json();
       if (!data || !data.link_token) {
         throw new Error(data.error || 'Failed to retrieve Plaid link token.');
       }
-      // 2. Create Plaid session
-      PlaidLink.create({ token: data.link_token });
-      PlaidLink.open({
-        onSuccess: async (success: { publicToken: string; metadata: any }) => {
-          try {
-            await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ public_token: success.publicToken, userId }),
-            });
-            Alert.alert('Success!', 'Your account has been linked.');
-            await fetchAllData();
-          } catch (exchangeErr) {
-            Alert.alert('Error', 'Could not complete account linking.');
-          } finally {
-            setLoading(false);
-          }
-        },
-        onExit: (exit: { error?: any; metadata: any }) => {
-          setLoading(false);
-        }
-      });
-      // 4. Handle Plaid events (success, exit, error) via event emitter if needed (see SDK docs)
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        Alert.alert('Error', err.message);
-      } else {
-        Alert.alert('Error', 'An unknown error occurred while preparing Plaid.');
+      
+      // 2. Create Plaid session with proper error handling
+      try {
+        await PlaidLink.create({ token: data.link_token });
+        setPlaidInitialized(true);
+      } catch (createError) {
+        throw new Error(`Failed to initialize Plaid Link: ${createError}`);
       }
+      
+      // 3. Open Plaid with enhanced error handling
+      try {
+        await PlaidLink.open({
+          onSuccess: async (success: PlaidLinkSuccessMetadata) => {
+            setLinkLoading(true);
+            try {
+              if (!success?.publicToken) {
+                throw new Error('No public token received from Plaid');
+              }
+              
+              const exchangeRes = await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  public_token: success.publicToken, 
+                  userId,
+                  metadata: success.metadata
+                }),
+              });
+              
+              if (!exchangeRes.ok) {
+                throw new Error(`Failed to exchange token: ${exchangeRes.status}`);
+              }
+              
+              Alert.alert('Success!', `Your account has been linked${success.metadata?.institution?.name ? ` from ${success.metadata.institution.name}` : ''}.`);
+              await fetchAllData();
+            } catch (exchangeError) {
+              console.error('Token exchange failed:', exchangeError);
+              Alert.alert('Error', 'Could not complete account linking. Please try again.');
+            } finally {
+              setLinkLoading(false);
+            }
+          },
+          onExit: (exit: PlaidLinkExitMetadata) => {
+            setLinkLoading(false);
+            if (exit?.error) {
+              console.warn('Plaid Link exit with error:', exit.error);
+              if (exit.error.error_type === 'InvalidRequestError' || 
+                  exit.error.error_type === 'InstitutionError') {
+                Alert.alert(
+                  'Connection Error', 
+                  exit.error.error_message || 'Unable to connect to your bank. Please try again later.'
+                );
+              }
+            }
+          }
+        });
+      } catch (openError) {
+        throw new Error(`Failed to open Plaid Link: ${openError}`);
+      }
+    } catch (error: unknown) {
+      console.error('Plaid Link error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred while preparing Plaid.';
+      Alert.alert('Error', errorMessage);
     } finally {
       setLinkLoading(false);
     }
@@ -145,7 +222,7 @@ export default function AccountsScreen() {
   }
 
   return (
-    <>
+    <PlaidErrorBoundary>
       <BackArrowHeader />
       <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
@@ -226,7 +303,7 @@ export default function AccountsScreen() {
         </ScrollView>
         <BottomNavigation />
       </SafeAreaView>
-    </>
+    </PlaidErrorBoundary>
   );
 }
 
