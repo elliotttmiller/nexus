@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, StyleSheet } from 'react-native';
 
 interface AccountHealthBarProps {
   value: number; // 0-100
 }
 
-export default function AccountHealthBar({ value }: AccountHealthBarProps) {
+const AccountHealthBar = memo<AccountHealthBarProps>(({ value }) => {
   let barColor = '#20C990';
   if (value < 40) barColor = '#F44336'; // red
   else if (value < 80) barColor = '#FFA726'; // orange
@@ -16,7 +16,11 @@ export default function AccountHealthBar({ value }: AccountHealthBarProps) {
       <View style={styles.bgBar} />
     </View>
   );
-}
+});
+
+AccountHealthBar.displayName = 'AccountHealthBar';
+
+export default AccountHealthBar;
 
 const styles = StyleSheet.create({
   container: {

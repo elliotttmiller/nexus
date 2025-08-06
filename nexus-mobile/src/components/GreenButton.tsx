@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { TouchableOpacity, Text, StyleSheet, TouchableOpacityProps } from 'react-native';
 import { PRIMARY } from '../constants/colors';
 
@@ -6,13 +6,17 @@ interface GreenButtonProps extends TouchableOpacityProps {
   title: string;
 }
 
-export default function GreenButton({ title, style, ...props }: GreenButtonProps) {
+const GreenButton = memo<GreenButtonProps>(({ title, style, ...props }) => {
   return (
     <TouchableOpacity style={[styles.button, style]} {...props} activeOpacity={0.85}>
       <Text style={styles.text}>{title}</Text>
     </TouchableOpacity>
   );
-}
+});
+
+GreenButton.displayName = 'GreenButton';
+
+export default GreenButton;
 
 const styles = StyleSheet.create({
   button: {

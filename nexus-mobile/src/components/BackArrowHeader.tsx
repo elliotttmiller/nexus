@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface BackArrowHeaderProps { children?: React.ReactNode; }
 
-export default function BackArrowHeader({ children }: BackArrowHeaderProps) {
+const BackArrowHeader = memo<BackArrowHeaderProps>(({ children }) => {
   const router = useRouter();
   return (
     <SafeAreaView edges={['top', 'left']} style={styles.safeArea}>
@@ -22,7 +22,11 @@ export default function BackArrowHeader({ children }: BackArrowHeaderProps) {
       </View>
     </SafeAreaView>
   );
-}
+});
+
+BackArrowHeader.displayName = 'BackArrowHeader';
+
+export default BackArrowHeader;
 
 const styles = StyleSheet.create({
   safeArea: {
