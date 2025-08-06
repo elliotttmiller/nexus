@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { PRIMARY } from '../../src/constants/colors';
 import AccountHealthBar from '../../src/components/AccountHealthBar';
 import BottomNavigation from '../../src/components/BottomNavigation';
-// import { LineChart } from 'react-native-chart-kit'; // Removed
-import * as shape from 'd3-shape';
 import { API_BASE_URL } from '../../src/constants/api';
 import { fetchWithAuth } from '../../src/constants/fetchWithAuth';
 import { Account, Transaction } from '../../src/types';

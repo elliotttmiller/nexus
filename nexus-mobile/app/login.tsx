@@ -17,7 +17,6 @@ export default function LoginScreen() {
   const router = useRouter();
 
   // TEMP: Log API_BASE_URL for debugging
-  console.log('API_BASE_URL at runtime:', API_BASE_URL);
 
   const handleLogin = () => withError(() => withLoading(async () => {
     const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -26,7 +25,6 @@ export default function LoginScreen() {
       body: JSON.stringify({ email, password })
     });
     const data = await res.json();
-    console.log('Login response:', data);
     if (res.ok) {
       if (data.twofa_required) {
         router.replace('/twofa');
