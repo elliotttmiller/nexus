@@ -18,7 +18,8 @@ export const refreshToken = async () => {
       return data.token;
     }
     return null;
-  } catch (e) {
+  } catch (error) {
+    console.warn('Token refresh failed:', error);
     await removeToken();
     await removeRefreshToken();
     return null;

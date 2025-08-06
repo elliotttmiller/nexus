@@ -3,7 +3,7 @@
     "name": "Nexus Mobile",
     "slug": "nexus-mobile",
     "scheme": "nexus",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "sdkVersion": "53.0.0",
     "jsEngine": "hermes",
     "plugins": [
@@ -27,8 +27,7 @@
       ]
     ],
     "platforms": [
-      "ios",
-      "web"
+      "ios"
     ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -39,7 +38,7 @@
     },
     "ios": {
       "bundleIdentifier": "app.nexus.ai",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
