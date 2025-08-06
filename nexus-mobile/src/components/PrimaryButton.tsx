@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { PRIMARY } from '../constants/colors';
 
@@ -9,7 +9,7 @@ type PrimaryButtonProps = {
   style?: object;
 };
 
-export default function PrimaryButton({ title, onPress, disabled, style }: PrimaryButtonProps) {
+const PrimaryButton = memo<PrimaryButtonProps>(({ title, onPress, disabled, style }) => {
   return (
     <TouchableOpacity 
       style={[styles.button, style, disabled && styles.disabledButton]} 
@@ -19,7 +19,11 @@ export default function PrimaryButton({ title, onPress, disabled, style }: Prima
       <Text style={styles.buttonText}>{title}</Text>
     </TouchableOpacity>
   );
-}
+});
+
+PrimaryButton.displayName = 'PrimaryButton';
+
+export default PrimaryButton;
 
 const styles = StyleSheet.create({
   button: {

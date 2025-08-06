@@ -17,8 +17,8 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
   }
 
   componentDidCatch(error: Error, info: any) {
-    // You can log error info here or send to Sentry
-    console.error('ErrorBoundary caught an error:', error, info);
+    // In production, you might want to send this to a crash reporting service like Sentry
+    // console.error('ErrorBoundary caught an error:', error, info);
   }
 
   handleReset = () => {

@@ -48,16 +48,13 @@ export default function PayScreen() {
     fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=${userId}`)
       .then(res => res.json())
       .then(data => {
-        console.log('Fetched accounts (raw):', data);
         const creditCards = data.filter((acc: Account) => acc.type && acc.type.toLowerCase().includes('credit'));
-        console.log('Filtered credit cards:', creditCards);
         setCards(creditCards.length > 0 ? creditCards : [
           { id: 'mock1', name: 'Mock Credit Card', balance: 500, apr: 19.99, creditLimit: 2000, last4: '1234', type: 'credit' }
         ]);
         setFundingAccounts(data.filter((acc: Account) => acc.type && !acc.type.toLowerCase().includes('credit')));
       })
       .catch((err) => {
-        console.log('Error fetching accounts:', err);
         setCards([
           { id: 'mock1', name: 'Mock Credit Card', balance: 500, apr: 19.99, creditLimit: 2000, last4: '1234', type: 'credit' }
         ]);
@@ -72,7 +69,6 @@ export default function PayScreen() {
         if (ctx && ctx.recommendedFundingAccountId) setSelectedFunding(ctx.recommendedFundingAccountId);
       })
       .catch((err) => {
-        console.log('Error fetching payment context:', err);
         setPaymentContext(null);
       });
   }, []);
@@ -134,11 +130,6 @@ export default function PayScreen() {
     }
     
     try {
-      console.log('Executing payment with:', {
-        funding_account_id: selectedFunding,
-        split: result.split
-      });
-      
       const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/pay/execute`, {
         method: 'POST',
         headers: {
@@ -156,12 +147,10 @@ export default function PayScreen() {
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        console.error('Payment execution failed:', res.status, errorData);
         throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
       }
       
       const data = await res.json();
-      console.log('Payment execution successful:', data);
       setPaymentResults(data.payments || []);
       
       try {
@@ -182,7 +171,6 @@ export default function PayScreen() {
           })
         });
       } catch (error) {
-        console.error('Failed to save payment history:', error);
       }
       
       Alert.alert(
@@ -264,7 +252,6 @@ export default function PayScreen() {
       }
     };
     
-    console.log('DEBUG: AI Recommendation payload:', payload);
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/pay/ai-recommendation`, {
         method: 'POST',

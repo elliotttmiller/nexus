@@ -39,7 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (token) {
           // Check if API_BASE_URL is available
           if (!API_BASE_URL) {
-            console.error('API_BASE_URL not available, using fallback auth');
             setUser({ id: 1, authenticated: true, token });
             setLoading(false);
             return;
@@ -66,17 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               });
             } else {
               // Token might be invalid, try to continue but log the issue
-              console.warn('Failed to fetch user profile, using fallback');
               setUser({ id: 1, authenticated: true, token });
             }
           } catch (profileError) {
-            console.error('Error fetching user profile:', profileError);
             // Still set user as authenticated with fallback ID
             setUser({ id: 1, authenticated: true, token });
           }
         }
       } catch (error) {
-        console.error("Auth check failed:", error);
       } finally {
         setLoading(false);
       }
@@ -101,7 +97,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Check if API_BASE_URL is available for profile fetch
       if (!API_BASE_URL) {
-        console.warn('API_BASE_URL not available during login, using fallback');
         setUser({ id: 1, authenticated: true, token });
         router.replace('/(app)/dashboard');
         return;
@@ -127,17 +122,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             token 
           });
         } else {
-          console.warn('Failed to fetch user profile after login, using fallback');
           setUser({ id: 1, authenticated: true, token });
         }
       } catch (profileError) {
-        console.error('Error fetching user profile after login:', profileError);
         setUser({ id: 1, authenticated: true, token });
       }
       
       router.replace('/(app)/dashboard');
     } catch (e) {
-      console.error("Failed to save tokens:", e);
     }
   };
 
@@ -148,7 +140,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       router.replace('/(auth)/login');
     } catch (e) {
-      console.error("Failed to delete tokens:", e);
     }
   };
   

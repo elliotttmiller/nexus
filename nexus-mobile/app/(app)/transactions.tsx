@@ -40,11 +40,9 @@ export default function TransactionsScreen() {
         return res.json();
       })
       .then(data => {
-        console.log('Payment history loaded:', data);
         setPaymentHistory(Array.isArray(data) ? data : []);
       })
       .catch((error) => {
-        console.error('Error loading payment history:', error);
         setPaymentHistory([]);
       })
       .finally(() => setLoading(prev => ({ ...prev, payments: false })));

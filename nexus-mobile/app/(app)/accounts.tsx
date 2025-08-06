@@ -27,22 +27,10 @@ export default function AccountsScreen() {
   const user = auth?.user;
   const userId = user?.id;
 
-  // Debug logging for production troubleshooting
-  useEffect(() => {
-    console.log('AccountsScreen - Auth state:', {
-      hasAuth: !!auth,
-      hasUser: !!user,
-      userId: userId,
-      userAuthenticated: user?.authenticated,
-      API_BASE_URL: API_BASE_URL
-    });
-  }, [auth, user, userId]);
-
   // Safety timeout to prevent infinite loading
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (loading && !user) {
-        console.warn('AccountsScreen - Loading timeout reached, user still not available');
         setLoading(false);
         setError('Unable to load user session. Please try logging in again.');
       }
@@ -53,27 +41,22 @@ export default function AccountsScreen() {
 
   const fetchAllData = useCallback(async () => {
     if (!userId) {
-      console.error('AccountsScreen - No userId available, cannot fetch data');
       setLoading(false);
       setError('User not properly authenticated');
       return;
     }
 
     try {
-      console.log('AccountsScreen - Fetching data for userId:', userId);
       const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/accounts?userId=${userId}`);
       const data = await res.json();
-      console.log('AccountsScreen - Accounts response:', { status: res.status, dataLength: Array.isArray(data) ? data.length : 'not array' });
       setAccounts(Array.isArray(data) ? data : []);
       
       const txRes = await fetchWithAuth(`${API_BASE_URL}/api/plaid/transactions?userId=${userId}`);
       const txData = await txRes.json();
-      console.log('AccountsScreen - Transactions response:', { status: txRes.status, dataLength: Array.isArray(txData) ? txData.length : 'not array' });
       setTransactions(Array.isArray(txData) ? txData : []);
       
       setError(''); // Clear any previous errors
     } catch (err) {
-      console.error('AccountsScreen - Error fetching data:', err);
       setAccounts([]);
       setTransactions([]);
       setError('Failed to load financial data');
@@ -87,7 +70,6 @@ export default function AccountsScreen() {
       fetchAllData();
     } else if (user?.authenticated === false) {
       // User is explicitly not authenticated
-      console.log('AccountsScreen - User not authenticated, stopping loading');
       setLoading(false);
       setError('Please log in to view your accounts');
     }
