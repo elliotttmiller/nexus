@@ -158,7 +158,7 @@ async def interestkiller_v2(req: V2InterestKillerRequest):
             plan_data,
             req.user_context.model_dump()
         )
-        sanitized_ai_result = raw_ai_result.replace('\\$', '$').replace('\$', '$')
+        sanitized_ai_result = raw_ai_result.replace('\\$', '$').replace(r'\$', '$')
         ai_text_fields = json.loads(sanitized_ai_result)
 
         # 3. --- FINAL ASSEMBLY & GUARDRAIL ---

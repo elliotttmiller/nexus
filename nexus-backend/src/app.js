@@ -59,7 +59,28 @@ app.use('/api/insights', insightsRoutes);
 app.get('/', (req, res) => {
   res.status(200).json({
     status: 'ok',
-    message: 'Nexus Backend is healthy.'
+    message: 'Nexus Backend is healthy.',
+    environment: process.env.NODE_ENV,
+    ai_service_url: process.env.AI_BASE_URL || process.env.API_BASE_URL || 'http://localhost:8000',
+    plaid_env: process.env.PLAID_ENV || 'not set'
+  });
+});
+
+// Debug endpoint for development/testing
+app.get('/debug/config', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Debug endpoint not available in production' });
+  }
+  
+  res.status(200).json({
+    environment: process.env.NODE_ENV,
+    ai_base_url: process.env.AI_BASE_URL || 'not set',
+    api_base_url: process.env.API_BASE_URL || 'not set',
+    plaid_env: process.env.PLAID_ENV || 'not set',
+    plaid_client_id: process.env.PLAID_CLIENT_ID ? 'set' : 'not set',
+    plaid_secret: process.env.PLAID_SECRET ? 'set' : 'not set',
+    database_url: process.env.DATABASE_URL ? 'set' : 'not set',
+    jwt_secret: process.env.JWT_SECRET ? 'set' : 'not set'
   });
 });
 

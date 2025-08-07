@@ -6,8 +6,14 @@ if (!process.env.AI_BASE_URL && !process.env.API_BASE_URL) {
   require('dotenv').config();
 }
 
-// Use the public URL for the AI service
-const AI_BASE_URL = process.env.AI_BASE_URL || process.env.API_BASE_URL || 'http://localhost:8000'; // Local nexus-ai service
+// Use the public URL for the AI service with better error handling
+const AI_BASE_URL = process.env.AI_BASE_URL || process.env.API_BASE_URL || 'http://localhost:8000';
+
+// Log configuration for debugging
+console.log(`[aiService] AI_BASE_URL configured as: ${AI_BASE_URL}`);
+if (AI_BASE_URL === 'http://localhost:8000' && process.env.NODE_ENV === 'production') {
+  console.warn('[aiService] WARNING: Using localhost URL in production - check AI_BASE_URL environment variable');
+}
 
 /**
  * Retrieves the optimal card recommendation based on a rich context.
@@ -50,16 +56,24 @@ async function getCardRank(userCards, transactionContext, userContext) {
  */
 async function getInterestKillerSplit(accounts, paymentAmount, userContext) {
   try {
+    console.log(`[aiService] Making request to ${AI_BASE_URL}/v2/interestkiller`);
     const res = await axios.post(`${AI_BASE_URL}/v2/interestkiller`, {
       accounts,
       payment_amount: paymentAmount,
       user_context: userContext
+    }, {
+      timeout: 30000 // 30 second timeout
     });
     return res.data; // Return the full AI-driven object with both plans
   } catch (error) {
-    console.error("InterestKiller AI Service Error:", error.response ? error.response.data : error.message);
+    console.error(`[aiService] InterestKiller AI Service Error at ${AI_BASE_URL}:`, error.response ? error.response.data : error.message);
+    if (error.code === 'ECONNREFUSED') {
+      console.error(`[aiService] CRITICAL: Cannot connect to AI service at ${AI_BASE_URL} - check AI_BASE_URL environment variable`);
+    }
     return { 
       error: 'AI service unavailable',
+      details: error.message,
+      ai_service_url: AI_BASE_URL,
       minimize_interest_plan: { split: [], explanation: 'AI service unavailable' },
       maximize_score_plan: { split: [], explanation: 'AI service unavailable' }
     };
