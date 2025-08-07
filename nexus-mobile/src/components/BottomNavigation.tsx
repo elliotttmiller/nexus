@@ -5,11 +5,11 @@ import { PRIMARY } from '../constants/colors';
 import { Feather, Ionicons } from '@expo/vector-icons';
 
 const NAV_ITEMS = [
-  { key: 'accounts', icon: <Feather name="credit-card" size={26} color="#fff" />, route: '/accounts' },
-  { key: 'pay', icon: <Feather name="zap" size={26} color="#fff" />, route: '/pay' },
-  { key: 'dashboard', icon: <Ionicons name="home" size={30} color="#fff" />, route: '/dashboard' },
-  { key: 'settings', icon: <Feather name="settings" size={26} color="#fff" />, route: '/settings' },
-];
+  { key: 'accounts', icon: <Feather name="credit-card" size={26} color="#fff" />, route: '/(app)/accounts' },
+  { key: 'pay', icon: <Feather name="zap" size={26} color="#fff" />, route: '/(app)/pay' },
+  { key: 'dashboard', icon: <Ionicons name="home" size={30} color="#fff" />, route: '/(app)/dashboard' },
+  { key: 'settings', icon: <Feather name="settings" size={26} color="#fff" />, route: '/(app)/settings' },
+] as const;
 
 export default function BottomNavigation() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function BottomNavigation() {
         <TouchableOpacity
           key={item.key}
           style={[styles.iconButton, idx === 1 && styles.centerButton]}
-          onPress={() => router.replace(item.route)}
+          onPress={() => router.replace(item.route as any)}
           activeOpacity={0.8}
         >
           {item.icon}
