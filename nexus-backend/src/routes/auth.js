@@ -126,4 +126,39 @@ router.post('/2fa/verify', async (req, res) => {
   }
 });
 
+// Get authenticated user profile
+router.get('/profile', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Authorization token required' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findByPk(decoded.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({ 
+      id: user.id,
+      user_id: user.id, // Support both formats for compatibility
+      email: user.email,
+      username: user.username || user.email // fallback to email if no username
+    });
+  } catch (err) {
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    console.error('Error in /profile:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router; 

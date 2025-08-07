@@ -18,7 +18,8 @@ module.exports = {
       "**/*"
     ],
     platforms: [
-      "ios"
+      "ios",
+      "android"
     ],
     ios: {
       supportsTablet: true,
