@@ -1,7 +1,7 @@
 module.exports = {
   expo: {
     name: "Nexus Mobile",
-    slug: "nexus-mobile",
+    slug: "nexus-mobile-app",
     scheme: "nexus",
     version: "1.0.2",
     sdkVersion: "53.0.0",
