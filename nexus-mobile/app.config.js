@@ -1,8 +1,11 @@
 module.exports = {
   expo: {
-    name: "nexus-mobile-app", 
-    slug: "nexus-mobile-app",
-    version: "1.0.0",
+    name: "Nexus Mobile",
+    slug: "nexus-mobile",
+    scheme: "nexus",
+    version: "1.0.2",
+    sdkVersion: "53.0.0",
+    jsEngine: "hermes",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -14,16 +17,30 @@ module.exports = {
     assetBundlePatterns: [
       "**/*"
     ],
+    platforms: [
+      "ios"
+    ],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: "com.nexus.mobile"
+      bundleIdentifier: "app.nexus.ai",
+      buildNumber: "2",
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+        LSApplicationQueriesSchemes: [
+          "plaid",
+          "citi", 
+          "chase",
+          "bankofamerica",
+          "wellsfargo"
+        ]
+      }
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#FFFFFF"
       },
-      package: "com.nexus.mobile"
+      package: "app.nexus.ai"
     },
     web: {
       favicon: "./assets/favicon.png",
@@ -33,12 +50,35 @@ module.exports = {
       typedRoutes: true
     },
     extra: {
+      eas: {
+        projectId: "bc93e57c-3aa9-43b4-9e55-35296d034b69"
+      },
       router: {
         origin: false
+      },
+      "expo-router": {
+        appRoot: "./app"
       }
     },
     plugins: [
-      "expo-router"
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            infoPlist: {
+              LSApplicationQueriesSchemes: [
+                "plaid",
+                "citi",
+                "chase", 
+                "bankofamerica",
+                "wellsfargo"
+              ]
+            }
+          }
+        }
+      ]
     ]
   }
 };
