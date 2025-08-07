@@ -226,15 +226,23 @@ export default function AccountsScreen() {
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
           <View style={styles.topRow}>
             <Text style={styles.pageTitle}>Accounts</Text>
-            {accounts.length > 0 && (
-              <TouchableOpacity
-                style={styles.payBtnCard}
-                onPress={() => router.push('/(app)/pay')}
-                activeOpacity={0.8}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity 
+                style={[styles.payBtnCard, { backgroundColor: '#ff6b6b' }]}
+                onPress={() => router.push('/debug-accounts')}
               >
-                <Text style={styles.payBtnCardText}>Pay Cards</Text>
+                <Text style={styles.payBtnCardText}>Debug</Text>
               </TouchableOpacity>
-            )}
+              {accounts.length > 0 && (
+                <TouchableOpacity
+                  style={styles.payBtnCard}
+                  onPress={() => router.push('/(app)/pay')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.payBtnCardText}>Pay Cards</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
           {accounts.length > 0 ? (
             <ExpandableSection
@@ -267,6 +275,11 @@ export default function AccountsScreen() {
             />
           ) : (
             <View style={{ alignItems: 'center', marginTop: 48 }}>
+              {/* Debug info */}
+              <Text style={[styles.emptyStateText, { fontSize: 12, marginBottom: 10 }]}>
+                Debug: accounts={accounts.length}, loading={loading.toString()}, userId={userId || 'missing'}, authenticated={user?.authenticated?.toString()}
+              </Text>
+              
               {error ? (
                 <>
                   <Text style={styles.emptyStateText}>{error}</Text>
