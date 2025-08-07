@@ -39,7 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (token) {
           // Check if API_BASE_URL is available
           if (!API_BASE_URL) {
-            setUser({ id: 1, authenticated: true, token });
+            console.warn('API_BASE_URL not configured, using fallback user data');
+            setUser({ 
+              id: 1, 
+              email: 'user@example.com', // Provide fallback email
+              authenticated: true, 
+              token 
+            });
             setLoading(false);
             return;
           }
@@ -56,23 +62,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             if (response.ok) {
               const userData = await response.json();
+              console.log('User profile fetched successfully:', userData);
               setUser({ 
                 id: userData.id || userData.user_id || 1, // Support different response formats
-                email: userData.email,
+                email: userData.email || 'user@example.com', // Ensure email is always present
                 username: userData.username,
                 authenticated: true, 
                 token 
               });
             } else {
-              // Token might be invalid, try to continue but log the issue
-              setUser({ id: 1, authenticated: true, token });
+              console.warn('Failed to fetch user profile, status:', response.status);
+              // Token might be invalid, clear it and force re-login
+              await SecureStore.deleteItemAsync('authToken');
+              await SecureStore.deleteItemAsync('refreshToken');
+              setUser(null);
             }
           } catch (profileError) {
-            // Still set user as authenticated with fallback ID
-            setUser({ id: 1, authenticated: true, token });
+            console.error('Error fetching user profile:', profileError);
+            // Network error or other issue, provide fallback user data
+            setUser({ 
+              id: 1, 
+              email: 'user@example.com', // Provide fallback email
+              authenticated: true, 
+              token 
+            });
           }
         }
       } catch (error) {
+        console.error('Auth status check error:', error);
       } finally {
         setLoading(false);
       }
@@ -97,7 +114,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Check if API_BASE_URL is available for profile fetch
       if (!API_BASE_URL) {
-        setUser({ id: 1, authenticated: true, token });
+        console.warn('API_BASE_URL not configured, using fallback user data');
+        setUser({ 
+          id: 1, 
+          email: 'user@example.com', // Provide fallback email
+          authenticated: true, 
+          token 
+        });
         router.replace('/(app)/dashboard');
         return;
       }
@@ -114,22 +137,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (response.ok) {
           const userData = await response.json();
+          console.log('User profile fetched on login:', userData);
           setUser({ 
             id: userData.id || userData.user_id || 1,
-            email: userData.email,
+            email: userData.email || 'user@example.com', // Ensure email is always present
             username: userData.username,
             authenticated: true, 
             token 
           });
         } else {
-          setUser({ id: 1, authenticated: true, token });
+          console.warn('Failed to fetch user profile on login, status:', response.status);
+          setUser({ 
+            id: 1, 
+            email: 'user@example.com', // Provide fallback email
+            authenticated: true, 
+            token 
+          });
         }
       } catch (profileError) {
-        setUser({ id: 1, authenticated: true, token });
+        console.error('Error fetching user profile on login:', profileError);
+        setUser({ 
+          id: 1, 
+          email: 'user@example.com', // Provide fallback email
+          authenticated: true, 
+          token 
+        });
       }
       
       router.replace('/(app)/dashboard');
     } catch (e) {
+      console.error('Login error:', e);
     }
   };
 

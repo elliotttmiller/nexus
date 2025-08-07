@@ -13,7 +13,14 @@ import PlaidErrorBoundary from '../../src/components/PlaidErrorBoundary';
 import { useAuth } from '../../src/context/AuthContext';
 
 // Lazy load PlaidLink to avoid native module crashes during app initialization
-const PlaidLink = Platform.OS === 'ios' ? require('react-native-plaid-link-sdk').default : null;
+let PlaidLink: any = null;
+try {
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    PlaidLink = require('react-native-plaid-link-sdk').default;
+  }
+} catch (e) {
+  console.warn('Plaid Link SDK not available:', e);
+}
 
 const formatCurrency = (amount: number = 0) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -113,9 +120,37 @@ export default function AccountsScreen() {
       return;
     }
 
-    // Check if we're on iOS and PlaidLink is available
-    if (Platform.OS !== 'ios' || !PlaidLink) {
-      Alert.alert('Error', 'Plaid Link is currently only supported on iOS devices.');
+    // Check if PlaidLink is available
+    if (!PlaidLink) {
+      Alert.alert(
+        'Plaid Not Available', 
+        'Plaid Link is not available on this platform or not properly configured. For testing, try using the mock accounts feature.',
+        [
+          { text: 'OK', style: 'default' },
+          { 
+            text: 'Add Mock Accounts', 
+            style: 'default',
+            onPress: async () => {
+              try {
+                const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/add-mock-cards`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                });
+                
+                if (res.ok) {
+                  Alert.alert('Success', 'Mock accounts added successfully!');
+                  await fetchAllData();
+                } else {
+                  throw new Error('Failed to add mock accounts');
+                }
+              } catch (error) {
+                console.error('Failed to add mock accounts:', error);
+                Alert.alert('Error', 'Failed to add mock accounts');
+              }
+            }
+          }
+        ]
+      );
       return;
     }
     
@@ -197,7 +232,36 @@ export default function AccountsScreen() {
     } catch (error: unknown) {
       console.error('Plaid Link error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred while preparing Plaid.';
-      Alert.alert('Error', errorMessage);
+      
+      Alert.alert(
+        'Error', 
+        errorMessage,
+        [
+          { text: 'OK', style: 'default' },
+          { 
+            text: 'Try Mock Accounts', 
+            style: 'default',
+            onPress: async () => {
+              try {
+                const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/add-mock-cards`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                });
+                
+                if (res.ok) {
+                  Alert.alert('Success', 'Mock accounts added successfully!');
+                  await fetchAllData();
+                } else {
+                  throw new Error('Failed to add mock accounts');
+                }
+              } catch (mockError) {
+                console.error('Failed to add mock accounts:', mockError);
+                Alert.alert('Error', 'Failed to add mock accounts');
+              }
+            }
+          }
+        ]
+      );
     } finally {
       setLinkLoading(false);
     }
@@ -277,7 +341,10 @@ export default function AccountsScreen() {
             <View style={{ alignItems: 'center', marginTop: 48 }}>
               {/* Debug info */}
               <Text style={[styles.emptyStateText, { fontSize: 12, marginBottom: 10 }]}>
-                Debug: accounts={accounts.length}, loading={loading.toString()}, userId={userId || 'missing'}, authenticated={user?.authenticated?.toString()}
+                Debug: accounts={accounts.length}, loading={loading.toString()}, userid={userId || 'missing'}, authenticated={user?.authenticated?.toString()}
+                {user?.email && `, user email=${user.email}`}
+                {!user?.email && `, user email=missing`}
+                {error && ` Failed to load data, ${error}`}
               </Text>
               
               {error ? (
