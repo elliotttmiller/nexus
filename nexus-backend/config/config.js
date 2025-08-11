@@ -12,8 +12,10 @@ if (process.env.DATABASE_URL) {
     username: url.username,
     password: url.password,
     host: url.hostname,
-    port: url.port,
+    port: url.port ? Number(url.port) : undefined,
   };
+  console.log('[DEBUG] Parsed DATABASE_URL:', process.env.DATABASE_URL);
+  console.log('[DEBUG] Parsed dbConfig:', dbConfig);
 }
 
 module.exports = {

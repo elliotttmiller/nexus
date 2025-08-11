@@ -15,6 +15,7 @@ const testRoutes = require('./routes/test');
 const insightsRoutes = require('./routes/insights');
 const authenticateToken = require('./middleware/authenticateToken');
 const Sentry = require('./utils/sentry');
+const testCardRankRoutes = require('./routes/testcardrank');
 
 // Initialize the application
 const app = express();
@@ -54,6 +55,7 @@ app.use('/api/cardrank', authenticateToken, cardRankRoutes);
 app.use('/api/interestkiller', authenticateToken, interestKillerRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/insights', insightsRoutes);
+app.use('/api/transactions', testCardRankRoutes);
 
 // Health check endpoint
 app.get('/', (req, res) => {
