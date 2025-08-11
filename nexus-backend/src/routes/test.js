@@ -1,5 +1,4 @@
 // Debug endpoint to test AI payload type-safety and log raw AI service response
-const { getCardRank } = require('../../aiService');
 
 router.post('/ai-payload', async (req, res) => {
   try {
