@@ -59,8 +59,31 @@ if (process.env.NODE_ENV !== 'test') {
   testConnection();
 }
 
-module.exports = {
-  sequelize,
-  Sequelize,
-  testConnection // Export for testing purposes
-};
+// Dynamically load all models and set up associations
+const fs = require('fs');
+const path = require('path');
+const models = {};
+models.Sequelize = Sequelize;
+models.sequelize = sequelize;
+models.testConnection = testConnection;
+
+const modelsDir = path.join(__dirname, 'models');
+
+fs.readdirSync(modelsDir)
+  .filter(file => file.endsWith('.js'))
+  .forEach(file => {
+    const modelModule = require(path.join(modelsDir, file));
+    if (typeof modelModule === 'function') {
+      const model = modelModule(sequelize, Sequelize.DataTypes);
+      models[model.name] = model;
+    } else {
+      // Skip files that do not export a model function (e.g., index.js)
+    }
+  });
+
+// Set up associations after all models are loaded
+Object.values(models).forEach(model => {
+  if (model.associate) model.associate(models);
+});
+
+module.exports = models;

@@ -20,6 +20,7 @@ if (process.env.DATABASE_URL) {
 
 module.exports = {
   development: {
+    url: process.env.DATABASE_URL || undefined,
     database: dbConfig.database || process.env.DB_NAME || 'railway',
     username: dbConfig.username || process.env.DB_USER || 'postgres',
     password: dbConfig.password || process.env.DB_PASSWORD || 'hTckoowSOUVGSbZXigsxWBVXxlXYFAfu',
@@ -38,6 +39,7 @@ module.exports = {
     }
   },
   production: {
+    url: process.env.DATABASE_URL || undefined,
     database: dbConfig.database || process.env.DB_NAME || 'railway',
     username: dbConfig.username || process.env.DB_USER || 'postgres',
     password: dbConfig.password || process.env.DB_PASSWORD || 'hTckoowSOUVGSbZXigsxWBVXxlXYFAfu',
