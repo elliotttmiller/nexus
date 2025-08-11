@@ -8,6 +8,8 @@ import BottomNavigation from '../../src/components/BottomNavigation';
 import { API_BASE_URL } from '../../src/constants/api';
 import { fetchWithAuth } from '../../src/constants/fetchWithAuth';
 import { Account, Transaction } from '../../src/types';
+import { BarChart, YAxis, XAxis, Grid } from 'react-native-svg-charts';
+import * as scale from 'd3-scale';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -122,12 +124,38 @@ function AnalysisContainer() {
   const data = [120, 80, 95, 60, 130, 90, 70];
   const totalSpent = data.reduce((sum, v) => sum + v, 0);
   const maxSpent = Math.max(...data);
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   return (
     <View style={analysisStyles.container}>
       <Text style={analysisStyles.title}>Spending Analysis</Text>
       <Text style={analysisStyles.subtitle}>Your spending trend this week</Text>
-      {/* Chart temporarily unavailable */}
-      <Text style={{ color: '#888', marginVertical: 16 }}>Chart temporarily unavailable</Text>
+      <View style={{ flexDirection: 'row', height: 220, paddingVertical: 12 }}>
+        <YAxis
+          data={data}
+          contentInset={{ top: 20, bottom: 20 }}
+          svg={{ fontSize: 12, fill: '#888' }}
+          numberOfTicks={5}
+          formatLabel={value => `$${value}`}
+        />
+        <BarChart
+          style={{ flex: 1, marginLeft: 8 }}
+          data={data}
+          svg={{ fill: 'url(#gradient)' }}
+          contentInset={{ top: 20, bottom: 20 }}
+          spacingInner={0.3}
+          gridMin={0}
+        >
+          <Grid direction={Grid.Direction.HORIZONTAL} svg={{ stroke: '#eee' }} />
+        </BarChart>
+      </View>
+      <XAxis
+        style={{ marginHorizontal: -10, height: 24 }}
+        data={data}
+        formatLabel={(_, index) => days[index]}
+        contentInset={{ left: 30, right: 20 }}
+        svg={{ fontSize: 12, fill: '#888' }}
+        scale={scale.scaleBand}
+      />
       <View style={analysisStyles.statsRow}>
         <View style={analysisStyles.statBox}>
           <Text style={analysisStyles.statLabel}>Total Spent</Text>
