@@ -112,34 +112,67 @@ export default function DashboardScreen() {
           )}
         </View>
         {/* Analysis Container */}
-        <AnalysisContainer />
+        <AnalysisContainer transactions={transactions} />
       </ScrollView>
       <BottomNavigation />
     </SafeAreaView>
   );
 }
 
-function AnalysisContainer() {
-  // ...existing code...
-  const data = [120, 80, 95, 60, 130, 90, 70];
-  const totalSpent = data.reduce((sum, v) => sum + v, 0);
-  const maxSpent = Math.max(...data);
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+interface AnalysisContainerProps {
+  transactions: Transaction[];
+}
+
+function AnalysisContainer({ transactions }: AnalysisContainerProps) {
+  const [dailyData, setDailyData] = useState<number[]>([0,0,0,0,0,0,0]);
+  const [days, setDays] = useState<string[]>(['Mon','Tue','Wed','Thu','Fri','Sat','Sun']);
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [maxSpent, setMaxSpent] = useState(0);
+  useEffect(() => {
+    const now = new Date();
+    const last7 = Array(7).fill(0);
+    const dayLabels = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      dayLabels.push(d.toLocaleDateString(undefined, { weekday: 'short' }));
+    }
+    transactions.forEach(tx => {
+      if (!tx.date || typeof tx.amount !== 'number') return;
+      const txDate = new Date(tx.date);
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - (6 - i));
+        if (
+          txDate.getFullYear() === d.getFullYear() &&
+          txDate.getMonth() === d.getMonth() &&
+          txDate.getDate() === d.getDate() &&
+          tx.amount < 0
+        ) {
+          last7[i] += Math.abs(tx.amount);
+        }
+      }
+    });
+    setDailyData(last7);
+    setDays(dayLabels);
+    setTotalSpent(last7.reduce((sum, v) => sum + v, 0));
+    setMaxSpent(Math.max(...last7));
+  }, [transactions]);
   return (
     <View style={analysisStyles.container}>
       <Text style={analysisStyles.title}>Spending Analysis</Text>
       <Text style={analysisStyles.subtitle}>Your spending trend this week</Text>
       <View style={{ flexDirection: 'row', height: 220, paddingVertical: 12 }}>
         <YAxis
-          data={data}
+          data={dailyData}
           contentInset={{ top: 20, bottom: 20 }}
           svg={{ fontSize: 12, fill: '#888' }}
           numberOfTicks={5}
-          formatLabel={value => `$${value}`}
+          formatLabel={(value: number) => `$${value}`}
         />
         <BarChart
           style={{ flex: 1, marginLeft: 8 }}
-          data={data}
+          data={dailyData}
           svg={{ fill: 'url(#gradient)' }}
           contentInset={{ top: 20, bottom: 20 }}
           spacingInner={0.3}
@@ -150,8 +183,8 @@ function AnalysisContainer() {
       </View>
       <XAxis
         style={{ marginHorizontal: -10, height: 24 }}
-        data={data}
-        formatLabel={(_, index) => days[index]}
+        data={dailyData}
+        formatLabel={(_: number, index: number) => days[index]}
         contentInset={{ left: 30, right: 20 }}
         svg={{ fontSize: 12, fill: '#888' }}
         scale={scale.scaleBand}
