@@ -448,8 +448,47 @@ router.get('/transactions', async (req, res) => {
       end_date: end,
       options: { count: 100, offset: 0 }
     });
+    console.log('[Plaid][Sync] transactionsGet response:', JSON.stringify(response.data.transactions, null, 2));
     trace.push({ step: 'Transactions Fetched', count: response.data.transactions.length, timestamp: new Date().toISOString() });
-    res.json({ transactions: response.data.transactions, trace });
+
+    // --- Plaid-to-DB Transaction Sync ---
+    let upserted = 0;
+    for (const t of response.data.transactions) {
+      try {
+        console.log(`[Plaid][Sync] Upserting transaction:`, JSON.stringify({ user_id: userId, plaid_transaction_id: t.transaction_id, amount: t.amount, merchant: t.merchant_name || t.name }, null, 2));
+        await Transaction.upsert({
+          user_id: userId,
+          plaid_transaction_id: t.transaction_id,
+          account_id: null, // Optionally map to Account if needed
+          amount: t.amount,
+          currency: t.iso_currency_code || 'USD',
+          merchant: t.merchant_name || t.name,
+          merchant_id: t.merchant_entity_id || null,
+          category: t.category ? t.category.join(', ') : null,
+          category_id: t.category_id || null,
+          date: t.date,
+          datetime: t.datetime || null,
+          pending: t.pending,
+          payment_meta: t.payment_meta || null,
+          location: t.location || null,
+          payment_channel: t.payment_channel || null,
+          transaction_type: t.transaction_type || null,
+          notes: null,
+          is_recurring: null,
+          ai_card_analysis: null
+        }, {
+          where: { user_id: userId, plaid_transaction_id: t.transaction_id }
+        });
+        upserted++;
+      } catch (e) {
+        console.error('[Plaid][Sync][Upsert Error]', e);
+        trace.push({ step: 'Upsert Error', error: e.message, plaid_transaction_id: t.transaction_id, timestamp: new Date().toISOString() });
+      }
+    }
+    trace.push({ step: 'Transactions Upserted', count: upserted, timestamp: new Date().toISOString() });
+    // Fetch from DB to return canonical view
+    const dbTxs = await Transaction.findAll({ where: { user_id: userId }, order: [['date', 'DESC']] });
+    res.json({ transactions: dbTxs, trace });
   } catch (err) {
     trace.push({ step: 'Error', error: err.message, timestamp: new Date().toISOString() });
     res.status(500).json({ error: err.message, trace });

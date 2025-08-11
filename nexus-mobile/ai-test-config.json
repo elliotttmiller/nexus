@@ -1,0 +1,228 @@
+{
+  "testConfig": {
+    "environments": {
+      "development": {
+        "backend_url": "http://localhost:3000/api",
+        "ai_service_url": "http://localhost:8000",
+        "timeout": 10000
+      },
+      "staging": {
+        "backend_url": "https://nexus-staging.up.railway.app/api",
+        "ai_service_url": "https://nexus-ai-staging.up.railway.app",
+        "timeout": 15000
+      },
+      "production": {
+        "backend_url": "https://nexus-production-2e34.up.railway.app/api",
+        "ai_service_url": "https://nexus-ai-production.up.railway.app",
+        "timeout": 30000
+      }
+    },
+    "testSuites": {
+      "e2e": {
+        "enabled": true,
+        "timeout": 60000,
+        "retries": 3,
+        "parallel": false
+      },
+      "unit": {
+        "enabled": true,
+        "coverage": true,
+        "threshold": 80
+      },
+      "performance": {
+        "enabled": true,
+        "maxResponseTime": 5000,
+        "maxMemoryUsage": 100,
+        "concurrentRequests": 10
+      }
+    },
+    "aiFeatures": {
+      "cardRank": {
+        "testCases": [
+          {
+            "name": "Basic Recommendation",
+            "payload": {
+              "merchant": "Amazon",
+              "category": "shopping",
+              "amount": 100
+            },
+            "expectedFields": ["recommended_card", "reason"]
+          },
+          {
+            "name": "Dining Category",
+            "payload": {
+              "merchant": "Starbucks",
+              "category": "dining",
+              "amount": 25
+            },
+            "expectedFields": ["recommended_card", "reason"]
+          },
+          {
+            "name": "Travel Category",
+            "payload": {
+              "merchant": "Delta Airlines",
+              "category": "travel",
+              "amount": 500
+            },
+            "expectedFields": ["recommended_card", "reason"]
+          }
+        ]
+      },
+      "interestKiller": {
+        "testCases": [
+          {
+            "name": "Basic Optimization",
+            "payload": {
+              "accounts": [
+                {
+                  "id": "1",
+                  "name": "High APR Card",
+                  "balance": 1000,
+                  "apr": 24.99,
+                  "creditLimit": 2000
+                },
+                {
+                  "id": "2",
+                  "name": "Low APR Card",
+                  "balance": 500,
+                  "apr": 12.99,
+                  "creditLimit": 1000
+                }
+              ],
+              "payment_amount": 300
+            },
+            "expectedFields": ["minimize_interest_plan", "maximize_score_plan", "nexus_recommendation"]
+          },
+          {
+            "name": "Single Card",
+            "payload": {
+              "accounts": [
+                {
+                  "id": "1",
+                  "name": "Only Card",
+                  "balance": 2000,
+                  "apr": 18.99,
+                  "creditLimit": 3000
+                }
+              ],
+              "payment_amount": 200
+            },
+            "expectedFields": ["minimize_interest_plan", "maximize_score_plan"]
+          },
+          {
+            "name": "High Utilization",
+            "payload": {
+              "accounts": [
+                {
+                  "id": "1",
+                  "name": "Maxed Card",
+                  "balance": 4500,
+                  "apr": 22.99,
+                  "creditLimit": 5000
+                },
+                {
+                  "id": "2",
+                  "name": "Low Balance",
+                  "balance": 100,
+                  "apr": 15.99,
+                  "creditLimit": 2000
+                }
+              ],
+              "payment_amount": 500
+            },
+            "expectedFields": ["minimize_interest_plan", "maximize_score_plan"]
+          }
+        ]
+      },
+      "spendingInsights": {
+        "testCases": [
+          {
+            "name": "Monthly Analysis",
+            "payload": {
+              "transactions": [
+                { "category": ["Food and Drink"], "amount": 45.50, "date": "2025-01-15" },
+                { "category": ["Shopping"], "amount": 120.00, "date": "2025-01-14" },
+                { "category": ["Gas"], "amount": 35.75, "date": "2025-01-13" }
+              ]
+            },
+            "expectedFields": ["category_totals", "insight"]
+          },
+          {
+            "name": "Comparison Analysis",
+            "payload": {
+              "transactions": [
+                { "category": ["Food and Drink"], "amount": 60.00, "date": "2025-01-15" },
+                { "category": ["Shopping"], "amount": 200.00, "date": "2025-01-14" }
+              ],
+              "previous_transactions": [
+                { "category": ["Food and Drink"], "amount": 40.00, "date": "2024-12-15" },
+                { "category": ["Shopping"], "amount": 100.00, "date": "2024-12-14" }
+              ]
+            },
+            "expectedFields": ["category_totals", "top_increases", "insight"]
+          }
+        ]
+      }
+    },
+    "errorScenarios": [
+      {
+        "name": "Invalid Authentication",
+        "description": "Test with expired or invalid JWT token",
+        "expectedStatus": 401
+      },
+      {
+        "name": "Malformed Payload",
+        "description": "Test with missing required fields",
+        "expectedStatus": 400
+      },
+      {
+        "name": "Service Unavailable",
+        "description": "Test when AI service is down",
+        "expectedStatus": 503
+      },
+      {
+        "name": "Rate Limiting",
+        "description": "Test rate limiting behavior",
+        "expectedStatus": 429
+      }
+    ],
+    "performanceMetrics": {
+      "responseTime": {
+        "cardRank": { "target": 3000, "max": 5000 },
+        "interestKiller": { "target": 4000, "max": 6000 },
+        "spendingInsights": { "target": 2000, "max": 3000 }
+      },
+      "throughput": {
+        "requestsPerSecond": 10,
+        "concurrentUsers": 5
+      },
+      "reliability": {
+        "uptime": 99.9,
+        "errorRate": 0.1
+      }
+    }
+  },
+  "reporting": {
+    "formats": ["json", "html", "junit"],
+    "outputDir": "./test-results",
+    "includeScreenshots": false,
+    "includeLogs": true,
+    "notifications": {
+      "slack": {
+        "enabled": false,
+        "webhook": ""
+      },
+      "email": {
+        "enabled": false,
+        "recipients": []
+      }
+    }
+  },
+  "ci": {
+    "enabled": true,
+    "failOnCoverageThreshold": true,
+    "failOnPerformanceThreshold": true,
+    "parallelExecution": false,
+    "maxRetries": 2
+  }
+}

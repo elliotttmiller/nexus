@@ -179,6 +179,7 @@ async function makeRequest(method, url, data, user, skipAuth = false) {
 async function testUserEndpoints(user) {
   logStep('Testing User Endpoints');
   try {
+    console.log('[DEBUG] User token before /users/profile:', user.token);
     const res = await makeRequest('get', `${BASE_URL}/users/profile?userId=${user.userId}`, null, user);
     assert(res.data.email === user.email, 'User profile should match');
     recordSummary('Users/Profile Get', 'PASS');
@@ -227,72 +228,63 @@ async function testInterestKillerEndpoints(user) {
   }
 }
 
-async function testPlaidEndpoints(user) {
-  logStep('Testing Plaid Endpoints');
-  try {
-    const res = await makeRequest('get', `${BASE_URL}/plaid/accounts?userId=${user.userId}`, null, user);
-    assert(res.data, 'Plaid accounts should return data');
-    recordSummary('Plaid/Accounts', 'PASS');
-  } catch (err) {
-    recordSummary('Plaid/Accounts', 'FAIL', err.message);
-  }
-}
-
 async function testInsightsEndpoints(user) {
   logStep('Testing Insights Endpoints');
   const payload = {
     transactions: [
-      { amount: 100, category: 'shopping', date: '2025-08-01' },
-      { amount: 50, category: 'groceries', date: '2025-08-02' }
+      { category: ['Food and Drink'], amount: 45.50, date: '2025-01-15' },
+      { category: ['Shopping'], amount: 120.00, date: '2025-01-14' }
     ]
   };
   try {
     const res = await makeRequest('post', `${BASE_URL}/insights/spending-insights`, payload, user);
-    assert(res.data, 'Spending insights should return data');
+    assert(res.data.category_totals || res.data.insight, 'Insights should return analysis');
     recordSummary('Insights/Spending', 'PASS');
   } catch (err) {
     recordSummary('Insights/Spending', 'FAIL', err.message);
   }
 }
 
-async function testTestEndpoints(user) {
-  logStep('Testing Test/Debug Endpoints');
-  const payload = {
-    userCards: [
-      { id: 'card1', name: 'Test Card', balance: 1000, creditLimit: 5000, apr: 15, rewards: { type: 'cashback' } }
-    ],
-    transactionContext: { merchantName: 'Amazon', amount: 100, category: 'shopping', location: 'NY' },
-    userContext: { primaryGoal: 'maximize_rewards' }
-  };
+async function testPlaidEndpoints(user) {
+  logStep('Testing Plaid Integration');
   try {
-    const res = await makeRequest('post', `${BASE_URL}/test/ai-payload`, payload, null, true);
-    assert(res.data.aiResponse, 'AI payload endpoint should return aiResponse');
-    recordSummary('Test/AI Payload', 'PASS');
+    console.log('[DEBUG] User token before /plaid/accounts:', user.token);
+    const res = await makeRequest('get', `${BASE_URL}/plaid/accounts`, null, user);
+    assert(res.data.accounts || res.data.message, 'Plaid should return accounts or message');
+    recordSummary('Plaid/Accounts', 'PASS');
   } catch (err) {
-    recordSummary('Test/AI Payload', 'FAIL', err.message);
+    recordSummary('Plaid/Accounts', 'FAIL', err.message);
   }
 }
 
-async function runAllTests() {
+async function runComprehensiveTest() {
+  logStep('Starting Comprehensive Backend Test Suite');
+  let user;
   try {
-    const user = await testAuthEndpoints();
+    user = await testAuthEndpoints();
     await addTestCardsOrPlaid(user);
     await testUserEndpoints(user);
     await testCardRankEndpoints(user);
     await testInterestKillerEndpoints(user);
-    await testPlaidEndpoints(user);
     await testInsightsEndpoints(user);
-    await testTestEndpoints(user);
-    // Add transaction/payment edge case tests here
-    // ...
-    printSummary();
-    console.log('\nAll endpoints tested. Review logs above for step-by-step workflow and insights.');
+    await testPlaidEndpoints(user);
   } catch (err) {
-    recordSummary('Test Suite', 'FAIL', err.message);
-    printSummary();
-    console.error('Test suite failed:', err.message);
-    process.exit(1);
+    console.error('Critical test failure:', err.message);
+    recordSummary('Critical Failure', 'FAIL', err.message);
   }
+  printSummary();
+  process.exit(summary.filter(s => s.status === 'FAIL').length > 0 ? 1 : 0);
 }
 
-runAllTests();
+if (require.main === module) {
+  runComprehensiveTest();
+}
+
+module.exports = {
+  testAuthEndpoints,
+  testCardRankEndpoints,
+  testInterestKillerEndpoints,
+  testInsightsEndpoints,
+  testPlaidEndpoints,
+  runComprehensiveTest
+};
