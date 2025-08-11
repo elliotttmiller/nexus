@@ -66,7 +66,7 @@ def test_get_accounts():
     if token:
         headers['Authorization'] = f'Bearer {token}'
     try:
-        res = requests.get(f'{BASE_URL}/plaid/accounts?userId=1', headers=headers)
+        res = requests.get(f'{BASE_URL}/plaid/accounts?userId=8', headers=headers)
         print('Status:', res.status_code)
         try:
             data = res.json()
@@ -82,12 +82,12 @@ def get_accounts():
     if token:
         headers['Authorization'] = f'Bearer {token}'
     try:
-        res = requests.get(f'{BASE_URL}/users/data-access?userId=1', headers=headers)
+        res = requests.get(f'{BASE_URL}/users/data-access?userId=8', headers=headers)
         if res.status_code == 401 and refresh_token:
             print('401 Unauthorized, attempting token refresh...')
             refresh_jwt()
             headers['Authorization'] = f'Bearer {token}'
-            res = requests.get(f'{BASE_URL}/users/data-access?userId=1', headers=headers)
+            res = requests.get(f'{BASE_URL}/users/data-access?userId=8', headers=headers)
         print('Status:', res.status_code)
         try:
             data = res.json()
@@ -140,7 +140,7 @@ def test_ai_recommendation():
     if token:
         headers['Authorization'] = f'Bearer {token}'
     payload = {
-        "userId": 1,
+        "userId": 8,
         "accounts": [
             {"id": "mock_credit_1", "institution": "Mock Bank", "balance": 2500, "type": "credit", "apr": 19.99, "creditLimit": 8000},
             {"id": "mock_credit_2", "institution": "Mock Bank", "balance": 1500, "type": "credit", "apr": 24.99, "creditLimit": 5000},
@@ -163,15 +163,16 @@ def test_ai_recommendation():
 if __name__ == '__main__':
     login()
     parser = argparse.ArgumentParser()
-    parser.add_argument("--unlink-all", action="store_true", help="Unlink all Plaid accounts for user 1")
+
+    parser.add_argument("--unlink-all", action="store_true", help="Unlink all Plaid accounts for user 8")
     args = parser.parse_args()
     if args.unlink_all:
-        unlink_all_accounts(user_id=1)
+        unlink_all_accounts(user_id=8)
     test_get_accounts()
     test_ai_recommendation()
 
     test_endpoint('/cardrank/recommend', {
-        'userId': 1,
+        'userId': 8,
         'merchant': 'STARBUCKS',
         'category': 'Food & Drink',
         'amount': 7.5,
@@ -181,7 +182,7 @@ if __name__ == '__main__':
     }, protected=True)
 
     test_endpoint('/interestkiller/suggest', {
-        'userId': 1,
+        'userId': 8,
         'amount': 200,
         'optimizationGoal': 'MINIMIZE_INTEREST_COST'
     }, protected=True)

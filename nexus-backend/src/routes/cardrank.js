@@ -94,7 +94,15 @@ router.post('/recommend', async (req, res) => {
       return res.status(400).json({ error: 'No cards found for this user.' });
     }
     // Call the AI service only if userCards is not empty
-    const result = await getCardRank(userCards, { merchantName: merchant, amount, category, location }, { primaryGoal });
+    // Build user_context with both primaryGoal and creditScoreInfo if present
+    const user_context = {};
+    if (primaryGoal) user_context.primaryGoal = primaryGoal;
+    if (creditScoreInfo) user_context.creditScoreInfo = creditScoreInfo;
+    const result = await getCardRank(
+      userCards,
+      { merchantName: merchant, amount, category, location },
+      user_context
+    );
     res.json(result);
   } catch (error) {
     console.error('Error in /cardrank/recommend:', error);
