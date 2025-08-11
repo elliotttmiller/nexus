@@ -6,7 +6,7 @@
 
 const axios = require('axios');
 const assert = require('assert');
-const BASE_URL = process.env.TEST_API_URL || 'http://localhost:3000/api';
+const BASE_URL = process.env.API_BASE_URL || process.env.TEST_API_URL || 'https://nexus-production-2e34.up.railway.app/api';
 
 const summary = [];
 function now() { return new Date().toISOString(); }

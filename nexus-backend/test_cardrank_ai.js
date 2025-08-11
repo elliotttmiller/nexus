@@ -1,6 +1,7 @@
 const axios = require('axios');
 
 const API_BASE_URL = process.env.API_BASE_URL || 'https://nexus-production-2e34.up.railway.app/api';
+const AI_BASE_URL = process.env.AI_BASE_URL || 'https://aiservice-production-acab.up.railway.app/';
 const TRANSACTION_ID = 1; // Change if needed
 const USER_EMAIL = 'elliotttmiller@hotmail.com';
 const USER_PASSWORD = 'elliott';

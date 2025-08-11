@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
-const db = require('../models');
+
 const User = db.User;
 const { z } = require('zod');
 
@@ -30,7 +30,6 @@ const getAllRefreshSecrets = () => [REFRESH_SECRET, ...REFRESH_SECRETS].filter(B
 
 // --- Refresh Token Storage for Revocation/Rotation ---
 // Store refresh tokens in DB for revocation/rotation
-const db = require('../models');
 
 async function storeRefreshToken(userId, token) {
   // Store the refresh token in the user table (or a dedicated table for multiple tokens)

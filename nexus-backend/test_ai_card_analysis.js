@@ -3,7 +3,7 @@
 
 const axios = require('axios');
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001'; // adjust port if needed
+const API_BASE_URL = process.env.API_BASE_URL || 'https://nexus-production-2e34.up.railway.app';
 
 // Example test transactions
 const testTransactions = [
