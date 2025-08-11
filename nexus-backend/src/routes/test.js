@@ -27,9 +27,11 @@ router.post('/ai-payload', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 const express = require('express');
 const router = express.Router();
 const { Card } = require('../models');
+const { getCardRank } = require('../../aiService');
 
 router.get('/error', (req, res) => {
   throw new Error('Sentry test error!');
