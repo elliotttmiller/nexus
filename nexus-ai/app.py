@@ -133,7 +133,31 @@ class V2ReExplainRequest(BaseModel):
     custom_split: List[CustomSplitItem]
     user_context: Any
 
+from cardrank import advanced_card_recommendation
+
 # --- 6. API Endpoints ---
+from pydantic import BaseModel
+
+# --- CardRank Endpoint Models ---
+class CardRankRequest(BaseModel):
+    user_cards: list
+    transaction_context: dict
+    user_context: dict
+
+@app.post('/v2/cardrank')
+async def cardrank_v2(req: CardRankRequest):
+    try:
+        gemini_model = getattr(app.state, 'gemini_model', None)
+        result = advanced_card_recommendation(
+            gemini_model,
+            req.user_cards,
+            req.transaction_context,
+            req.user_context
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error in /v2/cardrank: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 @app.get("/", summary="Health Check")
 def root():
     return {"status": "ok", "ai_model_status": "loaded" if hasattr(app.state, 'gemini_model') and app.state.gemini_model else "initialization_failed"}

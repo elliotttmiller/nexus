@@ -1,184 +1,176 @@
-# Nexus - Financial Intelligence Platform
+# Nexus – Financial Intelligence Platform
 
-Nexus is a comprehensive financial intelligence platform that combines AI-powered card ranking, interest optimization, and financial management tools.
+Nexus is a modern, production-grade financial intelligence platform that empowers users with AI-driven card ranking, interest optimization, and real-time financial insights. The system is composed of a robust Node.js backend, advanced Python AI services, and a cross-platform React Native mobile app.
 
-## 🏗️ Architecture
+---
 
-The Nexus platform consists of three main components:
+## 🚀 Features (2025)
 
-### 1. **Nexus Backend** (`nexus-backend/`)
-- **Technology**: Node.js with Express.js
-- **Database**: SQLite with comprehensive schema
-- **Features**:
-  - User authentication and authorization
-  - Plaid integration for financial data
-  - Card ranking algorithms
-  - Interest optimization calculations
-  - Transaction management
-  - User event tracking
+- **AI-Powered Card Ranking**: Personalized, real-time recommendations based on your spending and account data.
+- **Interest Optimization**: Smart payment scheduling and debt management, powered by advanced algorithms.
+- **Live Financial Dashboard**: Modern, interactive charts and insights using real Plaid transaction data.
+- **Secure Plaid Integration**: Link your real accounts and cards, no mock or fallback logic in production.
+- **Mobile-First Experience**: Intuitive onboarding, authentication, and account management on iOS/Android.
+- **Production-Ready Security**: JWT authentication, encrypted data, and Sentry error tracking.
+- **Developer Friendly**: Modular codebase, clear API structure, and comprehensive test suites.
 
-### 2. **Nexus AI** (`nexus-ai/`)
-- **Technology**: Python
-- **Features**:
-  - AI-powered card ranking (`cardrank.py`)
-  - Interest optimization algorithms (`interestkiller.py`)
-  - Smart move recommendations (`nextsmartmove.py`)
-  - Sentry integration for error tracking
-  - Comprehensive logging system
+---
 
-### 3. **Nexus Mobile** (`nexus-mobile/`)
-- **Technology**: React Native
-- **Features**:
-  - Cross-platform mobile application
-  - User onboarding and authentication
-  - Dashboard with financial insights
-  - Card ranking interface
-  - Interest optimization tools
-  - Account and transaction management
-  - Settings and profile management
+## 🏗️ System Directory Tree & File Explanations
 
-## 🚀 Quick Start
+```
+nexus/
+├── app/                         # Expo/React Native app entry (legacy/testing)
+│   └── index.tsx                # (Legacy) Entry point for Expo app
+├── assets/                      # Shared static assets (icons, splash, etc)
+│   ├── adaptive-icon.png
+│   ├── favicon.png
+│   ├── icon.png
+│   └── splash.png
+├── mnist_model/                 # ML model assets for AI service
+│   ├── fingerprint.pb           # Model fingerprint
+│   ├── saved_model.pb           # Saved TensorFlow model
+│   └── variables/               # Model weights
+│       ├── variables.data-00000-of-00001
+│       └── variables.index
+├── nexus-ai/                    # Python AI microservice
+│   ├── app.py                   # FastAPI app entry point
+│   ├── cardrank.py              # Card ranking logic
+│   ├── interestkiller.py        # Interest optimization logic
+│   ├── nextsmartmove.py         # Smart move recommendations
+│   ├── list_models.py           # Model listing utility
+│   ├── logger.py                # Logging setup
+│   ├── sentry_setup.py          # Sentry integration
+│   ├── services.py              # Service layer for AI endpoints
+│   ├── test_categorize_anomalies.py # AI test script
+│   ├── test_gemini_api.py       # Gemini API test
+│   ├── requirements.txt         # Python dependencies
+│   ├── uvicorn                  # Uvicorn server binary
+│   ├── __init__.py
+│   ├── __pycache__/
+│   └── tests/                   # AI service tests
+│       └── test_app.py
+├── nexus-backend/               # Node.js/Express backend API
+│   ├── aiService.js             # Connects backend to AI microservice
+│   ├── config/                  # Environment and config files
+│   │   ├── config.js
+│   │   └── config.js.new
+│   ├── migrations/              # Sequelize DB migrations
+│   │   └── *.js                 # Migration scripts
+│   ├── scripts/                 # DB and utility scripts
+│   │   └── init-db.js
+│   ├── src/
+│   │   ├── app.js               # Express app entry
+│   │   ├── db.js                # DB connection
+│   │   ├── middleware/          # Auth, validation
+│   │   │   └── authenticateToken.js
+│   │   ├── models/              # Sequelize models
+│   │   │   ├── account.js
+│   │   │   ├── card.js
+│   │   │   ├── payment_history.js
+│   │   │   ├── recommendation.js
+│   │   │   ├── transaction.js
+│   │   │   ├── user.js
+│   │   │   └── user_event.js
+│   │   ├── routes/              # API endpoints
+│   │   │   ├── auth.js
+│   │   │   ├── cardrank.js
+│   │   │   ├── insights.js
+│   │   │   ├── interestkiller.js
+│   │   │   ├── plaid.js
+│   │   │   ├── test.js
+│   │   │   └── users.js
+│   │   ├── utils/               # Logger, encryption, sentry
+│   │   │   ├── encryption.js
+│   │   │   ├── logger.js
+│   │   │   └── sentry.js
+│   ├── tests/                   # Backend integration tests
+│   │   ├── ai_integration_test.py
+│   │   └── plaid/               # Plaid test scripts
+│   ├── schema.sql               # DB schema
+│   ├── package.json             # Backend dependencies
+│   └── README.md                # Backend docs
+├── nexus-mobile/                # React Native mobile app
+│   ├── app/                     # App screens and flows
+│   │   ├── (app)/               # Main app screens (dashboard, accounts, etc)
+│   │   ├── (auth)/              # Auth screens
+│   │   ├── AccountDetailModal.tsx
+│   │   ├── card-rank.tsx
+│   │   ├── DashboardModal.tsx
+│   │   ├── index.tsx
+│   │   ├── interest-killer.tsx
+│   │   ├── login.tsx
+│   │   ├── onboarding.tsx
+│   │   ├── profile.tsx
+│   │   ├── register.tsx
+│   │   ├── twofa.tsx
+│   │   └── UnifiedSettingsScreen.tsx
+│   ├── assets/                  # App-specific images/icons
+│   ├── src/                     # Core logic, types, components
+│   │   ├── components/          # Reusable UI components
+│   │   ├── constants/           # API endpoints, colors, etc
+│   │   ├── context/             # React context (Auth, etc)
+│   │   ├── hooks/               # Custom hooks
+│   │   ├── navigation/          # Navigation config
+│   │   ├── screens/             # (empty, screens in app/)
+│   │   └── types.ts             # TypeScript types (Account, Transaction, etc)
+│   ├── declarations.d.ts        # TypeScript module declarations
+│   ├── package.json             # Mobile dependencies
+│   └── tsconfig.json            # TypeScript config
+├── scripts/                     # Project-level scripts
+│   └── full_test.py             # End-to-end test runner
+├── docker-compose.yml           # Multi-service orchestration
+├── railway.json                 # Railway deployment config
+├── tsconfig.json                # Root TypeScript config
+├── README.md                    # (This file)
+└── ... (see repo for more)
+```
+
+---
+
+## �️ Setup & Development
 
 ### Prerequisites
-- Node.js (v16 or higher)
-- Python (v3.8 or higher)
-- React Native development environment
-- Docker (optional, for containerized deployment)
+- Node.js (v18+ recommended)
+- Python 3.8+
+- React Native CLI & Expo
+- Docker (optional)
 
-### Installation
+### Quick Start
 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/elliotttmiller/nexus.git
    cd nexus
    ```
-
-2. **Backend Setup**
+2. **Backend**
    ```bash
    cd nexus-backend
-   npm install
-   npm start
+   npm install && npm start
    ```
-
-3. **AI Service Setup**
+3. **AI Service**
    ```bash
-   cd nexus-ai
+   cd ../nexus-ai
    pip install -r requirements.txt
    python app.py
    ```
-
-4. **Mobile App Setup**
+4. **Mobile App**
    ```bash
-   cd nexus-mobile
+   cd ../nexus-mobile
    npm install
-   npx react-native run-android  # or run-ios
+   npx expo start
    ```
-
-### Docker Deployment
-```bash
-docker-compose up -d
-```
-
-## 📁 Project Structure
-
-```
-nexus/
-├── nexus-backend/          # Node.js backend API
-│   ├── src/
-│   │   ├── routes/         # API endpoints
-│   │   ├── models/         # Database models
-│   │   ├── middleware/     # Authentication & validation
-│   │   └── utils/          # Utility functions
-│   └── schema.sql          # Database schema
-├── nexus-ai/               # Python AI services
-│   ├── cardrank.py         # Card ranking algorithms
-│   ├── interestkiller.py   # Interest optimization
-│   ├── nextsmartmove.py    # Smart recommendations
-│   └── app.py              # AI service entry point
-├── nexus-mobile/           # React Native mobile app
-│   ├── src/
-│   │   ├── screens/        # App screens
-│   │   └── navigation/     # Navigation configuration
-│   └── App.js              # App entry point
-├── scripts/                # Utility scripts
-├── docker-compose.yml      # Docker configuration
-└── README.md               # This file
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create `.env` files in each component directory:
-
-**Backend** (`nexus-backend/.env`):
-```
-PORT=3000
-JWT_SECRET=your_jwt_secret
-PLAID_CLIENT_ID=your_plaid_client_id
-PLAID_SECRET=your_plaid_secret
-```
-
-**AI Service** (`nexus-ai/.env`):
-```
-SENTRY_DSN=your_sentry_dsn
-LOG_LEVEL=INFO
-```
-
-## 🧪 Testing
-
-Run the comprehensive test suite:
-```bash
-python scripts/full_test.py
-```
-
-## 📊 Features
-
-### Card Ranking
-- AI-powered analysis of credit card benefits
-- Personalized recommendations based on spending patterns
-- Real-time ranking updates
-
-### Interest Optimization
-- Smart debt management strategies
-- Interest rate optimization algorithms
-- Payment scheduling recommendations
-
-### Financial Management
-- Secure Plaid integration for account linking
-- Transaction categorization and analysis
-- Spending pattern insights
-
-### Mobile Experience
-- Intuitive user interface
-- Real-time financial data
-- Push notifications for important events
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-For support and questions:
-- Create an issue on GitHub
-- Contact the development team
-
-## 🔒 Security
-
-- All sensitive data is encrypted
-- JWT-based authentication
-- Secure API endpoints
-- Regular security audits
+5. **Docker (optional)**
+   ```bash
+   docker-compose up -d
+   ```
 
 ---
 
-**Nexus** - Empowering smarter financial decisions through AI and intelligent automation. 
+## 🔒 Security & Production
+- All sensitive data is encrypted and never stored in plaintext
+- JWT authentication for all API endpoints
+- Sentry error tracking in backend and AI service
+- No mock or fallback logic in production – all data is real
+
+**Nexus** – Empowering smarter financial decisions through AI and intelligent automation.
