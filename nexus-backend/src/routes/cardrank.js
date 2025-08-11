@@ -13,6 +13,8 @@ function calcUtilization(balance, creditLimit) {
 }
 
 router.post('/recommend', async (req, res) => {
+  const trace = [];
+  trace.push({ step: 'Start', timestamp: new Date().toISOString(), body: req.body });
   const schema = z.object({
     userId: z.union([z.string(), z.number()]),
     merchant: z.string().optional(),
@@ -23,18 +25,20 @@ router.post('/recommend', async (req, res) => {
     creditScoreInfo: z.any().optional()
   });
   const parseResult = schema.safeParse(req.body);
+  trace.push({ step: 'Input Validation', valid: parseResult.success, errors: parseResult.error ? parseResult.error.errors : null, timestamp: new Date().toISOString() });
   if (!parseResult.success) {
-    return res.status(400).json({ error: 'Invalid input', details: parseResult.error.errors });
+    return res.status(400).json({ error: 'Invalid input', details: parseResult.error.errors, trace });
   }
   const { userId, merchant, category, amount, location, primaryGoal, creditScoreInfo } = parseResult.data;
-  if (!userId || (!merchant && !category)) return res.status(400).json({ error: 'userId and merchant/category required' });
+  if (!userId || (!merchant && !category)) return res.status(400).json({ error: 'userId and merchant/category required', trace });
   try {
     // Fetch all cards for the user
     let cards = await Card.findAll({ where: { user_id: userId } });
+    trace.push({ step: 'DB Query', model: 'Card', query: { user_id: userId }, resultCount: cards.length, timestamp: new Date().toISOString() });
     if (!cards || cards.length === 0) {
       if (process.env.NODE_ENV === 'production') {
-        console.error('CRITICAL: Attempted to use mock cards in production for userId:', userId);
-        return res.status(500).json({ error: 'Internal server error. No cards found for user.' });
+        trace.push({ step: 'No Cards', error: 'No cards found for user in production', timestamp: new Date().toISOString() });
+        return res.status(500).json({ error: 'Internal server error. No cards found for user.', trace });
       }
       // Fallback to mock cards if none found (for testing/demo)
       cards = [
@@ -71,6 +75,7 @@ router.post('/recommend', async (req, res) => {
           rewards: { type: 'rotating', rate: '5%', categories: ['gas_stations', 'grocery_stores', 'restaurants', 'amazon'] },
         },
       ];
+      trace.push({ step: 'Mock Cards Used', count: cards.length, timestamp: new Date().toISOString() });
     }
     // You may need to fetch credit limits and other fields from another model if not present
     const userCards = cards.map(card => {
@@ -104,25 +109,35 @@ router.post('/recommend', async (req, res) => {
         signup_bonus_progress: null
       };
     });
-    console.log('[DEBUG] userCards for AI:', JSON.stringify(userCards, null, 2));
-    console.log('[DEBUG] FINAL userCards for AI:', JSON.stringify(userCards, null, 2));
+    trace.push({ step: 'Sanitize Cards', userCards, timestamp: new Date().toISOString() });
     if (!userCards || userCards.length === 0) {
-      return res.status(400).json({ error: 'No cards found for this user.' });
+      trace.push({ step: 'No User Cards', timestamp: new Date().toISOString() });
+      return res.status(400).json({ error: 'No cards found for this user.', trace });
     }
-    // Call the AI service only if userCards is not empty
     // Build user_context with both primaryGoal and creditScoreInfo if present
     const user_context = {};
     if (primaryGoal) user_context.primaryGoal = primaryGoal;
     if (creditScoreInfo) user_context.creditScoreInfo = creditScoreInfo;
-    const result = await getCardRank(
-      userCards,
-      { merchantName: merchant, amount, category, location },
-      user_context
-    );
-    res.json(result);
+    trace.push({ step: 'Build User Context', user_context, timestamp: new Date().toISOString() });
+    // Call the AI service only if userCards is not empty
+    let result;
+    try {
+      trace.push({ step: 'AI Call Start', timestamp: new Date().toISOString() });
+      result = await getCardRank(
+        userCards,
+        { merchantName: merchant, amount, category, location },
+        user_context
+      );
+      trace.push({ step: 'AI Call Success', aiResult: result, timestamp: new Date().toISOString() });
+    } catch (aiErr) {
+      trace.push({ step: 'AI Call Error', error: aiErr.message, timestamp: new Date().toISOString() });
+      throw aiErr;
+    }
+    res.json({ ...result, trace });
   } catch (error) {
+    trace.push({ step: 'Error', error: error.message, timestamp: new Date().toISOString() });
     console.error('Error in /cardrank/recommend:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message, trace });
   }
 });
 

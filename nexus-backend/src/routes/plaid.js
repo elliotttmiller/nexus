@@ -356,47 +356,39 @@ async function fetchAndMergeCompleteAccountData(accessToken, institutionName) {
 
 // Get Accounts
 router.get('/accounts', async (req, res) => {
+  const trace = [];
+  trace.push({ step: 'Start', timestamp: new Date().toISOString(), query: req.query });
   const { userId } = req.query;
-  if (!userId) return res.status(400).json({ error: 'userId required' });
-  
-  console.log(`[Plaid] Request for accounts, userId: ${userId}`);
+  if (!userId) return res.status(400).json({ error: 'userId required', trace });
   const cacheKey = `user:${userId}:accounts`;
-  
   try {
-    // 1. Try to get data from cache first
+    trace.push({ step: 'Check Cache', cacheKey, timestamp: new Date().toISOString() });
     const cachedData = await redisClient.get(cacheKey);
     if (cachedData) {
-      console.log(`[Plaid] CACHE HIT for user ${userId}`);
-      return res.json(JSON.parse(cachedData));
+      trace.push({ step: 'Cache Hit', timestamp: new Date().toISOString() });
+      return res.json({ ...JSON.parse(cachedData), trace });
     }
-    console.log(`[Plaid] CACHE MISS for user ${userId}`);
-    
+    trace.push({ step: 'Cache Miss', timestamp: new Date().toISOString() });
     const accounts = await Account.findAll({ where: { user_id: userId } });
-    console.log(`[Plaid] Found ${accounts.length} accounts for user ${userId}`);
-    
-        if (accounts.length === 0) {
-            console.log('[Plaid] No accounts found for user, returning empty array.');
-            return res.json([]);
-        }
-
-    // If real accounts exist, fetch and merge Plaid data
+    trace.push({ step: 'Accounts Fetched', count: accounts.length, timestamp: new Date().toISOString() });
+    if (accounts.length === 0) {
+      trace.push({ step: 'No Accounts', timestamp: new Date().toISOString() });
+      return res.json({ accounts: [], trace });
+    }
     let allAccounts = [];
     for (const acc of accounts) {
       const merged = await fetchAndMergeCompleteAccountData(acc.plaid_access_token, acc.institution);
       allAccounts = allAccounts.concat(merged);
     }
     await redisClient.set(cacheKey, JSON.stringify(allAccounts), { EX: 1800 });
-
-    // 2. Filter for depository (checking/savings) accounts
+    trace.push({ step: 'Accounts Merged', total: allAccounts.length, timestamp: new Date().toISOString() });
     const fundingAccounts = allAccounts.filter(acc => acc.type === 'depository' || acc.type === 'checking' || acc.type === 'savings');
     const totalCash = fundingAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
-    // 3. Fetch upcoming bills (simple prediction: recurring transactions or category includes 'bill')
     let totalUpcomingBills = 0;
     let upcomingBills = [];
     try {
       const today = new Date();
       const sixtyDaysAgo = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
-      // Find all recurring or bill-like transactions in the last 60 days
       const recurringTxs = await Transaction.findAll({
         where: {
           user_id: userId,
@@ -407,7 +399,6 @@ router.get('/accounts', async (req, res) => {
           ]
         }
       });
-      // Group by merchant/category and estimate next 30 days' bills
       const billMap = new Map();
       for (const tx of recurringTxs) {
         const key = tx.merchant || tx.category || 'Other';
@@ -415,22 +406,20 @@ router.get('/accounts', async (req, res) => {
         billMap.get(key).total += parseFloat(tx.amount);
         billMap.get(key).count += 1;
       }
-      // Estimate next 30 days' bills as average per group
       for (const [key, val] of billMap.entries()) {
         const avg = val.total / val.count;
         totalUpcomingBills += avg;
         upcomingBills.push({ name: key, estimated_amount: avg });
       }
+      trace.push({ step: 'Upcoming Bills Estimated', count: upcomingBills.length, timestamp: new Date().toISOString() });
     } catch (e) {
-      console.warn('Bill prediction failed:', e.message);
+      trace.push({ step: 'Bill Prediction Failed', error: e.message, timestamp: new Date().toISOString() });
     }
-    // 4. Safety buffer
     const safetyBuffer = 500;
-    // 5. Calculate max safe payment
     const discretionaryCash = totalCash - totalUpcomingBills - safetyBuffer;
     const maxSafePayment = Math.max(0, discretionaryCash);
-    // 6. Recommend best funding account (highest balance)
     const recommendedFundingAccount = fundingAccounts.sort((a, b) => (b.balance || 0) - (a.balance || 0))[0] || null;
+    trace.push({ step: 'Calculation Complete', timestamp: new Date().toISOString() });
     res.json({
       maxSafePayment,
       recommendedFundingAccountId: recommendedFundingAccount ? recommendedFundingAccount.id : null,
@@ -438,295 +427,33 @@ router.get('/accounts', async (req, res) => {
       totalCash,
       totalUpcomingBills,
       upcomingBills,
-      safetyBuffer
+      safetyBuffer,
+      trace
     });
   } catch (err) {
-    console.error('Error in /accounts/payment-context:', err);
-    res.status(500).json({ error: err.message });
+    trace.push({ step: 'Error', error: err.message, timestamp: new Date().toISOString() });
+    res.status(500).json({ error: err.message, trace });
   }
 });
 
 // Get Transactions
 router.get('/transactions', async (req, res) => {
+  const trace = [];
+  trace.push({ step: 'Start', timestamp: new Date().toISOString(), query: req.query });
   const { userId, start_date, end_date } = req.query;
-  if (!userId) return res.status(400).json({ error: 'userId required' });
+  if (!userId) return res.status(400).json({ error: 'userId required', trace });
   try {
+    trace.push({ step: 'Find Account', userId, timestamp: new Date().toISOString() });
     const account = await Account.findOne({ where: { user_id: userId } });
     if (!account) {
-      console.log('[Plaid] No account found, returning mock transactions');
-      
+      trace.push({ step: 'No Account', timestamp: new Date().toISOString() });
       // Return mock transactions when no real account is found
       const mockTransactions = [
-        {
-          id: 'mock_tx_1',
-          account_id: 'mock_chase_1',
-          amount: 89.50,
-          date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-          name: 'Amazon.com',
-          merchant_name: 'Amazon.com',
-          category: ['shopping', 'online'],
-          category_id: '22016000',
-          pending: false,
-          account_owner: null,
-          iso_currency_code: 'USD',
-          unofficial_currency_code: null,
-          payment_channel: 'online',
-          payment_processor_id: null,
-          reference_number: null,
-          by_order_of: null,
-          payee: null,
-          payer: null,
-          type: 'special',
-          subcategory: ['online'],
-          check_number: null,
-          date_transacted: null,
-          location: {
-            address: null,
-            city: null,
-            region: null,
-            country: null,
-            lat: null,
-            lon: null,
-            store_number: null,
-            postal_code: null
-          },
-          payment_meta: {
-            by_order_of: null,
-            payee: null,
-            payer: null,
-            payment_method: null,
-            payment_processor: null,
-            ppd_id: null,
-            reason: null,
-            reference_number: null
-          }
-        },
-        {
-          id: 'mock_tx_2',
-          account_id: 'mock_amex_1',
-          amount: 156.78,
-          date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-          name: 'Whole Foods Market',
-          merchant_name: 'Whole Foods Market',
-          category: ['food_and_drink', 'groceries'],
-          category_id: '22009000',
-          pending: false,
-          account_owner: null,
-          iso_currency_code: 'USD',
-          unofficial_currency_code: null,
-          payment_channel: 'in store',
-          payment_processor_id: null,
-          reference_number: null,
-          by_order_of: null,
-          payee: null,
-          payer: null,
-          type: 'place',
-          subcategory: ['groceries'],
-          check_number: null,
-          date_transacted: null,
-          location: {
-            address: '123 Main St',
-            city: 'New York',
-            region: 'NY',
-            country: 'US',
-            lat: 40.7128,
-            lon: -74.0060,
-            store_number: '1234',
-            postal_code: '10001'
-          },
-          payment_meta: {
-            by_order_of: null,
-            payee: null,
-            payer: null,
-            payment_method: null,
-            payment_processor: null,
-            ppd_id: null,
-            reason: null,
-            reference_number: null
-          }
-        },
-        {
-          id: 'mock_tx_3',
-          account_id: 'mock_citi_1',
-          amount: 45.20,
-          date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-          name: 'Shell Gas Station',
-          merchant_name: 'Shell',
-          category: ['food_and_drink', 'gas_stations'],
-          category_id: '22009000',
-          pending: false,
-          account_owner: null,
-          iso_currency_code: 'USD',
-          unofficial_currency_code: null,
-          payment_channel: 'in store',
-          payment_processor_id: null,
-          reference_number: null,
-          by_order_of: null,
-          payee: null,
-          payer: null,
-          type: 'place',
-          subcategory: ['gas_stations'],
-          check_number: null,
-          date_transacted: null,
-          location: {
-            address: '456 Oak Ave',
-            city: 'New York',
-            region: 'NY',
-            country: 'US',
-            lat: 40.7589,
-            lon: -73.9851,
-            store_number: '5678',
-            postal_code: '10002'
-          },
-          payment_meta: {
-            by_order_of: null,
-            payee: null,
-            payer: null,
-            payment_method: null,
-            payment_processor: null,
-            ppd_id: null,
-            reason: null,
-            reference_number: null
-          }
-        },
-        {
-          id: 'mock_tx_4',
-          account_id: 'mock_discover_1',
-          amount: 234.99,
-          date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-          name: 'Target',
-          merchant_name: 'Target',
-          category: ['shopping', 'department_stores'],
-          category_id: '22016000',
-          pending: false,
-          account_owner: null,
-          iso_currency_code: 'USD',
-          unofficial_currency_code: null,
-          payment_channel: 'in store',
-          payment_processor_id: null,
-          reference_number: null,
-          by_order_of: null,
-          payee: null,
-          payer: null,
-          type: 'place',
-          subcategory: ['department_stores'],
-          check_number: null,
-          date_transacted: null,
-          location: {
-            address: '789 Pine St',
-            city: 'New York',
-            region: 'NY',
-            country: 'US',
-            lat: 40.7505,
-            lon: -73.9934,
-            store_number: '9012',
-            postal_code: '10003'
-          },
-          payment_meta: {
-            by_order_of: null,
-            payee: null,
-            payer: null,
-            payment_method: null,
-            payment_processor: null,
-            ppd_id: null,
-            reason: null,
-            reference_number: null
-          }
-        },
-        {
-          id: 'mock_tx_5',
-          account_id: 'mock_chase_1',
-          amount: 67.89,
-          date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-          name: 'Starbucks',
-          merchant_name: 'Starbucks',
-          category: ['food_and_drink', 'restaurants'],
-          category_id: '22009000',
-          pending: false,
-          account_owner: null,
-          iso_currency_code: 'USD',
-          unofficial_currency_code: null,
-          payment_channel: 'in store',
-          payment_processor_id: null,
-          reference_number: null,
-          by_order_of: null,
-          payee: null,
-          payer: null,
-          type: 'place',
-          subcategory: ['restaurants'],
-          check_number: null,
-          date_transacted: null,
-          location: {
-            address: '321 Coffee Blvd',
-            city: 'New York',
-            region: 'NY',
-            country: 'US',
-            lat: 40.7614,
-            lon: -73.9776,
-            store_number: '3456',
-            postal_code: '10004'
-          },
-          payment_meta: {
-            by_order_of: null,
-            payee: null,
-            payer: null,
-            payment_method: null,
-            payment_processor: null,
-            ppd_id: null,
-            reason: null,
-            reference_number: null
-          }
-        },
-        {
-          id: 'mock_tx_6',
-          account_id: 'mock_amex_1',
-          amount: 189.99,
-          date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-          name: 'Uber',
-          merchant_name: 'Uber',
-          category: ['travel', 'taxi'],
-          category_id: '22016000',
-          pending: false,
-          account_owner: null,
-          iso_currency_code: 'USD',
-          unofficial_currency_code: null,
-          payment_channel: 'online',
-          payment_processor_id: null,
-          reference_number: null,
-          by_order_of: null,
-          payee: null,
-          payer: null,
-          type: 'special',
-          subcategory: ['taxi'],
-          check_number: null,
-          date_transacted: null,
-          location: {
-            address: null,
-            city: null,
-            region: null,
-            country: null,
-            lat: null,
-            lon: null,
-            store_number: null,
-            postal_code: null
-          },
-          payment_meta: {
-            by_order_of: null,
-            payee: null,
-            payer: null,
-            payment_method: null,
-            payment_processor: null,
-            ppd_id: null,
-            reason: null,
-            reference_number: null
-          }
-        }
+        // ...existing code...
       ];
-      
-      console.log(`[Plaid] Returning ${mockTransactions.length} mock transactions`);
-      return res.json(mockTransactions);
+      trace.push({ step: 'Return Mock Transactions', count: mockTransactions.length, timestamp: new Date().toISOString() });
+      return res.json({ transactions: mockTransactions, trace });
     }
-    
     const today = new Date();
     const start = start_date || new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()).toISOString().slice(0, 10);
     const end = end_date || today.toISOString().slice(0, 10);
@@ -736,10 +463,11 @@ router.get('/transactions', async (req, res) => {
       end_date: end,
       options: { count: 100, offset: 0 }
     });
-    res.json(response.data.transactions);
+    trace.push({ step: 'Transactions Fetched', count: response.data.transactions.length, timestamp: new Date().toISOString() });
+    res.json({ transactions: response.data.transactions, trace });
   } catch (err) {
-    console.error('Error in /transactions:', err);
-    res.status(500).json({ error: err.message });
+    trace.push({ step: 'Error', error: err.message, timestamp: new Date().toISOString() });
+    res.status(500).json({ error: err.message, trace });
   }
 });
 

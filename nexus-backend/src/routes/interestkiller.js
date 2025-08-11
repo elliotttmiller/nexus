@@ -37,24 +37,28 @@ function calculateUtilizationImprovement(split, cards) {
 }
 
 router.post('/suggest', async (req, res) => {
+  const trace = [];
+  trace.push({ step: 'Start', timestamp: new Date().toISOString(), body: req.body });
   const schema = z.object({
     userId: z.union([z.string(), z.number()]),
     amount: z.number().positive(),
     optimizationGoal: z.string().optional()
   });
   const parseResult = schema.safeParse(req.body);
+  trace.push({ step: 'Input Validation', valid: parseResult.success, errors: parseResult.error ? parseResult.error.errors : null, timestamp: new Date().toISOString() });
   if (!parseResult.success) {
-    return res.status(400).json({ error: 'Invalid input', details: parseResult.error.errors });
+    return res.status(400).json({ error: 'Invalid input', details: parseResult.error.errors, trace });
   }
   const { userId, amount, optimizationGoal } = parseResult.data;
-  if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required' });
+  if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required', trace });
   try {
     // Fetch all cards for the user
     let cards = await Card.findAll({ where: { user_id: userId } });
+    trace.push({ step: 'DB Query', model: 'Card', query: { user_id: userId }, resultCount: cards.length, timestamp: new Date().toISOString() });
     if (!cards || cards.length === 0) {
       if (process.env.NODE_ENV === 'production') {
-        console.error('CRITICAL: Attempted to use mock cards in production for userId:', userId);
-        return res.status(500).json({ error: 'Internal server error. No cards found for user.' });
+        trace.push({ step: 'No Cards', error: 'No cards found for user in production', timestamp: new Date().toISOString() });
+        return res.status(500).json({ error: 'Internal server error. No cards found for user.', trace });
       }
       // Fallback to mock cards if none found (for testing/demo)
       cards = [
@@ -91,8 +95,8 @@ router.post('/suggest', async (req, res) => {
           user_id: userId,
         },
       ];
+      trace.push({ step: 'Mock Cards Used', count: cards.length, timestamp: new Date().toISOString() });
     }
-    
     // You may need to fetch credit limits and promo info from another model if not present
     const accounts = cards.map(card => {
       // Defensive: sanitize all fields for AI
@@ -121,15 +125,22 @@ router.post('/suggest', async (req, res) => {
         promoAPR: null,
       };
     });
-    console.log('[DEBUG] accounts for AI:', JSON.stringify(accounts, null, 2));
-    console.log('[DEBUG] FINAL accounts for AI:', JSON.stringify(accounts, null, 2));
+    trace.push({ step: 'Sanitize Cards', accounts, timestamp: new Date().toISOString() });
     if (!accounts || accounts.length === 0) {
-      return res.status(400).json({ error: 'No credit cards found for this user.' });
+      trace.push({ step: 'No Accounts', timestamp: new Date().toISOString() });
+      return res.status(400).json({ error: 'No credit cards found for this user.', trace });
     }
-    
     const user_context = { primary_goal: 'minimize_interest' };
-    const split = await getInterestKillerSplit(accounts, parseFloat(amount), user_context);
-    
+    trace.push({ step: 'Build User Context', user_context, timestamp: new Date().toISOString() });
+    let split;
+    try {
+      trace.push({ step: 'AI Call Start', timestamp: new Date().toISOString() });
+      split = await getInterestKillerSplit(accounts, parseFloat(amount), user_context);
+      trace.push({ step: 'AI Call Success', aiResult: split, timestamp: new Date().toISOString() });
+    } catch (aiErr) {
+      trace.push({ step: 'AI Call Error', error: aiErr.message, timestamp: new Date().toISOString() });
+      throw aiErr;
+    }
     // Log event (with error handling for database issues)
     try {
       await UserEvent.create({
@@ -137,15 +148,16 @@ router.post('/suggest', async (req, res) => {
         event_type: 'interestkiller_suggestion',
         data: { request: { amount, optimizationGoal }, suggestion: split }
       });
+      trace.push({ step: 'UserEvent Log', status: 'success', timestamp: new Date().toISOString() });
     } catch (logError) {
-      console.warn('Failed to log user event:', logError);
+      trace.push({ step: 'UserEvent Log', status: 'fail', error: logError.message, timestamp: new Date().toISOString() });
       // Don't fail the request if logging fails
     }
-    
-    res.json({ suggestion: split });
+    res.json({ suggestion: split, trace });
   } catch (err) {
+    trace.push({ step: 'Error', error: err.message, timestamp: new Date().toISOString() });
     console.error('Error in /suggest:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, trace });
   }
 });
 
