@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 
+const db = require('../models');
 const User = db.User;
 const { z } = require('zod');
 
