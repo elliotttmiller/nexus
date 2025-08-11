@@ -86,6 +86,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    ai_card_analysis: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      comment: 'Stores AI card recommendation analysis for this transaction',
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,

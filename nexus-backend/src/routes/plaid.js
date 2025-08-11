@@ -1,3 +1,114 @@
+// Get a transaction with AI card analysis (for mobile app)
+router.get('/transaction/:id/ai-analysis', async (req, res) => {
+  try {
+    const tx = await db.Transaction.findByPk(req.params.id);
+    if (!tx) return res.status(404).json({ error: 'Transaction not found' });
+    res.json({
+      id: tx.id,
+      amount: tx.amount,
+      merchant: tx.merchant,
+      date: tx.date,
+      card_id: tx.card_id,
+      ai_card_analysis: tx.ai_card_analysis
+    });
+  } catch (err) {
+    console.error('[Get AI Card Analysis] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+// --- Plaid Webhook Listener ---
+router.post('/webhook', async (req, res) => {
+  try {
+    const payload = req.body;
+    // Log and store the webhook for idempotency and debugging
+    console.log('[Plaid Webhook] Received:', JSON.stringify(payload, null, 2));
+    // Only handle transaction webhooks for now
+    if (payload.webhook_type === 'TRANSACTIONS' && payload.webhook_code === 'TRANSACTIONS_ADDED') {
+      // For each new transaction, analyze optimal card
+      const userId = await getUserIdFromItemId(payload.item_id);
+      if (!userId) {
+        console.warn('[Plaid Webhook] No user found for item_id:', payload.item_id);
+        return res.status(200).json({ status: 'ok' });
+      }
+      // Fetch new transactions from DB (idempotent: only update if not already analyzed)
+      const newTxs = await db.Transaction.findAll({
+        where: {
+          user_id: userId,
+          plaid_transaction_id: payload.new_transactions ? { [Op.in]: payload.new_transactions } : undefined
+        }
+      });
+      const userCards = await db.Card.findAll({ where: { user_id: userId } });
+      for (const tx of newTxs) {
+        if (tx.ai_card_analysis) continue; // Idempotency: skip if already analyzed
+        // Optionally fetch user goal from profile/settings
+        let userGoal = 'MAXIMIZE_CASHBACK';
+        try {
+          const user = await db.User.findByPk(userId);
+          if (user && user.ai_card_goal) userGoal = user.ai_card_goal;
+        } catch {}
+        const aiResult = await analyzeTransactionOptimalCard(userCards, tx, userGoal);
+        await tx.update({ ai_card_analysis: aiResult });
+      }
+    }
+    res.status(200).json({ status: 'ok' });
+  } catch (err) {
+    console.error('[Plaid Webhook] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper: Map Plaid item_id to user_id (implement as needed)
+async function getUserIdFromItemId(item_id) {
+  const account = await db.Account.findOne({ where: { plaid_item_id: item_id } });
+  return account ? account.user_id : null;
+}
+
+// Helper: Analyze transaction and compare to AI optimal card
+async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 'MAXIMIZE_CASHBACK') {
+  const aiPayload = {
+    user_cards: userCards.map(card => ({
+      id: card.id,
+      name: card.card_name,
+      balance: parseFloat(card.balance),
+      creditLimit: parseFloat(card.credit_limit),
+      apr: parseFloat(card.apr),
+      utilization: card.credit_limit ? parseFloat(card.balance) / parseFloat(card.credit_limit) : 0,
+      rewards: card.rewards,
+      point_value_cents: 1,
+      signup_bonus_progress: null
+    })),
+    transaction_context: {
+      merchantName: transaction.merchant,
+      amount: parseFloat(transaction.amount),
+      category: transaction.category,
+      location: transaction.location || '',
+      date: transaction.date
+    },
+    user_context: {
+      primaryGoal: userGoal
+    }
+  };
+  const axios = require('axios');
+  const AI_BASE_URL = process.env.AI_BASE_URL;
+  let aiResponse;
+  try {
+    const resp = await axios.post(`${AI_BASE_URL}/v2/cardrank`, aiPayload);
+    aiResponse = resp.data;
+  } catch (e) {
+    console.error('[AI CardRank] Error:', e.message);
+    aiResponse = null;
+  }
+  const usedCardId = transaction.card_id;
+  const aiCardId = aiResponse && aiResponse.recommended_card ? aiResponse.recommended_card.id : null;
+  const isOptimal = usedCardId && aiCardId && String(usedCardId) === String(aiCardId);
+  return {
+    isOptimal,
+    aiCard: aiResponse ? aiResponse.recommended_card : null,
+    usedCard: userCards.find(c => String(c.id) === String(usedCardId)),
+    explanation: aiResponse ? aiResponse.reason : null,
+    why_not: aiResponse ? aiResponse.why_not : null
+  };
+}
 const express = require('express');
 const router = express.Router();
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
