@@ -152,145 +152,19 @@ router.get('/accounts', async (req, res) => {
     const accounts = await Account.findAll({ where: { user_id: userId } });
     console.log(`[Plaid] Found ${accounts.length} accounts for user ${userId}`);
     
-    if (accounts.length === 0) {
-      console.log('[Plaid] No accounts found, returning mock credit cards for testing');
-      
-      // Return mock credit cards when no real accounts are found
-      const mockAccounts = [
-        {
-          id: 'mock_chase_1',
-          name: 'Chase Sapphire Preferred',
-          type: 'credit',
-          subtype: 'credit card',
-          mask: '1234',
-          last4: '1234',
-          institution_id: 'mock_chase',
-          institution_name: 'Chase',
-          institution: 'Chase',
-          balance: 5000.00,
-          apr: 21.49,
-          creditLimit: 15000.00,
-          credit_limit: 15000.00,
-          minimum_payment: 150.00,
-          due_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-          rewards: {
-            type: 'travel',
-            rate: '2x',
-            categories: ['travel', 'dining']
-          }
-        },
-        {
-          id: 'mock_amex_1',
-          name: 'American Express Gold',
-          type: 'credit',
-          subtype: 'credit card',
-          mask: '5678',
-          last4: '5678',
-          institution_id: 'mock_amex',
-          institution_name: 'American Express',
-          institution: 'American Express',
-          balance: 3000.00,
-          apr: 18.99,
-          creditLimit: 25000.00,
-          credit_limit: 25000.00,
-          minimum_payment: 100.00,
-          due_date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(),
-          rewards: {
-            type: 'dining',
-            rate: '4x',
-            categories: ['dining', 'groceries']
-          }
-        },
-        {
-          id: 'mock_citi_1',
-          name: 'Citi Double Cash',
-          type: 'credit',
-          subtype: 'credit card',
-          mask: '9012',
-          last4: '9012',
-          institution_id: 'mock_citi',
-          institution_name: 'Citi',
-          institution: 'Citi',
-          balance: 7500.00,
-          apr: 22.99,
-          creditLimit: 20000.00,
-          credit_limit: 20000.00,
-          minimum_payment: 200.00,
-          due_date: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString(),
-          rewards: {
-            type: 'cashback',
-            rate: '2%',
-            categories: ['all_purchases']
-          }
-        },
-        {
-          id: 'mock_discover_1',
-          name: 'Discover it Cash Back',
-          type: 'credit',
-          subtype: 'credit card',
-          mask: '3456',
-          last4: '3456',
-          institution_id: 'mock_discover',
-          institution_name: 'Discover',
-          institution: 'Discover',
-          balance: 1200.00,
-          apr: 16.99,
-          creditLimit: 10000.00,
-          credit_limit: 10000.00,
-          minimum_payment: 50.00,
-          due_date: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000).toISOString(),
-          rewards: {
-            type: 'rotating',
-            rate: '5%',
-            categories: ['gas_stations', 'grocery_stores', 'restaurants', 'amazon']
-          }
+        if (accounts.length === 0) {
+            console.log('[Plaid] No accounts found for user, returning empty array.');
+            return res.json([]);
         }
-      ];
-      
-      console.log(`[Plaid] SUCCESS: Returning ${mockAccounts.length} mock credit cards for testing`);
-      return res.json(mockAccounts);
-    }
-    
+
+    // If real accounts exist, fetch and merge Plaid data
     let allAccounts = [];
     for (const acc of accounts) {
       const merged = await fetchAndMergeCompleteAccountData(acc.plaid_access_token, acc.institution);
       allAccounts = allAccounts.concat(merged);
     }
-    // Store the result in Redis with a 30-minute expiration (1800 seconds)
     await redisClient.set(cacheKey, JSON.stringify(allAccounts), { EX: 1800 });
-    console.log(`[Plaid] SUCCESS: Returning ${allAccounts.length} real accounts`);
-    res.json(allAccounts);
-  } catch (err) {
-    console.error('[Plaid] ERROR in /accounts:', err);
-    res.status(500).json({ 
-      error: err.message,
-      details: 'Failed to load financial data',
-      timestamp: new Date().toISOString(),
-      userId: userId
-    });
-  }
-});
 
-// --- Safe Payment & Cash Flow Aware Endpoint ---
-// GET /accounts/payment-context?userId=...
-router.get('/accounts/payment-context', async (req, res) => {
-  const { userId } = req.query;
-  if (!userId) return res.status(400).json({ error: 'userId required' });
-  try {
-    // 1. Fetch all accounts for the user
-    const cacheKey = `user:${userId}:accounts`;
-    let allAccounts = [];
-    const cachedData = await redisClient.get(cacheKey);
-    if (cachedData) {
-      allAccounts = JSON.parse(cachedData);
-    } else {
-      const accounts = await Account.findAll({ where: { user_id: userId } });
-      for (const acc of accounts) {
-        const merged = await fetchAndMergeCompleteAccountData(acc.plaid_access_token, acc.institution);
-        allAccounts = allAccounts.concat(merged);
-      }
-      await redisClient.set(cacheKey, JSON.stringify(allAccounts), { EX: 1800 });
-    }
     // 2. Filter for depository (checking/savings) accounts
     const fundingAccounts = allAccounts.filter(acc => acc.type === 'depository' || acc.type === 'checking' || acc.type === 'savings');
     const totalCash = fundingAccounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
@@ -647,118 +521,6 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
-// Add mock credit cards endpoint
-router.post('/add-mock-cards', async (req, res) => {
-  try {
-    console.log('💳 Adding mock credit cards to database...');
-    
-    const mockCards = [
-      {
-        user_id: 1,
-        account_id: 101, // Changed from 1 to avoid conflicts
-        card_name: 'Chase Sapphire Preferred',
-        apr: 21.49,
-        balance: 5000.00,
-        credit_limit: 15000.00,
-        due_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-        rewards: {
-          type: 'travel',
-          rate: '2x',
-          categories: ['travel', 'dining']
-        }
-      },
-      {
-        user_id: 1,
-        account_id: 102, // Changed from 2
-        card_name: 'American Express Gold',
-        apr: 18.99,
-        balance: 3000.00,
-        credit_limit: 25000.00,
-        due_date: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
-        rewards: {
-          type: 'dining',
-          rate: '4x',
-          categories: ['dining', 'groceries']
-        }
-      },
-      {
-        user_id: 1,
-        account_id: 103, // Changed from 3
-        card_name: 'Citi Double Cash',
-        apr: 22.99,
-        balance: 7500.00,
-        credit_limit: 20000.00,
-        due_date: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),
-        rewards: {
-          type: 'cashback',
-          rate: '2%',
-          categories: ['all_purchases']
-        }
-      },
-      {
-        user_id: 1,
-        account_id: 104, // Changed from 4
-        card_name: 'Discover it Cash Back',
-        apr: 16.99,
-        balance: 1200.00,
-        credit_limit: 10000.00,
-        due_date: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000),
-        rewards: {
-          type: 'rotating',
-          rate: '5%',
-          categories: ['gas_stations', 'grocery_stores', 'restaurants', 'amazon']
-        }
-      }
-    ];
-
-    const createdCards = [];
-    
-    for (const cardData of mockCards) {
-      try {
-        // First, try to find existing card with same account_id
-        const existingCard = await Card.findOne({ 
-          where: { 
-            user_id: cardData.user_id, 
-            account_id: cardData.account_id 
-          } 
-        });
-        
-        if (existingCard) {
-          console.log(`⚠️ Card ${cardData.card_name} already exists, updating...`);
-          await existingCard.update(cardData);
-          createdCards.push(existingCard);
-        } else {
-          console.log(`✅ Creating new card: ${cardData.card_name}`);
-          const card = await Card.create(cardData);
-          createdCards.push(card);
-        }
-        
-        console.log(`✅ Added/Updated: ${cardData.card_name} - $${cardData.balance} balance, ${cardData.apr}% APR`);
-      } catch (error) {
-        console.log(`❌ Error with ${cardData.card_name}: ${error.message}`);
-      }
-    }
-
-    res.json({
-      success: true,
-      message: `Successfully added/updated ${createdCards.length} mock credit cards`,
-      cards: createdCards.map(card => ({
-        id: card.id,
-        name: card.card_name,
-        balance: card.balance,
-        apr: card.apr,
-        credit_limit: card.credit_limit
-      }))
-    });
-
-  } catch (error) {
-    console.error('❌ Error adding mock cards:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
 
 // Clear all accounts endpoint
 router.post('/clear-accounts', async (req, res) => {

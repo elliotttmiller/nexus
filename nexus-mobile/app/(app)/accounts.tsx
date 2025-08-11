@@ -124,31 +124,9 @@ export default function AccountsScreen() {
     if (!PlaidLink) {
       Alert.alert(
         'Plaid Not Available', 
-        'Plaid Link is not available on this platform or not properly configured. For testing, try using the mock accounts feature.',
+        'Plaid Link is not available on this platform or not properly configured. Please contact support or try again on a supported device.',
         [
-          { text: 'OK', style: 'default' },
-          { 
-            text: 'Add Mock Accounts', 
-            style: 'default',
-            onPress: async () => {
-              try {
-                const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/add-mock-cards`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                });
-                
-                if (res.ok) {
-                  Alert.alert('Success', 'Mock accounts added successfully!');
-                  await fetchAllData();
-                } else {
-                  throw new Error('Failed to add mock accounts');
-                }
-              } catch (error) {
-                console.error('Failed to add mock accounts:', error);
-                Alert.alert('Error', 'Failed to add mock accounts');
-              }
-            }
-          }
+          { text: 'OK', style: 'default' }
         ]
       );
       return;
@@ -237,29 +215,7 @@ export default function AccountsScreen() {
         'Error', 
         errorMessage,
         [
-          { text: 'OK', style: 'default' },
-          { 
-            text: 'Try Mock Accounts', 
-            style: 'default',
-            onPress: async () => {
-              try {
-                const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/add-mock-cards`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                });
-                
-                if (res.ok) {
-                  Alert.alert('Success', 'Mock accounts added successfully!');
-                  await fetchAllData();
-                } else {
-                  throw new Error('Failed to add mock accounts');
-                }
-              } catch (mockError) {
-                console.error('Failed to add mock accounts:', mockError);
-                Alert.alert('Error', 'Failed to add mock accounts');
-              }
-            }
-          }
+          { text: 'OK', style: 'default' }
         ]
       );
     } finally {

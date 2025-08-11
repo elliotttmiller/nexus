@@ -50,13 +50,13 @@ export default function PayScreen() {
       .then(data => {
         const creditCards = data.filter((acc: Account) => acc.type && acc.type.toLowerCase().includes('credit'));
         setCards(creditCards.length > 0 ? creditCards : [
-          { id: 'mock1', name: 'Mock Credit Card', balance: 500, apr: 19.99, creditLimit: 2000, last4: '1234', type: 'credit' }
+          // ...existing code...
         ]);
         setFundingAccounts(data.filter((acc: Account) => acc.type && !acc.type.toLowerCase().includes('credit')));
       })
       .catch((err) => {
         setCards([
-          { id: 'mock1', name: 'Mock Credit Card', balance: 500, apr: 19.99, creditLimit: 2000, last4: '1234', type: 'credit' }
+          // ...existing code...
         ]);
         setFundingAccounts([]);
       });

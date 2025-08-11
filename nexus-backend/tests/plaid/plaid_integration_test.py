@@ -3,7 +3,8 @@ import json
 import time
 import os
 
-API_BASE_URL = "http://localhost:8080/api"
+# Use BACKEND_URL from environment if set, else default to localhost
+API_BASE_URL = os.environ.get("BACKEND_URL", "http://localhost:8080") + "/api"
 PLAID_BASE_URL = "https://sandbox.plaid.com"
 PLAID_CLIENT_ID = "6878c62f8325000026a8eb6f"  # Replace with your real client_id
 PLAID_SECRET = "7bf17d0cab6c264862db25dbb58516"  # Replace with your real secret

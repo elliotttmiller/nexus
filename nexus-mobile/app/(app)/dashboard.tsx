@@ -27,7 +27,7 @@ export default function DashboardScreen() {
       .catch(() => setTransactions([]));
   }, []);
   // ...fetch accounts, transactions, etc...
-  // For demonstration, use mock data:
+  // ...existing code...
   // const transactions = [
   //   { id: 't1', description: 'Starbucks', amount: -5.25, date: '2024-07-01' },
   //   { id: 't2', description: 'Amazon', amount: -120.99, date: '2024-06-30' },
@@ -118,7 +118,7 @@ export default function DashboardScreen() {
 }
 
 function AnalysisContainer() {
-  // Mock data for the line graph (e.g., daily spending for the last 7 days)
+  // ...existing code...
   const data = [120, 80, 95, 60, 130, 90, 70];
   const totalSpent = data.reduce((sum, v) => sum + v, 0);
   const maxSpent = Math.max(...data);
