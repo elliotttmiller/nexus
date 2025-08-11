@@ -18,6 +18,14 @@ export interface Account {
   card_name?: string;
 }
 
+export interface AiCardAnalysis {
+  isOptimal: boolean | null;
+  aiCard: any;
+  usedCard: any;
+  explanation: string | null;
+  why_not: any;
+}
+
 export interface Transaction {
   id: string;
   name?: string;
@@ -30,4 +38,5 @@ export interface Transaction {
   cards?: Array<{ card_id: string; amount: number; last4?: string }>;
   timestamp?: string;
   status?: string;
-} 
+  ai_card_analysis?: AiCardAnalysis;
+}
