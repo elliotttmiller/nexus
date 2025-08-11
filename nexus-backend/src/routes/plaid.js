@@ -1,6 +1,14 @@
 
 const express = require('express');
 const router = express.Router();
+const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
+const db = require('../models');
+const Account = db.Account;
+const Card = db.Card;
+const Transaction = db.Transaction;
+const { createClient } = require('redis');
+const { Op } = require('sequelize');
+const axios = require('axios');
 
 // Get a transaction with AI card analysis (for mobile app)
 router.get('/transaction/:id/ai-analysis', async (req, res) => {
@@ -63,7 +71,7 @@ router.post('/webhook', async (req, res) => {
 
 // Helper: Map Plaid item_id to user_id (implement as needed)
 async function getUserIdFromItemId(item_id) {
-  const account = await db.Account.findOne({ where: { plaid_item_id: item_id } });
+  const account = await Account.findOne({ where: { plaid_item_id: item_id } });
   return account ? account.user_id : null;
 }
 
@@ -92,7 +100,6 @@ async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 
       primaryGoal: userGoal
     }
   };
-  const axios = require('axios');
   const AI_BASE_URL = process.env.AI_BASE_URL;
   let aiResponse;
   try {
@@ -113,15 +120,6 @@ async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 
     why_not: aiResponse ? aiResponse.why_not : null
   };
 }
-const express = require('express');
-const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
-const db = require('../models');
-const Account = db.Account;
-const Card = db.Card;
-const Transaction = db.Transaction;
-const { createClient } = require('redis');
-const { Op } = require('sequelize');
-
 const config = new Configuration({
   basePath: PlaidEnvironments.sandbox,
   baseOptions: {
@@ -738,4 +736,4 @@ router.post('/clear-all-data', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;
