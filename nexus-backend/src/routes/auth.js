@@ -9,8 +9,6 @@ const db = require('../models');
 const User = db.User;
 const { z } = require('zod');
 
-
-
 // --- Advanced Secret Rotation ---
 // Support multiple valid secrets for JWT and refresh tokens
 const JWT_SECRETS = (process.env.JWT_SECRETS ? process.env.JWT_SECRETS.split(',') : []).filter(Boolean);

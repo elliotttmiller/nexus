@@ -25,7 +25,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Nexus Cortex AI - Strategist Engine", version="10.0.0-final", lifespan=lifespan)
 
 # --- 3. Import AI Communication Service ---
-from services import interestkiller_ai_hybrid, interestkiller_ai_re_explain
+from services import interestkiller_ai_hybrid, interestkiller_ai_re_explain, spending_insights_ai
+class SpendingInsightsRequest(BaseModel):
+    transactions: list
+    previous_transactions: Optional[list] = None
+
 
 # --- 4. THE MISSING ALGORITHM ---
 def precompute_payment_plans_sophisticated(accounts: list, payment_amount: float) -> dict:
@@ -143,6 +147,23 @@ class CardRankRequest(BaseModel):
     user_cards: list
     transaction_context: dict
     user_context: dict
+
+
+# --- Spending Insights Endpoint ---
+@app.post('/v2/spending-insights')
+async def spending_insights_v2(req: SpendingInsightsRequest):
+    try:
+        gemini_model = getattr(app.state, 'gemini_model', None)
+        result = spending_insights_ai(
+            gemini_model,
+            req.transactions,
+            req.previous_transactions
+        )
+        # The AI returns a JSON string, so parse it before returning
+        return json.loads(result)
+    except Exception as e:
+        logger.error(f"Error in /v2/spending-insights: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/v2/cardrank')
 async def cardrank_v2(req: CardRankRequest):

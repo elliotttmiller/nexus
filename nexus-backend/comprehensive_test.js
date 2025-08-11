@@ -153,62 +153,50 @@ async function addTestCardsOrPlaid(user) {
   return false;
 }
 
-async function refreshJwt(user) {
-  // Refresh the JWT token using the refresh token
+async function makeRequest(method, url, data, user, skipAuth = false) {
+  const config = skipAuth ? {} : { headers: { Authorization: `Bearer ${user.token}` } };
+  const t0 = logRequest(method, url, data);
+  
   try {
-    logRequest('post', `${BASE_URL}/auth/refresh`, { refreshToken: user.refreshToken });
-    const res = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken: user.refreshToken });
-    logResponse(res);
-    user.token = res.data.token;
-    user.refreshToken = res.data.refreshToken;
-    return user.token;
+    const res = await axios[method](url, data, config);
+    logResponse(res, t0);
+    return res;
   } catch (err) {
-    logError(err);
-    throw new Error('Token refresh failed');
+    if (err.response?.status === 401 && user && !skipAuth) {
+      const refreshRes = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken: user.refreshToken });
+      user.token = refreshRes.data.token;
+      user.refreshToken = refreshRes.data.refreshToken;
+      config.headers.Authorization = `Bearer ${user.token}`;
+      const res = await axios[method](url, data, config);
+      logResponse(res, t0);
+      return res;
+    }
+    logError(err, t0);
+    throw err;
   }
 }
 
 async function testUserEndpoints(user) {
   logStep('Testing User Endpoints');
-  // Get profile
   try {
-    const t0 = logRequest('get', `${BASE_URL}/users/profile?userId=${user.userId}`);
-    let res;
-    try {
-      res = await axios.get(`${BASE_URL}/users/profile?userId=${user.userId}`, { headers: { Authorization: `Bearer ${user.token}` } });
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        await refreshJwt(user);
-        res = await axios.get(`${BASE_URL}/users/profile?userId=${user.userId}`, { headers: { Authorization: `Bearer ${user.token}` } });
-      } else throw err;
-    }
-    logResponse(res, t0);
+    const res = await makeRequest('get', `${BASE_URL}/users/profile?userId=${user.userId}`, null, user);
     assert(res.data.email === user.email, 'User profile should match');
+    recordSummary('Users/Profile Get', 'PASS');
   } catch (err) {
-    logError(err);
+    recordSummary('Users/Profile Get', 'FAIL', err.message);
   }
-  // Update profile
+  
   try {
-    const t0 = logRequest('put', `${BASE_URL}/users/profile`, { userId: user.userId, email: user.email });
-    let res;
-    try {
-      res = await axios.put(`${BASE_URL}/users/profile`, { userId: user.userId, email: user.email }, { headers: { Authorization: `Bearer ${user.token}` } });
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        await refreshJwt(user);
-        res = await axios.put(`${BASE_URL}/users/profile`, { userId: user.userId, email: user.email }, { headers: { Authorization: `Bearer ${user.token}` } });
-      } else throw err;
-    }
-    logResponse(res, t0);
+    const res = await makeRequest('put', `${BASE_URL}/users/profile`, { userId: user.userId, email: user.email }, user);
     assert(res.data.message, 'Profile update should return message');
+    recordSummary('Users/Profile Update', 'PASS');
   } catch (err) {
-    logError(err);
+    recordSummary('Users/Profile Update', 'FAIL', err.message);
   }
 }
 
 async function testCardRankEndpoints(user) {
   logStep('Testing CardRank Endpoints');
-  // /cardrank/recommend
   const payload = {
     userId: user.userId,
     merchant: 'Amazon',
@@ -219,95 +207,57 @@ async function testCardRankEndpoints(user) {
     creditScoreInfo: { score: 750 }
   };
   try {
-    const t0 = logRequest('post', `${BASE_URL}/cardrank/recommend`, payload);
-    let res;
-    try {
-      res = await axios.post(`${BASE_URL}/cardrank/recommend`, payload, { headers: { Authorization: `Bearer ${user.token}` } });
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        await refreshJwt(user);
-        res = await axios.post(`${BASE_URL}/cardrank/recommend`, payload, { headers: { Authorization: `Bearer ${user.token}` } });
-      } else throw err;
-    }
-    logResponse(res, t0);
+    const res = await makeRequest('post', `${BASE_URL}/cardrank/recommend`, payload, user);
     assert(res.data, 'CardRank recommend should return data');
+    recordSummary('CardRank/Recommend', 'PASS');
   } catch (err) {
-    logError(err);
+    recordSummary('CardRank/Recommend', 'FAIL', err.message);
   }
 }
 
 async function testInterestKillerEndpoints(user) {
   logStep('Testing InterestKiller Endpoints');
-  // /interestkiller/suggest
-  const suggestPayload = { userId: user.userId, amount: 200 };
+  const payload = { userId: user.userId, amount: 200 };
   try {
-    const t0 = logRequest('post', `${BASE_URL}/interestkiller/suggest`, suggestPayload);
-    let res;
-    try {
-      res = await axios.post(`${BASE_URL}/interestkiller/suggest`, suggestPayload, { headers: { Authorization: `Bearer ${user.token}` } });
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        await refreshJwt(user);
-        res = await axios.post(`${BASE_URL}/interestkiller/suggest`, suggestPayload, { headers: { Authorization: `Bearer ${user.token}` } });
-      } else throw err;
-    }
-    logResponse(res, t0);
+    const res = await makeRequest('post', `${BASE_URL}/interestkiller/suggest`, payload, user);
     assert(res.data.suggestion, 'InterestKiller suggest should return suggestion');
+    recordSummary('InterestKiller/Suggest', 'PASS');
   } catch (err) {
-    logError(err);
+    recordSummary('InterestKiller/Suggest', 'FAIL', err.message);
   }
 }
 
 async function testPlaidEndpoints(user) {
   logStep('Testing Plaid Endpoints');
-  // /plaid/accounts
   try {
-    const t0 = logRequest('get', `${BASE_URL}/plaid/accounts?userId=${user.userId}`);
-    let res;
-    try {
-      res = await axios.get(`${BASE_URL}/plaid/accounts?userId=${user.userId}`, { headers: { Authorization: `Bearer ${user.token}` } });
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        await refreshJwt(user);
-        res = await axios.get(`${BASE_URL}/plaid/accounts?userId=${user.userId}`, { headers: { Authorization: `Bearer ${user.token}` } });
-      } else throw err;
-    }
-    logResponse(res, t0);
+    const res = await makeRequest('get', `${BASE_URL}/plaid/accounts?userId=${user.userId}`, null, user);
     assert(res.data, 'Plaid accounts should return data');
+    recordSummary('Plaid/Accounts', 'PASS');
   } catch (err) {
-    logError(err);
+    recordSummary('Plaid/Accounts', 'FAIL', err.message);
   }
 }
 
 async function testInsightsEndpoints(user) {
   logStep('Testing Insights Endpoints');
-  // /insights/spending-insights
-  const txs = [
-    { amount: 100, category: 'shopping', date: '2025-08-01' },
-    { amount: 50, category: 'groceries', date: '2025-08-02' }
-  ];
+  const payload = {
+    transactions: [
+      { amount: 100, category: 'shopping', date: '2025-08-01' },
+      { amount: 50, category: 'groceries', date: '2025-08-02' }
+    ]
+  };
   try {
-    const t0 = logRequest('post', `${BASE_URL}/insights/spending-insights`, { transactions: txs });
-    let res;
-    try {
-      res = await axios.post(`${BASE_URL}/insights/spending-insights`, { transactions: txs }, { headers: { Authorization: `Bearer ${user.token}` } });
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        await refreshJwt(user);
-        res = await axios.post(`${BASE_URL}/insights/spending-insights`, { transactions: txs }, { headers: { Authorization: `Bearer ${user.token}` } });
-      } else throw err;
-    }
-    logResponse(res, t0);
+    const res = await makeRequest('post', `${BASE_URL}/insights/spending-insights`, payload, user);
     assert(res.data, 'Spending insights should return data');
+    recordSummary('Insights/Spending', 'PASS');
   } catch (err) {
-    logError(err);
+    recordSummary('Insights/Spending', 'FAIL', err.message);
   }
 }
 
 async function testTestEndpoints(user) {
   logStep('Testing Test/Debug Endpoints');
-  // /test/ai-payload
-  const aiPayload = {
+  const payload = {
     userCards: [
       { id: 'card1', name: 'Test Card', balance: 1000, creditLimit: 5000, apr: 15, rewards: { type: 'cashback' } }
     ],
@@ -315,12 +265,11 @@ async function testTestEndpoints(user) {
     userContext: { primaryGoal: 'maximize_rewards' }
   };
   try {
-    const t0 = logRequest('post', `${BASE_URL}/test/ai-payload`, aiPayload);
-    const res = await axios.post(`${BASE_URL}/test/ai-payload`, aiPayload);
-    logResponse(res, t0);
+    const res = await makeRequest('post', `${BASE_URL}/test/ai-payload`, payload, null, true);
     assert(res.data.aiResponse, 'AI payload endpoint should return aiResponse');
+    recordSummary('Test/AI Payload', 'PASS');
   } catch (err) {
-    logError(err);
+    recordSummary('Test/AI Payload', 'FAIL', err.message);
   }
 }
 
