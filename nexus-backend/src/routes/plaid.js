@@ -1,3 +1,7 @@
+
+const express = require('express');
+const router = express.Router();
+
 // Get a transaction with AI card analysis (for mobile app)
 router.get('/transaction/:id/ai-analysis', async (req, res) => {
   try {
@@ -110,7 +114,6 @@ async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 
   };
 }
 const express = require('express');
-const router = express.Router();
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 const db = require('../models');
 const Account = db.Account;
