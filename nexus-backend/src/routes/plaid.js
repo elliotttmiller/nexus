@@ -1,4 +1,5 @@
 
+const express = require('express');
 const router = express.Router();
 
 // Get a transaction with AI card analysis (for mobile app)
