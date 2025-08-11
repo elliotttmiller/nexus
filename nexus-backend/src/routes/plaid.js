@@ -77,6 +77,12 @@ async function getUserIdFromItemId(item_id) {
 
 // Helper: Analyze transaction and compare to AI optimal card
 async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 'MAXIMIZE_CASHBACK') {
+  // --- In-depth Debug Logging ---
+  console.log('[CardRank][START] analyzeTransactionOptimalCard');
+  console.log('[CardRank][Input] userCards:', JSON.stringify(userCards, null, 2));
+  console.log('[CardRank][Input] transaction:', JSON.stringify(transaction, null, 2));
+  console.log('[CardRank][Input] userGoal:', userGoal);
+
   const aiPayload = {
     user_cards: userCards.map(card => ({
       id: card.id,
@@ -100,25 +106,35 @@ async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 
       primaryGoal: userGoal
     }
   };
+  console.log('[CardRank][Payload] aiPayload:', JSON.stringify(aiPayload, null, 2));
+
   const AI_BASE_URL = process.env.AI_BASE_URL;
   let aiResponse;
   try {
+    const start = Date.now();
     const resp = await axios.post(`${AI_BASE_URL}/v2/cardrank`, aiPayload);
+    const duration = Date.now() - start;
     aiResponse = resp.data;
+    console.log(`[CardRank][AI Response][${duration}ms]:`, JSON.stringify(aiResponse, null, 2));
   } catch (e) {
-    console.error('[AI CardRank] Error:', e.message);
+    console.error('[CardRank][ERROR] AI request failed:', e.message, e.response ? e.response.data : '');
     aiResponse = null;
   }
+
   const usedCardId = transaction.card_id;
   const aiCardId = aiResponse && aiResponse.recommended_card ? aiResponse.recommended_card.id : null;
   const isOptimal = usedCardId && aiCardId && String(usedCardId) === String(aiCardId);
-  return {
+
+  const result = {
     isOptimal,
     aiCard: aiResponse ? aiResponse.recommended_card : null,
     usedCard: userCards.find(c => String(c.id) === String(usedCardId)),
     explanation: aiResponse ? aiResponse.reason : null,
     why_not: aiResponse ? aiResponse.why_not : null
   };
+  console.log('[CardRank][Result]:', JSON.stringify(result, null, 2));
+  console.log('[CardRank][END] analyzeTransactionOptimalCard');
+  return result;
 }
 const config = new Configuration({
   basePath: PlaidEnvironments.sandbox,
