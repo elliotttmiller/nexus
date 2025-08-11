@@ -95,12 +95,28 @@ router.post('/suggest', async (req, res) => {
     
     // You may need to fetch credit limits and promo info from another model if not present
     const accounts = cards.map(card => {
-      const creditLimit = card.credit_limit || card.creditLimit || 5000;
+      // Defensive: sanitize all fields for AI
+      const id = card.id ? String(card.id) : '';
+      let creditLimitRaw = card.credit_limit || card.creditLimit || 5000;
+      let creditLimit = 0;
+      if (typeof creditLimitRaw === 'string') {
+        creditLimit = parseFloat(creditLimitRaw) || 0;
+      } else if (typeof creditLimitRaw === 'number') {
+        creditLimit = creditLimitRaw;
+      } else {
+        creditLimit = 0;
+      }
+      let apr = 0;
+      if (card.apr == null || isNaN(Number(card.apr))) {
+        apr = 0;
+      } else {
+        apr = Number(card.apr);
+      }
       return {
-        id: card.id,
-        name: card.name || card.card_name, // Accept both
-        balance: parseFloat(card.balance),
-        apr: parseFloat(card.apr),
+        id,
+        name: card.name || card.card_name || '',
+        balance: parseFloat(card.balance) || 0,
+        apr,
         creditLimit,
         promoAPR: null,
       };

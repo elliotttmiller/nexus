@@ -118,18 +118,39 @@ async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 
   console.log('[CardRank][Input] transaction:', JSON.stringify(transaction, null, 2));
   console.log('[CardRank][Input] userGoal:', userGoal);
 
-  const aiPayload = {
-    user_cards: userCards.map(card => ({
-      id: card.id,
-      name: card.card_name,
-      balance: parseFloat(card.balance),
-      creditLimit: parseFloat(card.credit_limit),
-      apr: parseFloat(card.apr),
-      utilization: card.credit_limit ? parseFloat(card.balance) / parseFloat(card.credit_limit) : 0,
-      rewards: card.rewards,
+  // Robust type-safety for all outgoing card data
+  const sanitizedUserCards = userCards.map(card => {
+    const id = card.id ? String(card.id) : '';
+    let creditLimitRaw = card.credit_limit || card.creditLimit || 5000;
+    let creditLimit = 0;
+    if (typeof creditLimitRaw === 'string') {
+      creditLimit = parseFloat(creditLimitRaw) || 0;
+    } else if (typeof creditLimitRaw === 'number') {
+      creditLimit = creditLimitRaw;
+    } else {
+      creditLimit = 0;
+    }
+    let apr = 0;
+    if (card.apr == null || isNaN(Number(card.apr))) {
+      apr = 0;
+    } else {
+      apr = Number(card.apr);
+    }
+    const rewards = card.rewards || {};
+    return {
+      id,
+      name: card.card_name || card.name || '',
+      balance: parseFloat(card.balance) || 0,
+      creditLimit,
+      apr,
+      utilization: creditLimit > 0 ? (parseFloat(card.balance) / creditLimit) : 0,
+      rewards,
       point_value_cents: 1,
       signup_bonus_progress: null
-    })),
+    };
+  });
+  const aiPayload = {
+    user_cards: sanitizedUserCards,
     transaction_context: {
       merchantName: transaction.merchant,
       amount: parseFloat(transaction.amount),

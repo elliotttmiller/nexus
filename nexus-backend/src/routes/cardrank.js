@@ -74,15 +74,31 @@ router.post('/recommend', async (req, res) => {
     }
     // You may need to fetch credit limits and other fields from another model if not present
     const userCards = cards.map(card => {
+      // Defensive: sanitize all fields for AI
+      const id = card.id ? String(card.id) : '';
+      let creditLimitRaw = card.credit_limit || card.creditLimit || 5000;
+      let creditLimit = 0;
+      if (typeof creditLimitRaw === 'string') {
+        creditLimit = parseFloat(creditLimitRaw) || 0;
+      } else if (typeof creditLimitRaw === 'number') {
+        creditLimit = creditLimitRaw;
+      } else {
+        creditLimit = 0;
+      }
+      let apr = 0;
+      if (card.apr == null || isNaN(Number(card.apr))) {
+        apr = 0;
+      } else {
+        apr = Number(card.apr);
+      }
       const rewards = card.rewards || {};
-      const creditLimit = card.credit_limit || card.creditLimit || 5000;
       return {
-        id: card.id,
-        name: card.card_name || card.name, // Accept both
-        balance: parseFloat(card.balance),
+        id,
+        name: card.card_name || card.name || '',
+        balance: parseFloat(card.balance) || 0,
         creditLimit,
-        apr: parseFloat(card.apr),
-        utilization: (parseFloat(card.balance) / creditLimit),
+        apr,
+        utilization: creditLimit > 0 ? (parseFloat(card.balance) / creditLimit) : 0,
         rewards,
         point_value_cents: 1,
         signup_bonus_progress: null

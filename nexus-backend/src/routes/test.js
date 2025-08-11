@@ -1,3 +1,32 @@
+// Debug endpoint to test AI payload type-safety and log raw AI service response
+const { getCardRank } = require('../../aiService');
+
+router.post('/ai-payload', async (req, res) => {
+  try {
+    // Accepts a mock or real card array and transaction context in the body
+    const { userCards, transactionContext, userContext } = req.body;
+    if (!Array.isArray(userCards) || !transactionContext) {
+      return res.status(400).json({ error: 'userCards (array) and transactionContext (object) are required.' });
+    }
+    // Log outgoing payload
+    console.log('[DEBUG][AI PAYLOAD] userCards:', JSON.stringify(userCards, null, 2));
+    console.log('[DEBUG][AI PAYLOAD] transactionContext:', JSON.stringify(transactionContext, null, 2));
+    console.log('[DEBUG][AI PAYLOAD] userContext:', JSON.stringify(userContext, null, 2));
+    // Call the AI service and log the raw response or error
+    let aiResponse;
+    try {
+      aiResponse = await getCardRank(userCards, transactionContext, userContext || {});
+      console.log('[DEBUG][AI RAW RESPONSE]:', JSON.stringify(aiResponse, null, 2));
+      res.json({ aiResponse });
+    } catch (err) {
+      console.error('[DEBUG][AI ERROR]:', err.response ? err.response.data : err.message);
+      res.status(500).json({ error: err.message, aiError: err.response ? err.response.data : undefined });
+    }
+  } catch (error) {
+    console.error('[DEBUG][AI PAYLOAD ENDPOINT ERROR]:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 const express = require('express');
 const router = express.Router();
 const { Card } = require('../models');
