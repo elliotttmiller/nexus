@@ -14,8 +14,12 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     account_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
+      type: DataTypes.STRING,
+      allowNull: true, // Now optional, Plaid cards use plaid_account_id
+    },
+    plaid_account_id: {
+      type: DataTypes.STRING,
+      allowNull: true, // For Plaid-linked cards
     },
     card_name: {
       type: DataTypes.STRING,

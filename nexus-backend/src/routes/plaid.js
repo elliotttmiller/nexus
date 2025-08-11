@@ -193,19 +193,24 @@ router.post('/exchange_public_token', async (req, res) => {
         // Only sync credit card accounts
         if (account.type === 'credit' || (account.name && account.name.toLowerCase().includes('credit'))) {
           console.log('[Plaid] Syncing credit account:', account);
-          // Upsert Card by user_id + Plaid account_id
-          await Card.upsert({
-            user_id: userId,
-            account_id: account.account_id,
-            card_name: account.name,
-            apr: account.apr || null,
-            balance: account.balances.current,
-            credit_limit: account.balances.limit,
-            // Add more fields as needed
-          }, {
-            where: { user_id: userId, account_id: account.account_id }
-          });
-          createdCount++;
+          try {
+            const [card, created] = await Card.upsert({
+              user_id: userId,
+              account_id: null, // Plaid cards do not use integer account_id
+              plaid_account_id: account.account_id, // Store Plaid account_id in plaid_account_id
+              card_name: account.name,
+              apr: account.apr || null,
+              balance: account.balances.current,
+              credit_limit: account.balances.limit,
+              // Add more fields as needed
+            }, {
+              where: { user_id: userId, plaid_account_id: account.account_id }
+            });
+            console.log(`[Plaid] Upserted card:`, card ? card.toJSON ? card.toJSON() : card : card, 'Created:', created);
+            createdCount++;
+          } catch (err) {
+            console.error('[Plaid] Error upserting card:', err);
+          }
         } else {
           console.log('[Plaid] Skipping non-credit account:', account);
         }
