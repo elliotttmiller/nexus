@@ -14,11 +14,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- 2. Lifespan & App Creation ---
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("INFO: FastAPI startup event triggered.")
     from services import initialize_model
-    app.state.gemini_model = initialize_model()
+    model = initialize_model()
+    if model:
+        print("[AI] Gemini model initialized successfully.")
+    else:
+        print("[AI] Gemini model initialization FAILED.")
+    app.state.gemini_model = model
     yield
     print("INFO: FastAPI shutdown event triggered.")
 
@@ -154,11 +160,16 @@ class CardRankRequest(BaseModel):
 async def spending_insights_v2(req: SpendingInsightsRequest):
     try:
         gemini_model = getattr(app.state, 'gemini_model', None)
+        print(f"[AI] /v2/spending-insights called. Model is {'set' if gemini_model else 'NOT set'}.")
+        print(f"[AI] Transactions: {json.dumps(req.transactions)}")
+        if req.previous_transactions:
+            print(f"[AI] Previous Transactions: {json.dumps(req.previous_transactions)}")
         result = spending_insights_ai(
             gemini_model,
             req.transactions,
             req.previous_transactions
         )
+        print(f"[AI] Gemini raw result: {result}")
         # The AI returns a JSON string, so parse it before returning
         if not result or not result.strip():
             logger.error("AI returned empty response for spending insights.")

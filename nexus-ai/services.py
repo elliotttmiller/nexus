@@ -100,7 +100,9 @@ def spending_insights_ai(model, transactions: list, previous_transactions: list 
     - Current Transactions: {json.dumps(transactions)}
     - Previous Period Transactions: {json.dumps(previous_transactions) if previous_transactions else "null"}
     """
+    logger.info("[spending_insights_ai] Prompt sent to Gemini:\n%s", prompt)
     result = call_gemini(model, prompt)
+    logger.info("[spending_insights_ai] Raw Gemini response:\n%s", result)
     # If Gemini returns empty or whitespace, return a default JSON string
     if not result or not result.strip():
         logger.error("Gemini returned empty string for spending insights. Returning default JSON.")

@@ -141,7 +141,20 @@ router.post('/refresh', async (req, res) => {
   if (!refreshToken) return res.status(400).json({ error: 'Refresh token required', trace });
   try {
     trace.push({ step: 'Verify Refresh Token', timestamp: new Date().toISOString() });
-    const payload = jwt.verify(refreshToken, REFRESH_SECRET);
+    let payload, usedSecret;
+    const secrets = getAllRefreshSecrets();
+    for (const secret of secrets) {
+      try {
+        payload = jwt.verify(refreshToken, secret);
+        usedSecret = secret;
+        break;
+      } catch (e) {}
+    }
+    if (!payload) {
+      trace.push({ step: 'Invalid Refresh Token', timestamp: new Date().toISOString() });
+      return res.status(401).json({ error: 'Invalid refresh token', trace });
+    }
+    trace.push({ step: 'Refresh Token Verified', usedSecret: !!usedSecret ? '[HIDDEN]' : null, timestamp: new Date().toISOString() });
     const user = await User.findByPk(payload.id);
     if (!user || user.refresh_token !== refreshToken) {
       trace.push({ step: 'Invalid Refresh Token', timestamp: new Date().toISOString() });

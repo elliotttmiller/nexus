@@ -100,7 +100,8 @@ async function getNextSmartMove(userState) {
 async function getSpendingInsights(transactions) {
   try {
     const res = await axios.post(`${AI_BASE_URL}/v2/spending-insights`, { transactions });
-    return res.data.result;
+    // Return the full response, not just .result, to handle error and empty cases
+    return res.data;
   } catch (error) {
     console.error("SpendingInsights AI Service Error:", error.response ? error.response.data : error.message);
     return { error: "AI service unavailable" };

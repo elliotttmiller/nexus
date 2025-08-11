@@ -12,8 +12,8 @@ const axios = require('axios');
 
 // Get a transaction with AI card analysis (for mobile app)
 router.get('/transaction/:id/ai-analysis', async (req, res) => {
-  console.log(`[Route] /api/plaid/transaction/${req.params.id}/ai-analysis called`);
   try {
+    console.log(`[Route] /api/plaid/transaction/${req.params.id}/ai-analysis called`);
     const transactionId = req.params.id;
     console.log(`[Debug] Looking up transaction with ID: ${transactionId}`);
     const tx = await db.Transaction.findByPk(transactionId);
@@ -23,8 +23,6 @@ router.get('/transaction/:id/ai-analysis', async (req, res) => {
     }
     console.log(`[Debug] Transaction found (raw):`, JSON.stringify(tx, null, 2));
     console.log(`[Debug] Transaction found (toJSON):`, JSON.stringify(tx.toJSON(), null, 2));
-    console.log(`[Debug] Object.keys(tx):`, Object.keys(tx));
-    console.log(`[Debug] Object.keys(tx.toJSON()):`, Object.keys(tx.toJSON()));
     const userId = tx.user_id;
     console.log(`[Debug] Looking up user cards for user ID: ${userId}`);
     const userCards = await db.Card.findAll({ where: { user_id: userId } });
@@ -43,24 +41,11 @@ router.get('/transaction/:id/ai-analysis', async (req, res) => {
     await tx.update({ ai_card_analysis: aiResult });
     console.log(`[Debug] Updated transaction with AI result.`);
     return res.json({ ...tx.toJSON(), ai_card_analysis: aiResult });
-  } catch (err) {
-    console.error('[Debug][Error in /transaction/:id/ai-analysis]:', err);
-    return res.status(500).json({ error: err.message });
-  }
-  try {
-    const tx = await db.Transaction.findByPk(req.params.id);
-    if (!tx) return res.status(404).json({ error: 'Transaction not found' });
-    res.json({
-      id: tx.id,
-      amount: tx.amount,
-      merchant: tx.merchant,
-      date: tx.date,
-      card_id: tx.card_id,
-      ai_card_analysis: tx.ai_card_analysis
-    });
-  } catch (err) {
-    console.error('[Get AI Card Analysis] Error:', err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    // Improved error handling: log full error and return clean message
+    console.error("--- FATAL ERROR IN getAiAnalysis ---");
+    console.error(error); // full stack trace
+    res.status(500).json({ message: "An internal server error occurred while getting AI analysis." });
   }
 });
 // --- Plaid Webhook Listener ---
