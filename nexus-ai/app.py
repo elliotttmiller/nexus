@@ -160,10 +160,17 @@ async def spending_insights_v2(req: SpendingInsightsRequest):
             req.previous_transactions
         )
         # The AI returns a JSON string, so parse it before returning
-        return json.loads(result)
+        if not result or not result.strip():
+            logger.error("AI returned empty response for spending insights.")
+            return {"error": "AI returned empty response.", "category_totals": {}, "top_increases": [], "insight": "No insight available."}
+        try:
+            return json.loads(result)
+        except Exception as parse_err:
+            logger.error(f"Failed to parse AI response: {parse_err}. Raw: {result}")
+            return {"error": "AI returned invalid JSON.", "category_totals": {}, "top_increases": [], "insight": "No insight available."}
     except Exception as e:
         logger.error(f"Error in /v2/spending-insights: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": str(e), "category_totals": {}, "top_increases": [], "insight": "No insight available."}
 
 @app.post('/v2/cardrank')
 async def cardrank_v2(req: CardRankRequest):

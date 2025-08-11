@@ -46,8 +46,27 @@ router.post('/add-mock-cards', async (req, res) => {
   trace.push({ step: 'Start', timestamp: new Date().toISOString() });
   try {
     trace.push({ step: 'Prepare Mock Cards', timestamp: new Date().toISOString() });
+    // Always provide a default set of mock cards for test users, even in production
+    const { userId } = req.body;
     const mockCards = [
-      // ...existing code...
+      {
+        id: `mock_chase_${userId}`,
+        card_name: 'Chase Sapphire Preferred',
+        balance: 5000,
+        apr: 21.49,
+        user_id: userId,
+        credit_limit: 10000,
+        rewards: { type: 'travel', rate: '2x', categories: ['travel', 'dining'] },
+      },
+      {
+        id: `mock_amex_${userId}`,
+        card_name: 'American Express Gold',
+        balance: 3000,
+        apr: 18.99,
+        user_id: userId,
+        credit_limit: 8000,
+        rewards: { type: 'dining', rate: '4x', categories: ['dining', 'groceries'] },
+      }
     ];
     const createdCards = [];
     for (const cardData of mockCards) {

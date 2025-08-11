@@ -63,7 +63,7 @@ router.post('/suggest', async (req, res) => {
       // Fallback to mock cards if none found (for testing/demo)
       cards = [
         {
-          id: 'mock_chase_1',
+          id: `mock_chase_${userId}`,
           name: 'Chase Sapphire Preferred',
           balance: 5000,
           apr: 21.49,
@@ -71,31 +71,15 @@ router.post('/suggest', async (req, res) => {
           user_id: userId,
         },
         {
-          id: 'mock_amex_1',
+          id: `mock_amex_${userId}`,
           name: 'American Express Gold',
           balance: 3000,
           apr: 18.99,
           credit_limit: 25000,
           user_id: userId,
         },
-        {
-          id: 'mock_citi_1',
-          name: 'Citi Double Cash',
-          balance: 7500,
-          apr: 22.99,
-          credit_limit: 20000,
-          user_id: userId,
-        },
-        {
-          id: 'mock_discover_1',
-          name: 'Discover it Cash Back',
-          balance: 1200,
-          apr: 16.99,
-          credit_limit: 10000,
-          user_id: userId,
-        },
       ];
-      trace.push({ step: 'Mock Cards Used', count: cards.length, timestamp: new Date().toISOString() });
+      trace.push({ step: 'Fallback to Mock Cards', count: cards.length, timestamp: new Date().toISOString() });
     }
     // You may need to fetch credit limits and promo info from another model if not present
     const accounts = cards.map(card => {
