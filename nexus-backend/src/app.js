@@ -116,6 +116,7 @@ process.on('SIGTERM', () => {
   });
 });
 
-module.exports = server;
+console.log('App started and running...');
+setInterval(() => console.log('Heartbeat: still alive'), 10000);
 
-// Server is started in the startServer() function
+module.exports = server;
