@@ -12,6 +12,38 @@ const axios = require('axios');
 
 // Get a transaction with AI card analysis (for mobile app)
 router.get('/transaction/:id/ai-analysis', async (req, res) => {
+  console.log(`[Route] /api/plaid/transaction/${req.params.id}/ai-analysis called`);
+  try {
+    const transactionId = req.params.id;
+    console.log(`[Debug] Looking up transaction with ID: ${transactionId}`);
+    const tx = await db.Transaction.findByPk(transactionId);
+    if (!tx) {
+      console.log(`[Debug] Transaction not found for ID: ${transactionId}`);
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    console.log(`[Debug] Transaction found:`, JSON.stringify(tx, null, 2));
+    const userId = tx.user_id;
+    console.log(`[Debug] Looking up user cards for user ID: ${userId}`);
+    const userCards = await db.Card.findAll({ where: { user_id: userId } });
+    console.log(`[Debug] User cards:`, JSON.stringify(userCards, null, 2));
+    let userGoal = 'MAXIMIZE_CASHBACK';
+    try {
+      const user = await db.User.findByPk(userId);
+      if (user && user.ai_card_goal) userGoal = user.ai_card_goal;
+      console.log(`[Debug] User goal: ${userGoal}`);
+    } catch (e) {
+      console.log(`[Debug] Error fetching user goal:`, e);
+    }
+    console.log(`[Debug] Calling analyzeTransactionOptimalCard...`);
+    const aiResult = await analyzeTransactionOptimalCard(userCards, tx, userGoal);
+    console.log(`[Debug] AI Result:`, JSON.stringify(aiResult, null, 2));
+    await tx.update({ ai_card_analysis: aiResult });
+    console.log(`[Debug] Updated transaction with AI result.`);
+    return res.json({ ...tx.toJSON(), ai_card_analysis: aiResult });
+  } catch (err) {
+    console.error('[Debug][Error in /transaction/:id/ai-analysis]:', err);
+    return res.status(500).json({ error: err.message });
+  }
   try {
     const tx = await db.Transaction.findByPk(req.params.id);
     if (!tx) return res.status(404).json({ error: 'Transaction not found' });
