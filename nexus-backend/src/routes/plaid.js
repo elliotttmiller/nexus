@@ -21,7 +21,10 @@ router.get('/transaction/:id/ai-analysis', async (req, res) => {
       console.log(`[Debug] Transaction not found for ID: ${transactionId}`);
       return res.status(404).json({ error: 'Transaction not found' });
     }
-    console.log(`[Debug] Transaction found:`, JSON.stringify(tx, null, 2));
+    console.log(`[Debug] Transaction found (raw):`, JSON.stringify(tx, null, 2));
+    console.log(`[Debug] Transaction found (toJSON):`, JSON.stringify(tx.toJSON(), null, 2));
+    console.log(`[Debug] Object.keys(tx):`, Object.keys(tx));
+    console.log(`[Debug] Object.keys(tx.toJSON()):`, Object.keys(tx.toJSON()));
     const userId = tx.user_id;
     console.log(`[Debug] Looking up user cards for user ID: ${userId}`);
     const userCards = await db.Card.findAll({ where: { user_id: userId } });
