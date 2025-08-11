@@ -11,16 +11,7 @@ import AccountHealthBar from '../../src/components/AccountHealthBar';
 import BackArrowHeader from '../../src/components/BackArrowHeader';
 import PlaidErrorBoundary from '../../src/components/PlaidErrorBoundary';
 import { useAuth } from '../../src/context/AuthContext';
-
-// Lazy load PlaidLink to avoid native module crashes during app initialization
-let PlaidLink: any = null;
-try {
-  if (Platform.OS === 'ios' || Platform.OS === 'android') {
-    PlaidLink = require('react-native-plaid-link-sdk').default;
-  }
-} catch (e) {
-  console.warn('Plaid Link SDK not available:', e);
-}
+import { create, open, LinkErrorType } from 'react-native-plaid-link-sdk';
 
 const formatCurrency = (amount: number = 0) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -120,53 +111,36 @@ export default function AccountsScreen() {
       return;
     }
 
-    // Check if PlaidLink is available
-    if (!PlaidLink) {
-      Alert.alert(
-        'Plaid Not Available', 
-        'Plaid Link is not available on this platform or not properly configured. Please contact support or try again on a supported device.',
-        [
-          { text: 'OK', style: 'default' }
-        ]
-      );
-      return;
-    }
-    
     setLinkLoading(true);
     try {
-      // 1. Fetch the link_token from your backend with better error handling
+      // 1. Fetch the link_token from your backend
       const res = await fetchWithAuth(`${API_BASE_URL}/api/plaid/create_link_token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
       });
-      
       if (!res.ok) {
         throw new Error(`Server error: ${res.status} ${res.statusText}`);
       }
-      
       const data = await res.json();
       if (!data || !data.link_token) {
         throw new Error(data.error || 'Failed to retrieve Plaid link token.');
       }
-      
-      // 2. Create Plaid session with proper error handling
+      // 2. Preload Plaid Link session
       try {
-        await PlaidLink.create({ token: data.link_token });
+        await create({ token: data.link_token });
       } catch (createError) {
         throw new Error(`Failed to initialize Plaid Link: ${createError}`);
       }
-      
-      // 3. Open Plaid with enhanced error handling
+      // 3. Open Plaid Link
       try {
-        await PlaidLink.open({
-          onSuccess: async (success: PlaidLinkSuccessMetadata) => {
+        await open({
+          onSuccess: async (success) => {
             setLinkLoading(true);
             try {
               if (!success?.publicToken) {
                 throw new Error('No public token received from Plaid');
               }
-              
               const exchangeRes = await fetchWithAuth(`${API_BASE_URL}/api/plaid/exchange_public_token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -176,11 +150,9 @@ export default function AccountsScreen() {
                   metadata: success.metadata
                 }),
               });
-              
               if (!exchangeRes.ok) {
                 throw new Error(`Failed to exchange token: ${exchangeRes.status}`);
               }
-              
               Alert.alert('Success!', `Your account has been linked${success.metadata?.institution?.name ? ` from ${success.metadata.institution.name}` : ''}.`);
               await fetchAllData();
             } catch (exchangeError) {
@@ -190,27 +162,28 @@ export default function AccountsScreen() {
               setLinkLoading(false);
             }
           },
-          onExit: (exit: PlaidLinkExitMetadata) => {
+          onExit: (exit) => {
             setLinkLoading(false);
             if (exit?.error) {
               console.warn('Plaid Link exit with error:', exit.error);
-              if (exit.error.error_type === 'InvalidRequestError' || 
-                  exit.error.error_type === 'InstitutionError') {
+              if (
+                exit.error.errorType === LinkErrorType.INVALID_REQUEST ||
+                exit.error.errorType === LinkErrorType.INSTITUTION_ERROR
+              ) {
                 Alert.alert(
-                  'Connection Error', 
-                  exit.error.error_message || 'Unable to connect to your bank. Please try again later.'
+                  'Connection Error',
+                  exit.error.errorMessage || 'Unable to connect to your bank. Please try again later.'
                 );
               }
             }
-          }
+          },
         });
       } catch (openError) {
         throw new Error(`Failed to open Plaid Link: ${openError}`);
       }
-    } catch (error: unknown) {
+    } catch (error) {
       console.error('Plaid Link error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred while preparing Plaid.';
-      
       Alert.alert(
         'Error', 
         errorMessage,
