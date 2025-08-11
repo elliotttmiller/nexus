@@ -16,7 +16,7 @@ router.get('/transaction/:id/ai-analysis', async (req, res) => {
     console.log(`[Route] /api/plaid/transaction/${req.params.id}/ai-analysis called`);
     const transactionId = req.params.id;
     console.log(`[Debug] Looking up transaction with ID: ${transactionId}`);
-    const tx = await db.Transaction.findByPk(transactionId);
+    const tx = await db.Transaction.findOne({ where: { plaid_transaction_id: transactionId } });
     if (!tx) {
       console.log(`[Debug] Transaction not found for ID: ${transactionId}`);
       return res.status(404).json({ error: 'Transaction not found' });
