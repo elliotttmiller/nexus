@@ -182,6 +182,39 @@ router.post('/exchange_public_token', async (req, res) => {
 
     await Account.create({ user_id: userId, plaid_access_token: access_token, institution: institutionName || 'Unknown' });
     console.log('Account created:', { user_id: userId, plaid_access_token: access_token, institution: institutionName || 'Unknown' });
+
+    // --- Sync Plaid credit accounts into Card table ---
+    try {
+      const accountsResponse = await plaidClient.accountsGet({ access_token });
+      const accounts = accountsResponse.data.accounts || [];
+      console.log('[Plaid] All Plaid accounts:', JSON.stringify(accounts, null, 2));
+      let createdCount = 0;
+      for (const account of accounts) {
+        // Only sync credit card accounts
+        if (account.type === 'credit' || (account.name && account.name.toLowerCase().includes('credit'))) {
+          console.log('[Plaid] Syncing credit account:', account);
+          // Upsert Card by user_id + Plaid account_id
+          await Card.upsert({
+            user_id: userId,
+            account_id: account.account_id,
+            card_name: account.name,
+            apr: account.apr || null,
+            balance: account.balances.current,
+            credit_limit: account.balances.limit,
+            // Add more fields as needed
+          }, {
+            where: { user_id: userId, account_id: account.account_id }
+          });
+          createdCount++;
+        } else {
+          console.log('[Plaid] Skipping non-credit account:', account);
+        }
+      }
+      console.log(`[Plaid] Synced ${createdCount} credit card(s) to Card table for user ${userId}`);
+    } catch (e) {
+      console.error('[Plaid] Error syncing credit cards to Card table:', e.message);
+    }
+
     res.json(response.data);
   } catch (err) {
     console.error('Error in /exchange_public_token:', err);

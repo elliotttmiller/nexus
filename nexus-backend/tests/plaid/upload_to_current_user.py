@@ -11,9 +11,9 @@ TEST_USERS = [
     {"desc": "Credit profile good", "username": "user_credit_profile_good", "password": "any"},
 ]
 
-# Use a simple test user that your app might be using
-USER_EMAIL = "test@example.com"
-USER_PASSWORD = "password123"
+# Use the real app account
+USER_EMAIL = "elliotttmiller@hotmail.com"
+USER_PASSWORD = "elliott"
 
 def register_or_login():
     r = requests.post(f"{API_BASE_URL}/auth/register", json={"email": USER_EMAIL, "password": USER_PASSWORD})
@@ -85,8 +85,9 @@ def upload_credit_profile(test, token, user_id):
         return False
 
 def main():
-    print("🚀 Uploading test credit profiles to user ID 1...")
-    token, refresh_token, user_id = register_or_login()
+    print("🚀 Uploading test credit profiles to user ID 8 (elliotttmiller@hotmail.com)...")
+    token, refresh_token, _ = register_or_login()
+    user_id = 8
     print(f"👤 Using user ID: {user_id}")
     
     for test in TEST_USERS:
