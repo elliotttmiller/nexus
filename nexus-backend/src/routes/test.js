@@ -50,7 +50,6 @@ router.post('/add-mock-cards', async (req, res) => {
     const { userId } = req.body;
     const mockCards = [
       {
-        id: `mock_chase_${userId}`,
         card_name: 'Chase Sapphire Preferred',
         balance: 5000,
         apr: 21.49,
@@ -59,7 +58,6 @@ router.post('/add-mock-cards', async (req, res) => {
         rewards: { type: 'travel', rate: '2x', categories: ['travel', 'dining'] },
       },
       {
-        id: `mock_amex_${userId}`,
         card_name: 'American Express Gold',
         balance: 3000,
         apr: 18.99,

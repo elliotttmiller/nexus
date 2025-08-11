@@ -100,7 +100,17 @@ def spending_insights_ai(model, transactions: list, previous_transactions: list 
     - Current Transactions: {json.dumps(transactions)}
     - Previous Period Transactions: {json.dumps(previous_transactions) if previous_transactions else "null"}
     """
-    return call_gemini(model, prompt)
+    result = call_gemini(model, prompt)
+    # If Gemini returns empty or whitespace, return a default JSON string
+    if not result or not result.strip():
+        logger.error("Gemini returned empty string for spending insights. Returning default JSON.")
+        return json.dumps({
+            "error": "AI returned empty response.",
+            "category_totals": {},
+            "top_increases": [],
+            "insight": "No insight available."
+        })
+    return result
 
 
 def budget_health_ai(model, user_budget: dict, transactions: list) -> str:
