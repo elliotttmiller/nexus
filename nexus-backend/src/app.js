@@ -18,6 +18,26 @@ const authenticateToken = require('./middleware/authenticateToken');
 const Sentry = require('./utils/sentry');
 const testCardRankRoutes = require('./routes/testcardrank');
 
+// AdminJS (AdminBro) integration
+const AdminJS = require('adminjs');
+const AdminJSExpress = require('@adminjs/express');
+const AdminJSSequelize = require('@adminjs/sequelize');
+const formidableMiddleware = require('express-formidable');
+AdminJS.registerAdapter(AdminJSSequelize);
+
+const dbModels = require('./models');
+const adminJs = new AdminJS({
+  databases: [dbModels.sequelize],
+  rootPath: '/adminjs',
+  branding: {
+    companyName: 'Nexus',
+    logo: false,
+    softwareBrothers: false,
+  },
+});
+const adminRouter = AdminJSExpress.buildRouter(adminJs);
+app.use(adminJs.options.rootPath, formidableMiddleware(), adminRouter);
+
 // Initialize the application
 const app = express();
 
@@ -26,6 +46,15 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
 });
+
+// Session middleware (for admin login)
+const session = require('express-session');
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'nexus_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, httpOnly: true, maxAge: 24*60*60*1000 }
+}));
 
 app.use(cors({
   origin: true, // Allow all origins
