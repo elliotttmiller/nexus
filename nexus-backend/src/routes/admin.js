@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, requireAdmin } = require('../middleware/authenticateToken');
+const { authenticateToken } = require('../middleware/authenticateToken');
 const db = require('../db'); // Assumes you have a db.js for database access
 
 // Admin dashboard home (HTML, similar to Django admin)
-router.get('/', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   res.send(`
     <html>
       <head>
@@ -35,7 +35,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // List users
-router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/users', authenticateToken, async (req, res) => {
   const users = await db.query('SELECT id, email, created_at FROM users ORDER BY id DESC');
   res.send(`
     <html><head><title>Users - Nexus Admin</title></head><body>
@@ -49,7 +49,7 @@ router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // List cards
-router.get('/cards', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/cards', authenticateToken, async (req, res) => {
   const cards = await db.query('SELECT id, name, user_id, balance FROM cards ORDER BY id DESC');
   res.send(`
     <html><head><title>Cards - Nexus Admin</title></head><body>
@@ -63,7 +63,7 @@ router.get('/cards', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // List transactions
-router.get('/transactions', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/transactions', authenticateToken, async (req, res) => {
   const txs = await db.query('SELECT id, user_id, amount, created_at FROM transactions ORDER BY id DESC');
   res.send(`
     <html><head><title>Transactions - Nexus Admin</title></head><body>
