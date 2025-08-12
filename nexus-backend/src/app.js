@@ -27,21 +27,8 @@ app.use((req, res, next) => {
   next();
 });
 
-const allowedOrigins = [
-  process.env.CORS_ORIGIN,
-  'http://localhost:3000',
-  'http://192.168.0.50:5000',
-  'http://localhost:19006',
-];
-
 app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins
   credentials: true,
 }));
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/authenticateToken');
+const authenticateToken = require('../middleware/authenticateToken');
 const db = require('../models'); // Use Sequelize models
 
 // Admin dashboard home (HTML, similar to Django admin)
