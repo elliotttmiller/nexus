@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/authenticateToken');
-const db = require('../db'); // Assumes you have a db.js for database access
+const db = require('../models'); // Use Sequelize models
 
 // Admin dashboard home (HTML, similar to Django admin)
 router.get('/', authenticateToken, async (req, res) => {
@@ -36,12 +36,12 @@ router.get('/', authenticateToken, async (req, res) => {
 
 // List users
 router.get('/users', authenticateToken, async (req, res) => {
-  const users = await db.query('SELECT id, email, created_at FROM users ORDER BY id DESC');
+  const users = await db.User.findAll({ attributes: ['id', 'email', 'created_at'], order: [['id', 'DESC']] });
   res.send(`
     <html><head><title>Users - Nexus Admin</title></head><body>
     <h1>Users</h1>
     <table border="1" cellpadding="5"><tr><th>ID</th><th>Email</th><th>Created</th></tr>
-    ${users.rows.map(u => `<tr><td>${u.id}</td><td>${u.email}</td><td>${u.created_at}</td></tr>`).join('')}
+    ${users.map(u => `<tr><td>${u.id}</td><td>${u.email}</td><td>${u.created_at}</td></tr>`).join('')}
     </table>
     <a href="/admin">Back to admin</a>
     </body></html>
@@ -50,12 +50,12 @@ router.get('/users', authenticateToken, async (req, res) => {
 
 // List cards
 router.get('/cards', authenticateToken, async (req, res) => {
-  const cards = await db.query('SELECT id, name, user_id, balance FROM cards ORDER BY id DESC');
+  const cards = await db.Card.findAll({ attributes: ['id', 'card_name', 'user_id', 'balance'], order: [['id', 'DESC']] });
   res.send(`
     <html><head><title>Cards - Nexus Admin</title></head><body>
     <h1>Cards</h1>
     <table border="1" cellpadding="5"><tr><th>ID</th><th>Name</th><th>User ID</th><th>Balance</th></tr>
-    ${cards.rows.map(c => `<tr><td>${c.id}</td><td>${c.name}</td><td>${c.user_id}</td><td>${c.balance}</td></tr>`).join('')}
+    ${cards.map(c => `<tr><td>${c.id}</td><td>${c.card_name}</td><td>${c.user_id}</td><td>${c.balance}</td></tr>`).join('')}
     </table>
     <a href="/admin">Back to admin</a>
     </body></html>
@@ -64,12 +64,12 @@ router.get('/cards', authenticateToken, async (req, res) => {
 
 // List transactions
 router.get('/transactions', authenticateToken, async (req, res) => {
-  const txs = await db.query('SELECT id, user_id, amount, created_at FROM transactions ORDER BY id DESC');
+  const txs = await db.Transaction.findAll({ attributes: ['id', 'user_id', 'amount', 'created_at'], order: [['id', 'DESC']] });
   res.send(`
     <html><head><title>Transactions - Nexus Admin</title></head><body>
     <h1>Transactions</h1>
     <table border="1" cellpadding="5"><tr><th>ID</th><th>User ID</th><th>Amount</th><th>Created</th></tr>
-    ${txs.rows.map(t => `<tr><td>${t.id}</td><td>${t.user_id}</td><td>${t.amount}</td><td>${t.created_at}</td></tr>`).join('')}
+    ${txs.map(t => `<tr><td>${t.id}</td><td>${t.user_id}</td><td>${t.amount}</td><td>${t.created_at}</td></tr>`).join('')}
     </table>
     <a href="/admin">Back to admin</a>
     </body></html>
