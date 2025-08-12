@@ -156,9 +156,14 @@ async function addTestCardsOrPlaid(user) {
 async function makeRequest(method, url, data, user, skipAuth = false) {
   const config = skipAuth ? {} : { headers: { Authorization: `Bearer ${user.token}` } };
   const t0 = logRequest(method, url, data);
-  
+
   try {
-    const res = await axios[method](url, data, config);
+    let res;
+    if (method === 'get') {
+      res = await axios.get(url, config);
+    } else {
+      res = await axios[method](url, data, config);
+    }
     logResponse(res, t0);
     return res;
   } catch (err) {
@@ -167,7 +172,12 @@ async function makeRequest(method, url, data, user, skipAuth = false) {
       user.token = refreshRes.data.token;
       user.refreshToken = refreshRes.data.refreshToken;
       config.headers.Authorization = `Bearer ${user.token}`;
-      const res = await axios[method](url, data, config);
+      let res;
+      if (method === 'get') {
+        res = await axios.get(url, config);
+      } else {
+        res = await axios[method](url, data, config);
+      }
       logResponse(res, t0);
       return res;
     }
@@ -249,10 +259,15 @@ async function testPlaidEndpoints(user) {
   logStep('Testing Plaid Integration');
   try {
     console.log('[DEBUG] User token before /plaid/accounts:', user.token);
-    const res = await makeRequest('get', `${BASE_URL}/plaid/accounts`, null, user);
+    console.log('[DEBUG] UserId before /plaid/accounts:', user.id || user.userId);
+    // Add userId as a query parameter
+    const userId = user.id || user.userId;
+    const res = await makeRequest('get', `${BASE_URL}/plaid/accounts?userId=${userId}`, null, user);
+    console.log('[DEBUG] /plaid/accounts response:', res.data);
     assert(res.data.accounts || res.data.message, 'Plaid should return accounts or message');
     recordSummary('Plaid/Accounts', 'PASS');
   } catch (err) {
+    console.error('[ERROR] /plaid/accounts:', err.response ? err.response.data : err.message);
     recordSummary('Plaid/Accounts', 'FAIL', err.message);
   }
 }

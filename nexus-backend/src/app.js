@@ -6,6 +6,7 @@ const cors = require('cors');
 const { sequelize } = require('./models');
 
 // Import routes after models are loaded
+const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const plaidRoutes = require('./routes/plaid');
@@ -56,6 +57,7 @@ app.use('/api/interestkiller', authenticateToken, interestKillerRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/insights', insightsRoutes);
 app.use('/api/transactions', testCardRankRoutes);
+app.use('/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/', (req, res) => {

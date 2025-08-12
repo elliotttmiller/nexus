@@ -14,7 +14,7 @@ TEST_USERS = [
 def login_to_user_account():
     """Login to the user's actual account"""
     email = "eliotttmiller@hotmail.com"
-    password = "elliott"
+    password = "E$$io$$2"
     
     try:
         r = requests.post(f"{API_BASE_URL}/auth/login", json={"email": email, "password": password})
