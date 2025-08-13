@@ -1,17 +1,18 @@
+const express = require('express');
+const router = express.Router();
 // Basic POST handler for /api/test
 router.post('/', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Test endpoint is working.' });
 });
-const express = require('express');
-const router = express.Router();
 const { Card } = require('../models');
 const { getCardRank } = require('../../aiService');
 
 // Debug endpoint to test AI payload type-safety and log raw AI service response
 router.post('/ai-payload', async (req, res) => {
-  const trace = [];
-  trace.push({ step: 'Start', timestamp: new Date().toISOString(), body: req.body });
-  try {
+// Basic POST handler for /api/test
+router.post('/', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Test endpoint is working.' });
+});
     const { userCards, transactionContext, userContext } = req.body;
     if (!Array.isArray(userCards) || !transactionContext) {
       trace.push({ step: 'Validation Failed', timestamp: new Date().toISOString() });
@@ -29,10 +30,6 @@ router.post('/ai-payload', async (req, res) => {
       trace.push({ step: 'AI Error', error: err.message, aiError: err.response ? err.response.data : undefined, timestamp: new Date().toISOString() });
       res.status(500).json({ error: err.message, aiError: err.response ? err.response.data : undefined, trace });
     }
-  } catch (error) {
-    trace.push({ step: 'Error', error: error.message, timestamp: new Date().toISOString() });
-    res.status(500).json({ error: error.message, trace });
-  }
 });
 
 
