@@ -18,25 +18,27 @@ const authenticateToken = require('./middleware/authenticateToken');
 const Sentry = require('./utils/sentry');
 const testCardRankRoutes = require('./routes/testcardrank');
 
-// AdminJS (AdminBro) integration
-const AdminJS = require('adminjs');
-const AdminJSExpress = require('@adminjs/express');
-const AdminJSSequelize = require('@adminjs/sequelize');
-const formidableMiddleware = require('express-formidable');
-AdminJS.registerAdapter(AdminJSSequelize);
+// AdminJS (AdminBro) integration (ESM workaround)
+(async () => {
+  const AdminJS = (await import('adminjs')).default;
+  const AdminJSExpress = (await import('@adminjs/express')).default;
+  const AdminJSSequelize = (await import('@adminjs/sequelize')).default;
+  const formidableMiddleware = (await import('express-formidable')).default;
+  AdminJS.registerAdapter(AdminJSSequelize);
 
-const dbModels = require('./models');
-const adminJs = new AdminJS({
-  databases: [dbModels.sequelize],
-  rootPath: '/adminjs',
-  branding: {
-    companyName: 'Nexus',
-    logo: false,
-    softwareBrothers: false,
-  },
-});
-const adminRouter = AdminJSExpress.buildRouter(adminJs);
-app.use(adminJs.options.rootPath, formidableMiddleware(), adminRouter);
+  const dbModels = require('./models');
+  const adminJs = new AdminJS({
+    databases: [dbModels.sequelize],
+    rootPath: '/adminjs',
+    branding: {
+      companyName: 'Nexus',
+      logo: false,
+      softwareBrothers: false,
+    },
+  });
+  const adminRouter = AdminJSExpress.buildRouter(adminJs);
+  app.use(adminJs.options.rootPath, formidableMiddleware(), adminRouter);
+})();
 
 // Initialize the application
 const app = express();
