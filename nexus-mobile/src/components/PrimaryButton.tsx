@@ -7,14 +7,16 @@ type PrimaryButtonProps = {
   onPress: () => void;
   disabled?: boolean;
   style?: object;
+  testID?: string;
 };
 
-const PrimaryButton = memo<PrimaryButtonProps>(({ title, onPress, disabled, style }) => {
+const PrimaryButton = memo<PrimaryButtonProps>(({ title, onPress, disabled, style, testID }) => {
   return (
     <TouchableOpacity 
       style={[styles.button, style, disabled && styles.disabledButton]} 
       onPress={onPress} 
       disabled={disabled}
+      testID={testID}
     >
       <Text style={styles.buttonText}>{title}</Text>
     </TouchableOpacity>

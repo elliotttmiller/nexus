@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "total_tests": 14,
+    "passed": 0,
+    "failed": 14,
+    "success_rate": "0.00",
+    "total_duration_ms": 78553,
+    "timestamp": "2025-08-13T15:34:48.684Z"
+  },
+  "details": {
+    "e2e_tests": {
+      "passed": 0,
+      "failed": 14,
+      "duration": 46208
+    },
+    "unit_tests": {
+      "passed": 0,
+      "failed": 0,
+      "duration": 29310
+    },
+    "performance_tests": {
+      "passed": 0,
+      "failed": 0,
+      "duration": 3035
+    }
+  },
+  "recommendations": [
+    "E2E tests failed - check API connectivity and authentication"
+  ]
+}

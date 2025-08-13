@@ -35,8 +35,8 @@ jest.mock('../src/hooks/useError', () => ({
 
 jest.mock('../src/components/PrimaryButton', () => {
   const { TouchableOpacity, Text } = require('react-native');
-  return ({ title, onPress, disabled }) => (
-    <TouchableOpacity onPress={onPress} disabled={disabled} testID="primary-button">
+  return ({ title, onPress, disabled, testID }) => (
+    <TouchableOpacity onPress={onPress} disabled={disabled} testID={testID || 'primary-button'}>
       <Text>{title}</Text>
     </TouchableOpacity>
   );
@@ -74,7 +74,7 @@ describe('AI Features Mobile Tests', () => {
       
       fireEvent.changeText(getByPlaceholderText('Enter merchant'), 'Starbucks');
       fireEvent.changeText(getByPlaceholderText('Enter category (e.g. dining)'), 'dining');
-      fireEvent.press(getByTestId('primary-button'));
+      fireEvent.press(getByTestId('recommend-button'));
 
       await waitFor(() => {
         expect(getByText('Chase Sapphire Preferred')).toBeTruthy();
@@ -92,7 +92,7 @@ describe('AI Features Mobile Tests', () => {
       const { getByPlaceholderText, getByTestId } = render(<CardRankScreen />);
       
       fireEvent.changeText(getByPlaceholderText('Enter merchant'), 'Test');
-      fireEvent.press(getByTestId('primary-button'));
+      fireEvent.press(getByTestId('recommend-button'));
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
@@ -116,7 +116,7 @@ describe('AI Features Mobile Tests', () => {
       const { getByPlaceholderText, getByTestId } = render(<CardRankScreen />);
       
       fireEvent.changeText(getByPlaceholderText('Enter merchant'), 'Test');
-      fireEvent.press(getByTestId('primary-button'));
+      fireEvent.press(getByTestId('recommend-button'));
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalled();
@@ -135,7 +135,7 @@ describe('AI Features Mobile Tests', () => {
       const { getByPlaceholderText, getByTestId } = render(<CardRankScreen />);
       
       fireEvent.changeText(getByPlaceholderText('Enter merchant'), 'Test');
-      fireEvent.press(getByTestId('primary-button'));
+      fireEvent.press(getByTestId('recommend-button'));
 
       await waitFor(() => {
         expect(mockRouter.replace).toHaveBeenCalledWith('/login');
@@ -168,7 +168,7 @@ describe('AI Features Mobile Tests', () => {
       const { getByPlaceholderText, getByTestId, getByText } = render(<InterestKillerScreen />);
       
       fireEvent.changeText(getByPlaceholderText('Enter payment amount'), '200');
-      fireEvent.press(getByTestId('primary-button'));
+      fireEvent.press(getByTestId('suggestion-button'));
 
       await waitFor(() => {
         expect(getByText(/150 to Card A/)).toBeTruthy();
@@ -194,7 +194,7 @@ describe('AI Features Mobile Tests', () => {
       const { getByPlaceholderText, getByTestId } = render(<InterestKillerScreen />);
       
       fireEvent.changeText(getByPlaceholderText('Enter payment amount'), '100');
-      fireEvent.press(getByTestId('primary-button'));
+      fireEvent.press(getByTestId('suggestion-button'));
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
@@ -224,7 +224,7 @@ describe('AI Features Mobile Tests', () => {
       
       fireEvent.changeText(getByPlaceholderText('Enter merchant'), 'Amazon');
       fireEvent.changeText(getByPlaceholderText('Enter category (e.g. dining)'), 'shopping');
-      fireEvent.press(getByTestId('primary-button'));
+      fireEvent.press(getByTestId('suggestion-button'));
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(

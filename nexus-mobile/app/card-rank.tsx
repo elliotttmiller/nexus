@@ -63,11 +63,11 @@ export default function CardRankScreen() {
         onChangeText={setCategory}
         placeholderTextColor="#888"
       />
-      <PrimaryButton title={loading ? 'Loading...' : 'Get Recommendation'} onPress={handleRecommend} disabled={loading} style={{}} />
+      <PrimaryButton title={loading ? 'Loading...' : 'Get Recommendation'} onPress={handleRecommend} disabled={loading} style={{}} testID="recommend-button" />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {recommendation ? <Text style={styles.recommendation}>{recommendation}</Text> : null}
       {error && <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>}
-      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{}} />
+      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{}} testID="dashboard-button" />
     </View>
   );
 }

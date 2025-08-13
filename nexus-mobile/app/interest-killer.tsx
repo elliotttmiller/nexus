@@ -20,7 +20,7 @@ export default function InterestKillerScreen() {
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/suggest`, {
         method: 'POST',
-        body: JSON.stringify({ userId: 1, amount })
+        body: JSON.stringify({ userId: 1, amount: Number(amount) })
       });
       if (res.status === 401) {
         setError('Session expired. Please log in again.');
@@ -56,11 +56,11 @@ export default function InterestKillerScreen() {
         keyboardType="numeric"
         placeholderTextColor="#888"
       />
-      <PrimaryButton title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} style={{}} />
+      <PrimaryButton title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} style={{}} testID="suggestion-button" />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {suggestion ? <Text style={styles.suggestion}>{suggestion}</Text> : null}
       {error && <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>}
-      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{}} />
+      <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{}} testID="dashboard-button" />
     </View>
   );
 }
