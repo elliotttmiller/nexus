@@ -8,8 +8,7 @@ import BottomNavigation from '../../src/components/BottomNavigation';
 import { API_BASE_URL } from '../../src/constants/api';
 import { fetchWithAuth } from '../../src/constants/fetchWithAuth';
 import { Account, Transaction } from '../../src/types';
-import { BarChart, YAxis, XAxis, Grid } from 'react-native-svg-charts';
-import * as scale from 'd3-scale';
+// Simple bar chart implementation without external dependencies
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -162,33 +161,29 @@ function AnalysisContainer({ transactions }: AnalysisContainerProps) {
     <View style={analysisStyles.container}>
       <Text style={analysisStyles.title}>Spending Analysis</Text>
       <Text style={analysisStyles.subtitle}>Your spending trend this week</Text>
-      <View style={{ flexDirection: 'row', height: 220, paddingVertical: 12 }}>
-        <YAxis
-          data={dailyData}
-          contentInset={{ top: 20, bottom: 20 }}
-          svg={{ fontSize: 12, fill: '#888' }}
-          numberOfTicks={5}
-          formatLabel={(value: number) => `$${value}`}
-        />
-        <BarChart
-          style={{ flex: 1, marginLeft: 8 }}
-          data={dailyData}
-          svg={{ fill: 'url(#gradient)' }}
-          contentInset={{ top: 20, bottom: 20 }}
-          spacingInner={0.3}
-          gridMin={0}
-        >
-          <Grid direction={Grid.Direction.HORIZONTAL} svg={{ stroke: '#eee' }} />
-        </BarChart>
+      <View style={{ height: 220, paddingVertical: 12 }}>
+        {/* Simple bar chart using React Native components */}
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', paddingHorizontal: 20 }}>
+          {dailyData.map((value, index) => {
+            const maxValue = Math.max(...dailyData);
+            const height = maxValue > 0 ? (value / maxValue) * 120 : 0;
+            return (
+              <View key={index} style={{ alignItems: 'center' }}>
+                <View 
+                  style={{
+                    width: 30,
+                    height: height,
+                    backgroundColor: PRIMARY,
+                    borderRadius: 4,
+                    marginBottom: 8,
+                  }}
+                />
+                <Text style={{ fontSize: 12, color: '#888' }}>{days[index]}</Text>
+              </View>
+            );
+          })}
+        </View>
       </View>
-      <XAxis
-        style={{ marginHorizontal: -10, height: 24 }}
-        data={dailyData}
-        formatLabel={(_: number, index: number) => days[index]}
-        contentInset={{ left: 30, right: 20 }}
-        svg={{ fontSize: 12, fill: '#888' }}
-        scale={scale.scaleBand}
-      />
       <View style={analysisStyles.statsRow}>
         <View style={analysisStyles.statBox}>
           <Text style={analysisStyles.statLabel}>Total Spent</Text>

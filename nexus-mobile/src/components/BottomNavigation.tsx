@@ -21,7 +21,7 @@ export default function BottomNavigation() {
         <TouchableOpacity
           key={item.key}
           style={[styles.iconButton, idx === 1 && styles.centerButton]}
-          onPress={() => router.replace(item.route)}
+          onPress={() => router.push(item.route as any)}
           activeOpacity={0.8}
         >
           {item.icon}
