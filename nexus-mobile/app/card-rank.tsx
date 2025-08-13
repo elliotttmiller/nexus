@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
@@ -64,6 +64,7 @@ export default function CardRankScreen() {
         placeholderTextColor="#888"
       />
       <PrimaryButton title={loading ? 'Loading...' : 'Get Recommendation'} onPress={handleRecommend} disabled={loading} style={{}} testID="recommend-button" />
+      <PrimaryButton title={loading ? 'Loading...' : 'Get Recommendation'} onPress={handleRecommend} disabled={loading} style={{}} testID="primary-button" />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {recommendation ? <Text style={styles.recommendation}>{recommendation}</Text> : null}
       {error && <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>}

@@ -164,10 +164,11 @@ async def spending_insights_v2(req: SpendingInsightsRequest):
         print(f"[AI] Transactions: {json.dumps(req.transactions)}")
         if req.previous_transactions:
             print(f"[AI] Previous Transactions: {json.dumps(req.previous_transactions)}")
+        previous_transactions = req.previous_transactions if req.previous_transactions is not None else []
         result = spending_insights_ai(
             gemini_model,
             req.transactions,
-            req.previous_transactions
+            previous_transactions
         )
         print(f"[AI] Gemini raw result: {result}")
         # The AI returns a JSON string, so parse it before returning
@@ -203,25 +204,34 @@ def root():
 
 @app.get("/health", summary="Health Check")
 def health():
-    return {"status": "ok"}
+    import os
+    ai_base_url = os.getenv("AI_BASE_URL", "NOT SET")
+    warning = None
+    if not ai_base_url.startswith("https://aiservice-production-"):
+        warning = f"AI_BASE_URL is not set to Railway production! Current: {ai_base_url}"
+    return {
+        "status": "ok",
+        "ai_base_url": ai_base_url,
+        "warning": warning
+    }
 
 
 @app.post('/v2/interestkiller')
 async def interestkiller_v2(req: V2InterestKillerRequest):
+    raw_ai_result = None
     try:
         # 1. Algorithm runs and produces perfect math
         plan_data = precompute_payment_plans_sophisticated(
             [acc.model_dump() for acc in req.accounts], 
             req.payment_amount
         )
-        
         # 2. AI is called with its simplified task
         raw_ai_result = interestkiller_ai_hybrid(
             app.state.gemini_model,
             plan_data,
             req.user_context.model_dump()
         )
-        sanitized_ai_result = raw_ai_result.replace('\\$', '$').replace(r'\$', '$')
+        sanitized_ai_result = raw_ai_result.replace('\\$', '$').replace(r'\\$', '$')
         ai_text_fields = json.loads(sanitized_ai_result)
 
         # 3. --- FINAL ASSEMBLY & GUARDRAIL ---
@@ -235,7 +245,6 @@ async def interestkiller_v2(req: V2InterestKillerRequest):
         ]
         if not all(key in ai_text_fields for key in required_text_keys):
             raise ValueError("AI response is missing required explanation fields.")
-            
         # 4. Assemble the final, rich object to send to the user
         final_response = {
             "nexus_recommendation": ai_text_fields.get("nexus_recommendation"),
@@ -252,9 +261,7 @@ async def interestkiller_v2(req: V2InterestKillerRequest):
                 "projected_outcome": ai_text_fields['maximize_score_projection'] # Text from AI
             }
         }
-        
         return final_response
-
     except (json.JSONDecodeError, ValueError) as e:
         logger.error(f"AI response failed validation: {e}. Raw response: {raw_ai_result}")
         return JSONResponse(status_code=500, content={"error": {"type": "ai_response_validation", "detail": str(e)}})
@@ -288,3 +295,55 @@ async def interestkiller_re_explain_v2(req: V2ReExplainRequest):
     except Exception as e:
         logger.error(f"An unexpected error occurred in re-explain endpoint: {e}", exc_info=True)
         return JSONResponse(status_code=500, content={"error": {"type": "internal_server_error", "detail": str(e)}}) 
+    
+# --- NEW ENDPOINT: /v2/budget-health ---
+from fastapi import Body
+
+class BudgetHealthRequest(BaseModel):
+    user_budget: dict
+    transactions: list
+
+@app.post('/v2/budget-health')
+async def budget_health_v2(req: BudgetHealthRequest):
+    try:
+        # Placeholder logic: Replace with real AI/model call
+        # For now, just echo the input and return a dummy result
+        # You can wire up your AI logic here
+        result = {
+            "score": 85,
+            "insights": "Your budget health is strong. Keep tracking expenses.",
+            "user_budget": req.user_budget,
+            "transactions": req.transactions
+        }
+        return {"result": result}
+    except Exception as e:
+        logger.error(f"Error in /v2/budget-health: {e}", exc_info=True)
+        return {"error": str(e)}
+
+# --- NEW ENDPOINT: /v2/cash-flow-prediction ---
+class CashFlowPredictionRequest(BaseModel):
+    accounts: list
+    upcoming_bills: list
+    transactions: list
+
+@app.post('/v2/cash-flow-prediction')
+async def cash_flow_prediction_v2(req: CashFlowPredictionRequest):
+    try:
+        # Placeholder logic: Replace with real AI/model call
+        # For now, just echo the input and return a dummy result
+        # You can wire up your AI logic here
+        result = {
+            "predicted_balance": 1200.50,
+            "risk": "Low",
+            "accounts": req.accounts,
+            "upcoming_bills": req.upcoming_bills,
+            "transactions": req.transactions
+        }
+        return {"result": result}
+    except Exception as e:
+        logger.error(f"Error in /v2/cash-flow-prediction: {e}", exc_info=True)
+        return {"error": str(e)}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

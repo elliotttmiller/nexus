@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import { API_BASE_URL } from '../src/constants/api';
 import { useRouter } from 'expo-router';
 import { fetchWithAuth } from '../src/constants/fetchWithAuth';
@@ -20,7 +20,7 @@ export default function InterestKillerScreen() {
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/suggest`, {
         method: 'POST',
-        body: JSON.stringify({ userId: 1, amount: Number(amount) })
+        body: JSON.stringify({ userId: 1, amount })
       });
       if (res.status === 401) {
         setError('Session expired. Please log in again.');
@@ -30,7 +30,7 @@ export default function InterestKillerScreen() {
       const data = await res.json();
       if (res.ok && data.suggestion) {
         setSuggestion(
-          data.suggestion.map((s: any, i: number) => `${s.amount} to ${s.card} (${s.apr}% APR)`).join('\n')
+          data.suggestion.map((s: { amount: string; card: string; apr: string }) => `${s.amount} to ${s.card} (${s.apr}% APR)`).join('\n')
         );
         setError(null);
       } else {
@@ -56,7 +56,7 @@ export default function InterestKillerScreen() {
         keyboardType="numeric"
         placeholderTextColor="#888"
       />
-      <PrimaryButton title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} style={{}} testID="suggestion-button" />
+      <PrimaryButton title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} style={{}} testID="primary-button" />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {suggestion ? <Text style={styles.suggestion}>{suggestion}</Text> : null}
       {error && <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>}
