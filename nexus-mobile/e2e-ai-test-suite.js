@@ -139,8 +139,8 @@ class AIFeatureTests {
     try {
       const payload = {
         userId: this.user.userId,
-        merchant: 'Starbucks',
-        category: 'dining',
+        merchant: 'Starbucks', // always provide merchant
+        category: 'dining', // always provide category
         amount: 25,
         location: 'CA',
         primaryGoal: 'maximize_rewards'
