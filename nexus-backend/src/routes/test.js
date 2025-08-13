@@ -1,3 +1,7 @@
+// Basic POST handler for /api/test
+router.post('/', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Test endpoint is working.' });
+});
 const express = require('express');
 const router = express.Router();
 const { Card } = require('../models');
