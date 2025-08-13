@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const session = require('express-session');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const db = require('../models'); // Use Sequelize models
 
 // Session middleware (should be added in app.js, but for demo, add here if not present)
