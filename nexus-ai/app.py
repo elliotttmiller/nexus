@@ -6,6 +6,16 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
+
+# --- Utility: Sanitize AI JSON Response ---
+def sanitize_ai_json(raw: str) -> str:
+    """Sanitize Gemini AI JSON output for backend parsing."""
+    if not isinstance(raw, str):
+        return raw
+    # Remove escaped dollar signs and any stray markdown fences
+    sanitized = raw.replace('\\$', '$').replace(r'\\$', '$')
+    sanitized = sanitized.replace('```json', '').replace('```', '')
+    return sanitized.strip()
 import math
 
 # --- 1. Load Environment & Basic Config ---
@@ -171,12 +181,13 @@ async def spending_insights_v2(req: SpendingInsightsRequest):
             previous_transactions
         )
         print(f"[AI] Gemini raw result: {result}")
-        # The AI returns a JSON string, so parse it before returning
+        # Sanitize and parse AI response
         if not result or not result.strip():
             logger.error("AI returned empty response for spending insights.")
             return {"error": "AI returned empty response.", "category_totals": {}, "top_increases": [], "insight": "No insight available."}
         try:
-            return json.loads(result)
+            sanitized = sanitize_ai_json(result)
+            return json.loads(sanitized)
         except Exception as parse_err:
             logger.error(f"Failed to parse AI response: {parse_err}. Raw: {result}")
             return {"error": "AI returned invalid JSON.", "category_totals": {}, "top_increases": [], "insight": "No insight available."}
@@ -231,7 +242,7 @@ async def interestkiller_v2(req: V2InterestKillerRequest):
             plan_data,
             req.user_context.model_dump()
         )
-        sanitized_ai_result = raw_ai_result.replace('\\$', '$').replace(r'\\$', '$')
+        sanitized_ai_result = sanitize_ai_json(raw_ai_result)
         ai_text_fields = json.loads(sanitized_ai_result)
 
         # 3. --- FINAL ASSEMBLY & GUARDRAIL ---
@@ -280,7 +291,7 @@ async def interestkiller_re_explain_v2(req: V2ReExplainRequest):
             [item.model_dump() for item in req.custom_split],
             req.user_context.model_dump()
         )
-        sanitized_ai_result = raw_ai_result.replace('\\$', '$')
+        sanitized_ai_result = sanitize_ai_json(raw_ai_result)
         ai_json = json.loads(sanitized_ai_result)
 
         # Guardrail: Check if the AI returned the new explanation

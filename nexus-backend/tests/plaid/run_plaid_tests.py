@@ -24,7 +24,7 @@ import json
 import argparse
 import requests
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 # Import the main test module
 from plaid_integration_test import (
@@ -192,7 +192,7 @@ class PlaidTestRunner:
         
         return summary
     
-    def generate_report(self, summary: Dict[str, Any], output_file: str = None) -> str:
+    def generate_report(self, summary: Dict[str, Any], output_file: Optional[str] = None) -> str:
         """Generate a detailed test report."""
         report = []
         report.append("=" * 80)
