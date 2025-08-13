@@ -10,7 +10,7 @@ import useError from '../src/hooks/useError';
 
 export default function InterestKillerScreen() {
   const [amount, setAmount] = useState('');
-  const [suggestion, setSuggestion] = useState('');
+  const [suggestion, setSuggestion] = useState<Array<{ amount: string; card: string; apr: string }> | string>('');
   const [loading, withLoading] = useLoading();
   const [error, setError, withError] = useError();
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function InterestKillerScreen() {
     try {
       const res = await fetchWithAuth(`${API_BASE_URL}/api/interestkiller/suggest`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 1, amount })
       });
       if (res.status === 401) {
@@ -29,9 +30,7 @@ export default function InterestKillerScreen() {
       }
       const data = await res.json();
       if (res.ok && data.suggestion) {
-        setSuggestion(
-          data.suggestion.map((s: { amount: string; card: string; apr: string }) => `${s.amount} to ${s.card} (${s.apr}% APR)`).join('\n')
-        );
+        setSuggestion(data.suggestion);
         setError(null);
       } else {
         setError(data.error || 'No suggestion');
@@ -58,7 +57,13 @@ export default function InterestKillerScreen() {
       />
       <PrimaryButton title={loading ? 'Loading...' : 'Get Suggestion'} onPress={handleSuggest} disabled={loading} style={{}} testID="primary-button" />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
-      {suggestion ? <Text style={styles.suggestion}>{suggestion}</Text> : null}
+      {Array.isArray(suggestion) && suggestion.length > 0 ? (
+        suggestion.map((s, i) => (
+          <Text key={i} style={styles.suggestion}>{`${s.amount} to ${s.card} (${s.apr}% APR)`}</Text>
+        ))
+      ) : (
+        typeof suggestion === 'string' && suggestion ? <Text style={styles.suggestion}>{suggestion}</Text> : null
+      )}
       {error && <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>}
       <PrimaryButton title="Back to Dashboard" onPress={() => router.push('/dashboard')} style={{}} testID="dashboard-button" />
     </View>

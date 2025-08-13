@@ -63,7 +63,6 @@ export default function CardRankScreen() {
         onChangeText={setCategory}
         placeholderTextColor="#888"
       />
-      <PrimaryButton title={loading ? 'Loading...' : 'Get Recommendation'} onPress={handleRecommend} disabled={loading} style={{}} testID="recommend-button" />
       <PrimaryButton title={loading ? 'Loading...' : 'Get Recommendation'} onPress={handleRecommend} disabled={loading} style={{}} testID="primary-button" />
       {loading && <ActivityIndicator size="large" color={PRIMARY} />}
       {recommendation ? <Text style={styles.recommendation}>{recommendation}</Text> : null}
