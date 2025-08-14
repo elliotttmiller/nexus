@@ -448,14 +448,14 @@ router.get('/transactions', async (req, res) => {
       end_date: end,
       options: { count: 100, offset: 0 }
     });
-    console.log('[Plaid][Sync] transactionsGet response:', JSON.stringify(response.data.transactions, null, 2));
+    console.log('[Plaid][Sync] transactionsGet response:', `Found ${response.data.transactions.length} transactions`);
     trace.push({ step: 'Transactions Fetched', count: response.data.transactions.length, timestamp: new Date().toISOString() });
 
     // --- Plaid-to-DB Transaction Sync ---
     let upserted = 0;
     for (const t of response.data.transactions) {
       try {
-        console.log(`[Plaid][Sync] Upserting transaction:`, JSON.stringify({ user_id: userId, plaid_transaction_id: t.transaction_id, amount: t.amount, merchant: t.merchant_name || t.name }, null, 2));
+        // Reduced logging to prevent rate limiting
         await Transaction.upsert({
           user_id: userId,
           plaid_transaction_id: t.transaction_id,
@@ -481,10 +481,14 @@ router.get('/transactions', async (req, res) => {
         });
         upserted++;
       } catch (e) {
-        console.error('[Plaid][Sync][Upsert Error]', e);
+        // Log only first few errors to prevent rate limiting
+        if (upserted < 3) {
+          console.error('[Plaid][Sync][Upsert Error]', e.message);
+        }
         trace.push({ step: 'Upsert Error', error: e.message, plaid_transaction_id: t.transaction_id, timestamp: new Date().toISOString() });
       }
     }
+    console.log(`[Plaid][Sync] Completed: ${upserted} transactions processed`);
     trace.push({ step: 'Transactions Upserted', count: upserted, timestamp: new Date().toISOString() });
     // Fetch from DB to return canonical view
     const dbTxs = await Transaction.findAll({ where: { user_id: userId }, order: [['date', 'DESC']] });
