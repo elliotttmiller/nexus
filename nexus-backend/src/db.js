@@ -46,7 +46,7 @@ if (dbConfig.url) {
 async function testConnection() {
   try {
     await sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
+    console.log('Database connected successfully.');
     // Removed sequelize.sync() to prevent schema changes in production
   } catch (error) {
     console.error('Unable to connect to the database:', error);

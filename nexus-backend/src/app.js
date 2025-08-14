@@ -43,9 +43,12 @@ const testCardRankRoutes = require('./routes/testcardrank');
 // Initialize the application
 const app = express();
 
-// Middleware
+// Middleware - Reduced logging to prevent rate limiting
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  // Only log non-health check requests to reduce noise
+  if (!req.url.includes('/') && !req.url.includes('/health')) {
+    console.log(`${req.method} ${req.url}`);
+  }
   next();
 });
 
@@ -137,6 +140,7 @@ process.on('SIGTERM', () => {
 });
 
 console.log('App started and running...');
-setInterval(() => console.log('Heartbeat: still alive'), 10000);
+// Reduced heartbeat frequency to prevent rate limiting
+setInterval(() => console.log('Heartbeat: still alive'), 60000); // Changed from 10s to 60s
 
 module.exports = server;

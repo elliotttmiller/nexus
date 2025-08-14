@@ -21,12 +21,11 @@ router.get('/transaction/:id/ai-analysis', async (req, res) => {
       console.log(`[Debug] Transaction not found for ID: ${transactionId}`);
       return res.status(404).json({ error: 'Transaction not found' });
     }
-    console.log(`[Debug] Transaction found (raw):`, JSON.stringify(tx, null, 2));
-    console.log(`[Debug] Transaction found (toJSON):`, JSON.stringify(tx.toJSON(), null, 2));
+    // Reduced logging to prevent rate limiting
     const userId = tx.user_id;
     console.log(`[Debug] Looking up user cards for user ID: ${userId}`);
     const userCards = await db.Card.findAll({ where: { user_id: userId } });
-    console.log(`[Debug] User cards:`, JSON.stringify(userCards, null, 2));
+    console.log(`[Debug] Found ${userCards.length} user cards`);
     let userGoal = 'MAXIMIZE_CASHBACK';
     try {
       const user = await db.User.findByPk(userId);
@@ -37,7 +36,7 @@ router.get('/transaction/:id/ai-analysis', async (req, res) => {
     }
     console.log(`[Debug] Calling analyzeTransactionOptimalCard...`);
     const aiResult = await analyzeTransactionOptimalCard(userCards, tx, userGoal);
-    console.log(`[Debug] AI Result:`, JSON.stringify(aiResult, null, 2));
+    console.log(`[Debug] AI analysis completed successfully`);
     await tx.update({ ai_card_analysis: aiResult });
     console.log(`[Debug] Updated transaction with AI result.`);
     return res.json({ ...tx.toJSON(), ai_card_analysis: aiResult });
@@ -53,7 +52,7 @@ router.post('/webhook', async (req, res) => {
   try {
     const payload = req.body;
     // Log and store the webhook for idempotency and debugging
-    console.log('[Plaid Webhook] Received:', JSON.stringify(payload, null, 2));
+    console.log('[Plaid Webhook] Received webhook event');
     // Only handle transaction webhooks for now
     if (payload.webhook_type === 'TRANSACTIONS' && payload.webhook_code === 'TRANSACTIONS_ADDED') {
       // For each new transaction, analyze optimal card
@@ -99,8 +98,7 @@ async function getUserIdFromItemId(item_id) {
 async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 'MAXIMIZE_CASHBACK') {
   // --- In-depth Debug Logging ---
   console.log('[CardRank][START] analyzeTransactionOptimalCard');
-  console.log('[CardRank][Input] userCards:', JSON.stringify(userCards, null, 2));
-  console.log('[CardRank][Input] transaction:', JSON.stringify(transaction, null, 2));
+  console.log('[CardRank][Input] Processing transaction for card analysis');
   console.log('[CardRank][Input] userGoal:', userGoal);
 
   // Robust type-safety for all outgoing card data
@@ -147,7 +145,7 @@ async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 
       primaryGoal: userGoal
     }
   };
-  console.log('[CardRank][Payload] aiPayload:', JSON.stringify(aiPayload, null, 2));
+  console.log('[CardRank][Payload] AI payload prepared');
 
   const AI_BASE_URL = process.env.AI_BASE_URL;
   let aiResponse;
@@ -156,7 +154,7 @@ async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 
     const resp = await axios.post(`${AI_BASE_URL}/v2/cardrank`, aiPayload);
     const duration = Date.now() - start;
     aiResponse = resp.data;
-    console.log(`[CardRank][AI Response][${duration}ms]:`, JSON.stringify(aiResponse, null, 2));
+    console.log(`[CardRank][AI Response] Received in ${duration}ms`);
   } catch (e) {
     console.error('[CardRank][ERROR] AI request failed:', e.message, e.response ? e.response.data : '');
     aiResponse = null;
@@ -173,7 +171,7 @@ async function analyzeTransactionOptimalCard(userCards, transaction, userGoal = 
     explanation: aiResponse ? aiResponse.reason : null,
     why_not: aiResponse ? aiResponse.why_not : null
   };
-  console.log('[CardRank][Result]:', JSON.stringify(result, null, 2));
+  console.log('[CardRank][Result] Analysis completed');
   console.log('[CardRank][END] analyzeTransactionOptimalCard');
   return result;
 }
@@ -244,8 +242,7 @@ router.post('/exchange_public_token', async (req, res) => {
     try {
       const accountsResponse = await plaidClient.accountsGet({ access_token });
       const accounts = accountsResponse.data.accounts || [];
-      console.log('[Plaid] All Plaid accounts:', JSON.stringify(accounts, null, 2));
-      let createdCount = 0;
+      console.log(`[Plaid] Found ${accounts.length} Plaid accounts`);
       for (const account of accounts) {
         // Only sync credit card accounts
         if (account.type === 'credit' || (account.name && account.name.toLowerCase().includes('credit'))) {
@@ -292,8 +289,7 @@ async function fetchAndMergeCompleteAccountData(accessToken, institutionName) {
       plaidClient.liabilitiesGet({ access_token: accessToken }).catch(() => ({ data: { liabilities: {} } }))
     ]);
     // Debug logging for Plaid API responses
-    console.log('Plaid accountsGet response:', JSON.stringify(accountsResponse.data, null, 2));
-    console.log('Plaid liabilitiesGet response:', JSON.stringify(liabilitiesResponse.data, null, 2));
+    // Reduced logging to prevent rate limiting
     const allAccounts = accountsResponse.data.accounts;
     const liabilities = liabilitiesResponse.data.liabilities || {};
     const liabilityDataMap = new Map();
@@ -331,7 +327,7 @@ async function fetchAndMergeCompleteAccountData(accessToken, institutionName) {
         creditLimit: mappedType === 'credit' ? account.balances.limit : undefined,
       };
     });
-    console.log('Merged Plaid accounts:', JSON.stringify(mergedAccounts, null, 2));
+    console.log(`Merged ${mergedAccounts.length} Plaid accounts`);
     return mergedAccounts;
   } catch (error) {
     console.error('[Plaid Service] Error fetching or merging Plaid data:', error.response ? error.response.data : error);

@@ -236,7 +236,7 @@ router.post('/pay/ai-recommendation', async (req, res) => {
       payment_amount,
       user_context
     };
-    console.log('AI Recommendation payload:', JSON.stringify(aiPayload, null, 2));
+    console.log('AI Recommendation payload prepared');
     // Always use the AI-driven logic for both splits and explanations
     const aiResult = await getInterestKillerSplit(creditCards, payment_amount, user_context);
     res.json(aiResult);

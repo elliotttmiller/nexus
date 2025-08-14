@@ -62,11 +62,8 @@ db.Sequelize = Sequelize;
 // Test the database connection and sync models
 async function testConnection() {
   try {
-    console.log('Attempting to connect to database...');
-    console.log(`Host: ${sequelize.config.host}, Database: ${sequelize.config.database}, User: ${sequelize.config.username}`);
-    
     await sequelize.authenticate({ timeout: 10000 });
-    console.log('Database connection has been established successfully.');
+    console.log('Database connection established.');
     // Removed sequelize.sync() to prevent schema changes in production
   } catch (error) {
     console.error('Unable to connect to the database:');
